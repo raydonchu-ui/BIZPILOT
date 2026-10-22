@@ -1,0 +1,11 @@
+node_modules
+dist
+dev-dist
+.env
+.env.local
+.env.*.local
+supabase/.temp
+supabase/.branches
+test-results
+playwright-report
+*.log
