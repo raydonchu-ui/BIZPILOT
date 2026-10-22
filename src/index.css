@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body { @apply bg-white font-sans antialiased; font-feature-settings: 'tnum' 0; }
+  .dark body { @apply bg-gray-950; }
+  input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
+  :focus-visible { outline-color: #18813e; }
+}
+
+@media print {
+  @page { margin: 12mm; }
+  body { background: white !important; }
+  .print-only { display: block !important; }
+  .no-print { display: none !important; }
+  main { padding: 0 !important; }
+}
+.print-only { display: none; }
+.tabular-nums { font-variant-numeric: tabular-nums; }

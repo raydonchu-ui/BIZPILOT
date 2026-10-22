@@ -187,7 +187,7 @@ begin
               and accepted_at is null and revoked_at is null) into v;
   elsif k = 'ai_queries_per_month' then
     select count(*) into v from public.ai_queries where business_id = bid
-      and created_at >= date_trunc('month', now()) and status <> 'rejected';
+      and created_at >= date_trunc('month', now()) and status in ('started', 'completed');
   else
     v := 0;
   end if;

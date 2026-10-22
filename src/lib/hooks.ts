@@ -1,0 +1,115 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase, FILES_BUCKET } from './supabase';
+import { unwrap } from './api';
+import { newId } from './ids';
+
+export interface Product {
+  id: string; business_id: string; name: string; sku: string; barcode: string | null; category_id: string | null;
+  subcategory: string | null; brand: string | null; description: string | null; image_path: string | null; base_unit: string;
+  allow_fraction: boolean; purchase_cost: number; selling_price: number; qty_on_hand: number; stock_value: number; avg_cost: number;
+  min_stock: number; lead_time_days: number | null; min_order_qty: number | null; preferred_supplier_id: string | null;
+  location: string | null; track_expiry: boolean; variant_of: string | null; variant_label: string | null; status: 'active' | 'archived';
+  created_at: string; updated_at: string; categories?: { name: string } | null; product_units?: ProductUnit[];
+}
+
+export interface ProductUnit {
+  id: string; product_id: string; name: string; factor: number; selling_price: number | null; barcode: string | null;
+  is_default_purchase: boolean; is_default_sale: boolean; active: boolean;
+}
+
+export function useCategories(businessId: string) {
+  return useQuery({
+    queryKey: ['categories', businessId],
+    queryFn: async () => unwrap(await supabase.from('categories').select('id,name').eq('business_id', businessId).order('name')) as { id: string; name: string }[],
+  });
+}
+
+export function useSuppliers(businessId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['suppliers-list', businessId],
+    enabled,
+    queryFn: async () => unwrap(await supabase.from('suppliers').select('id,name,phone,payment_terms_days,lead_time_days,status')
+      .eq('business_id', businessId).order('name')) as any[],
+  });
+}
+
+export function useCustomers(businessId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['customers-list', businessId],
+    enabled,
+    queryFn: async () => unwrap(await supabase.from('customers').select('id,name,phone,credit_limit,status')
+      .eq('business_id', businessId).eq('status', 'active').order('name')) as any[],
+  });
+}
+
+export function useAccounts(businessId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['accounts', businessId],
+    enabled,
+    queryFn: async () => unwrap(await supabase.from('cash_accounts').select('*').eq('business_id', businessId).order('created_at')) as any[],
+  });
+}
+
+export function useSettings(businessId: string) {
+  return useQuery({
+    queryKey: ['settings', businessId],
+    queryFn: async () => unwrap(await supabase.from('business_settings').select('*').eq('business_id', businessId).single()) as any,
+  });
+}
+
+export function useBusinessRow(businessId: string) {
+  return useQuery({
+    queryKey: ['business', businessId],
+    queryFn: async () => unwrap(await supabase.from('businesses').select('*').eq('id', businessId).single()) as any,
+  });
+}
+
+export function useSignedUrl(path: string | null | undefined) {
+  return useQuery({
+    queryKey: ['signed', path],
+    enabled: Boolean(path),
+    staleTime: 50 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.storage.from(FILES_BUCKET).createSignedUrl(path!, 3600);
+      if (error) throw error;
+      return data.signedUrl;
+    },
+  });
+}
+
+const MAX_BYTES = 5 * 1024 * 1024;
+const ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
+
+export async function uploadFile(businessId: string, folder: string, file: File): Promise<string> {
+  if (file.size > MAX_BYTES) throw new Error('file_too_large');
+  if (!ALLOWED.includes(file.type)) throw new Error('file_type_not_allowed');
+  const ext = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+  const path = `${businessId}/${folder}/${newId()}.${ext}`;
+  const { error } = await supabase.storage.from(FILES_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+export async function attachFile(businessId: string, entityType: string, entityId: string, folder: string, file: File, userId: string) {
+  const path = await uploadFile(businessId, folder, file);
+  unwrap(await supabase.from('attachments').insert({
+    business_id: businessId, entity_type: entityType, entity_id: entityId, path, file_name: file.name,
+    mime_type: file.type, size_bytes: file.size, uploaded_by: userId,
+  }));
+  return path;
+}
+
+export function useAttachments(entityType: string, entityId: string | undefined) {
+  return useQuery({
+    queryKey: ['attachments', entityType, entityId],
+    enabled: Boolean(entityId),
+    queryFn: async () => unwrap(await supabase.from('attachments').select('*').eq('entity_type', entityType).eq('entity_id', entityId!)
+      .order('created_at', { ascending: false })) as any[],
+  });
+}
+
+export async function openFile(path: string) {
+  const { data, error } = await supabase.storage.from(FILES_BUCKET).createSignedUrl(path, 600);
+  if (error) throw error;
+  window.open(data.signedUrl, '_blank', 'noopener');
+}
