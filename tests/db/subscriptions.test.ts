@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  addProduct, addSupplier, closeDb, createBusiness, createUser, expectError, n, openStock, rpc, sell, sql, TestUser,
+  uid, addProduct, addSupplier, closeDb, createBusiness, createUser, expectError, n, openStock, rpc, sell, sql, TestUser,
 } from './helpers';
 
 const ctxFor = async (u: TestUser, biz: string) =>
@@ -57,13 +57,14 @@ describe('subscriptions, entitlements, billing verification and admin portal', (
   });
 
   it('pending payments do not activate a plan; duplicate references are rejected', async () => {
+    const ref = `MP241022.${uid().slice(0, 8)}.A1`;
     const pid = await rpc<string>(owner.client, 'submit_billing_payment', { p_business: biz, p: {
-      plan_code: 'business', billing_period: 'monthly', method: 'mtn_momo', transaction_ref: 'MP241022.1234.A1' } });
+      plan_code: 'business', billing_period: 'monthly', method: 'mtn_momo', transaction_ref: ref } });
     let b = await ctxFor(owner, biz);
     expect(b.plan.code).toBe('free');
     expect(b.subscription.payment_pending).toBe(true);
     await expectError(rpc(owner.client, 'submit_billing_payment', { p_business: biz, p: {
-      plan_code: 'business', billing_period: 'monthly', method: 'mtn_momo', transaction_ref: 'mp241022.1234.a1' } }),
+      plan_code: 'business', billing_period: 'monthly', method: 'mtn_momo', transaction_ref: ref.toLowerCase() } }),
       'duplicate_transaction_reference');
     // Customers cannot verify their own payments
     await expectError(rpc(owner.client, 'admin_review_billing_payment', { p_payment: pid, p_approve: true }), 'permission_denied');
@@ -99,7 +100,7 @@ describe('subscriptions, entitlements, billing verification and admin portal', (
 
   it('rejections require a reason and notify the customer', async () => {
     const pid = await rpc<string>(owner.client, 'submit_billing_payment', { p_business: biz, p: {
-      plan_code: 'starter', billing_period: 'annual', method: 'orange_money', transaction_ref: 'OM-FAKE-0001' } });
+      plan_code: 'starter', billing_period: 'annual', method: 'orange_money', transaction_ref: `OM-${uid().slice(0, 8)}` } });
     await expectError(rpc(adminUser.client, 'admin_review_billing_payment', { p_payment: pid, p_approve: false }), 'reason_required');
     await rpc(adminUser.client, 'admin_review_billing_payment', { p_payment: pid, p_approve: false, p_note: 'Reference not found' });
     const { data } = await owner.client.from('billing_payments').select('status, expected_amount').eq('id', pid).single();
