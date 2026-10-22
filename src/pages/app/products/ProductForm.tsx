@@ -153,9 +153,9 @@ export default function ProductForm() {
               <Field label={t('common.name')} required className="sm:col-span-2"><Input required value={f.name} onChange={set('name')} placeholder="Indomie Noodles 70g" /></Field>
               <Field label={t('products.sku')} hint={t('products.skuHint')}><Input value={f.sku} onChange={set('sku')} /></Field>
               <Field label={t('products.barcode')}><Input value={f.barcode} onChange={set('barcode')} inputMode="numeric" /></Field>
-              <Field label={t('common.category')}>
+              <Field label={t('common.category')} htmlFor="product-category">
                 {newCat === null ? (
-                  <Select value={f.category_id} onChange={(e) => e.target.value === '__new' ? setNewCat('') : setF((x) => ({ ...x, category_id: e.target.value }))}>
+                  <Select id="product-category" value={f.category_id} onChange={(e) => e.target.value === '__new' ? setNewCat('') : setF((x) => ({ ...x, category_id: e.target.value }))}>
                     <option value="">—</option>
                     {(cats.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     <option value="__new">+ {t('products.newCategory')}</option>

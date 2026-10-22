@@ -201,9 +201,9 @@ export default function NewSale() {
 
         <div className="space-y-3 lg:col-span-2">
           <Card>
-            <Field label={t('pos.customer')}>
+            <Field label={t('pos.customer')} htmlFor="sale-customer">
               <div className="flex gap-2">
-                <Select value={customer} onChange={(e) => setCustomer(e.target.value)} className="flex-1" disabled={!can('customers.manage')}>
+                <Select id="sale-customer" value={customer} onChange={(e) => setCustomer(e.target.value)} className="flex-1" disabled={!can('customers.manage')}>
                   <option value="">{t('common.walkIn')}</option>
                   {(customers.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>)}
                 </Select>

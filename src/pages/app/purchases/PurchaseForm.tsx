@@ -88,9 +88,9 @@ export default function PurchaseForm() {
         <div className="space-y-4 lg:col-span-2">
           <Card>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t('purchases.supplier')} required>
+              <Field label={t('purchases.supplier')} required htmlFor="purchase-supplier">
                 <div className="flex gap-2">
-                  <Select value={h.supplier_id} onChange={set('supplier_id')} className="flex-1"><option value="">{t('purchases.selectSupplier')}</option>{(sups.data ?? []).filter((s) => s.status === 'active' || s.id === h.supplier_id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select>
+                  <Select id="purchase-supplier" value={h.supplier_id} onChange={set('supplier_id')} className="flex-1"><option value="">{t('purchases.selectSupplier')}</option>{(sups.data ?? []).filter((s) => s.status === 'active' || s.id === h.supplier_id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select>
                   <Button variant="outline" onClick={() => setNewSup({ name: '', phone: '' })} aria-label={t('nav.addSupplier')}><Plus className="h-4 w-4" /></Button>
                 </div>
               </Field>

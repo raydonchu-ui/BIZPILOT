@@ -30,7 +30,7 @@ export function PartyFormModal({ kind, open, onClose, initial, onSaved }:
     const res = await run(async () => initial?.id
       ? unwrap(await supabase.from(table).update(row).eq('id', initial.id).select('id').single()) as { id: string }
       : unwrap(await supabase.from(table).insert({ ...row, business_id: id }).select('id').single()) as { id: string }, t('common.saved'));
-    if (res) { onSaved?.(res.id); onClose(); }
+    if (res) { onClose(); onSaved?.(res.id); }
   };
   return (
     <Modal open={open} onClose={onClose} title={initial?.id ? t(`parties.edit_${kind}`) : t(`parties.new_${kind}`)}

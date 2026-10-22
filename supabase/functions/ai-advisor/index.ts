@@ -9,8 +9,8 @@
 // it the function returns mode "fallback" and the app shows rule-based answers),
 // AI_MODEL (optional, default claude-opus-5-5). SUPABASE_URL / SUPABASE_ANON_KEY
 // are provided by the platform.
-import Anthropic from 'npm:@anthropic-ai/sdk';
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import Anthropic from 'npm:@anthropic-ai/sdk@^1.1.0';
+import { createClient } from 'npm:@supabase/supabase-js@^2.118.0';
 
 const MODEL = Deno.env.get('AI_MODEL') ?? 'claude-opus-5-5';
 const cors = {
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     });
     return json({ mode: 'ai', answer, model: response.model, period: (ctx.data as any)?.period, query_id: queryId });
   } catch (e) {
-    const msg = e instanceof Anthropic.APIError ? `${e.status ?? ''} ${e.message}` : String(e);
+    const msg = e instanceof Anthropic.APIError ? e.message : String(e);
     await supabase.rpc('ai_complete_query', { p_query: queryId, p_status: 'failed', p_answer: null, p_model: MODEL, p_error: msg });
     return json({ mode: 'fallback', reason: 'ai_error', context: ctx.data });
   }

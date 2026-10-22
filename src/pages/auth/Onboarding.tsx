@@ -21,8 +21,9 @@ export function OnboardingPage({ addAnother }: { addAnother?: boolean }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState(false);
   if (!session) return <Navigate to="/login" replace />;
-  if (!addAnother && context && context.businesses.length > 0) return <Navigate to="/app" replace />;
+  if (!addAnother && !created && context && context.businesses.length > 0) return <Navigate to="/app" replace />;
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -30,6 +31,7 @@ export function OnboardingPage({ addAnother }: { addAnother?: boolean }) {
     try {
       const id = await rpc<string>('create_business', { p: { ...f, country_code: 'CM' } });
       try { localStorage.setItem('bizpilot.business', id); } catch { /* ignore */ }
+      setCreated(true);
       await refreshContext();
       nav('/app/setup', { replace: true });
     } catch (err) {

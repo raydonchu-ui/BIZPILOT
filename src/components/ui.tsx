@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, forwardRef, InputHTMLAttributes, ReactNode, SelectHTMLAttributes,
+import { ButtonHTMLAttributes, Children, cloneElement, forwardRef, InputHTMLAttributes, isValidElement, ReactElement, ReactNode, SelectHTMLAttributes,
   TextareaHTMLAttributes, useEffect, useId, useRef } from 'react';
 import clsx from 'clsx';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Inbox, Loader2, Lock, X } from 'lucide-react';
@@ -58,14 +58,26 @@ const inputBase = 'block w-full rounded-lg border border-gray-300 bg-white px-3 
 
 export function Field({ label, hint, error, children, required, className, htmlFor }:
   { label?: ReactNode; hint?: ReactNode; error?: ReactNode; children: ReactNode; required?: boolean; className?: string; htmlFor?: string }) {
+  // Associate the label with its control automatically (accessibility) when the
+  // child is one of our form controls and no explicit id was given.
+  const autoId = useId();
+  let forId = htmlFor;
+  let done = Boolean(htmlFor);
+  const control = Children.map(children, (child) => {
+    if (done || !isValidElement(child) || !FORM_CONTROLS.includes(child.type as never)) return child;
+    done = true;
+    const el = child as ReactElement<{ id?: string }>;
+    forId = el.props.id ?? autoId;
+    return cloneElement(el, { id: forId });
+  });
   return (
     <div className={clsx('space-y-1.5', className)}>
       {label && (
-        <label htmlFor={htmlFor} className="block text-sm font-medium text-ink-soft dark:text-gray-300">
-          {label}{required && <span className="text-red-600"> *</span>}
+        <label htmlFor={forId} className="block text-sm font-medium text-ink-soft dark:text-gray-300">
+          {label}{required && <span className="text-red-600" aria-hidden="true"> *</span>}
         </label>
       )}
-      {children}
+      {control}
       {error ? <p className="text-xs text-red-600">{error}</p> : hint ? <p className="text-xs text-ink-muted dark:text-gray-400">{hint}</p> : null}
     </div>
   );
@@ -91,6 +103,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
   return <select ref={ref} className={clsx(inputBase, 'h-10 pr-8', className)} {...rest}>{children}</select>;
 });
 
+const FORM_CONTROLS: unknown[] = [];
+
 export function Checkbox({ label, checked, onChange, hint, disabled }:
   { label: ReactNode; checked: boolean; onChange: (v: boolean) => void; hint?: ReactNode; disabled?: boolean }) {
   const id = useId();
@@ -105,6 +119,8 @@ export function Checkbox({ label, checked, onChange, hint, disabled }:
     </div>
   );
 }
+
+FORM_CONTROLS.push(Input, Textarea, Select);
 
 // ---------------------------------------------------------------------------
 // Layout primitives

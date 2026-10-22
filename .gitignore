@@ -9,3 +9,5 @@ supabase/.branches
 test-results
 playwright-report
 *.log
+supabase/functions/.local-ca.pem
+supabase/functions/.env*

@@ -129,10 +129,15 @@ export default function AdvisorPage() {
       if (aiPlan) {
         const { data, error } = await supabase.functions.invoke('ai-advisor', { body: { business_id: id, question, from: period.from, to: period.to, lang } });
         if (error) {
+          // Business-rule refusals (plan limit, permission…) are shown as such; any other
+          // failure (function unreachable, network) falls back to rule-based answers.
           let detail: any = null;
-          try { detail = await (error as any).context?.json?.(); } catch { /* ignore */ }
-          if (detail?.error && detail.error !== 'not_authenticated') throw { message: detail.error, details: detail.details };
-          throw error;
+          try { detail = await (error as any).context?.json?.(); } catch { /* not JSON */ }
+          if (detail?.error && hasKey(`errors.${detail.error}`)) throw { message: detail.error, details: detail.details };
+          const ctx = await context();
+          setMsgs((x) => [...x, { role: 'assistant', mode: 'rules', period: ctx.period, note: t('advisor.fallback.ai_error'),
+            node: ruleAnswer(preset ?? 'investigate', ctx, t, lang) }]);
+          return;
         }
         if (data?.mode === 'ai') {
           setMsgs((x) => [...x, { role: 'assistant', text: data.answer, mode: 'ai', period: data.period }]);
