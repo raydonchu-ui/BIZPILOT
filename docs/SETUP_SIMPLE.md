@@ -60,7 +60,7 @@ If you change an environment variable later, redeploy (Deployments → ⋯ → R
 
 The emails are in English and French together, and they show the BizPilot logo from your site, so do step 3 first.
 
-**Authentication → Emails → SMTP Settings (strongly recommended):** Supabase's built-in email sender only sends a few emails per hour and is meant for testing. Create a free account with an email provider (Resend, Brevo, …), then enter its SMTP host, port, username and password here. Use a sender like `no-reply@yourdomain`.
+**Authentication → Emails → SMTP Settings (strongly recommended):** Supabase's built-in email sender only sends a few emails per hour and is meant for testing. Use Resend. See [Sending email with Resend](#sending-email-with-resend) below.
 
 ## Step 5: Make yourself the administrator
 
@@ -91,6 +91,34 @@ Without this, the Advisor still works with rule-based answers.
 Supabase → **Database → Extensions** → enable **pg_cron**. Then run `supabase/setup/03_optional_daily_alerts.sql` in the SQL Editor.
 
 ---
+
+### Sending email with Resend
+
+You need your **own domain** (e.g. `bizpilot.cm` or `getbizpilot.com`). Resend can't send from a Gmail address, and without a verified domain it only delivers to your own Resend login email.
+
+1. **resend.com** → sign up → **Domains → Add domain**. Enter your domain (Resend may suggest a subdomain such as `mail.yourdomain.com`; either is fine). Region: **EU (Ireland)**, closest to Cameroon.
+2. Resend shows 3–4 DNS records (an **MX** and a **TXT** for SPF, a **TXT** for DKIM named like `resend._domainkey`). Add each one, exactly as shown, where your domain's DNS is managed (your registrar, Cloudflare, or Vercel → Domains if the domain is on Vercel).
+3. Also add a **DMARC** record. It improves inbox placement with Gmail and Yahoo:
+   - Type `TXT`, name `_dmarc`, value `v=DMARC1; p=none; rua=mailto:you@yourdomain.com`
+4. Back in Resend, click **Verify**. It can take from a few minutes to a few hours. Wait until the domain shows **Verified**.
+5. In Resend → your domain → settings, turn **Click tracking OFF** and **Open tracking OFF**. Tracking rewrites the confirmation and reset links, which makes them look suspicious and can break them.
+6. Resend → **API Keys → Create API key**. Permission: **Sending access**, limited to your domain. Copy it (starts with `re_`). You'll only see it once, so don't paste it anywhere except step 7.
+7. Supabase → **Authentication → Emails → SMTP Settings** → enable custom SMTP:
+
+   | Field | Value |
+   |---|---|
+   | Sender email | `no-reply@yourdomain.com` (must be on the verified domain) |
+   | Sender name | `BizPilot` |
+   | Host | `smtp.resend.com` |
+   | Port | `465` |
+   | Username | `resend` |
+   | Password | the `re_…` API key |
+
+   Save.
+8. Supabase → **Authentication → Rate Limits**: raise **emails per hour** (e.g. to 100). Supabase keeps a low limit even with your own SMTP.
+9. Test: sign up with a fresh email, then use **Forgot password?**. Check the inbox and spam. In Gmail, **⋮ → Show original** should say `SPF: PASS`, `DKIM: PASS`, `DMARC: PASS`.
+
+To look fully professional, also give the website the same domain (Vercel → Project → Domains, e.g. `app.yourdomain.com`), then update the Supabase **Site URL** and **Redirect URLs** to it. The email logo and links will then all use your own domain.
 
 ### Check that it works
 - Sign up with a second email → you receive the branded confirmation email.
