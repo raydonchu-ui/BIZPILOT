@@ -32,13 +32,13 @@ describe.skipIf(!URL)('ai-advisor edge function', () => {
     const otherBiz = await createBusiness(other, 'Other');
     const r = await call({ business_id: otherBiz, question: 'x', from: today, to: today });
     expect(r.status).toBe(403);
-    expect((await r.json()).error).toBe('permission_denied');
+    expect(((await r.json()) as any).error).toBe('permission_denied');
   });
 
   it(`answers grounded in server-computed context (${EXPECT})`, async () => {
     const r = await call({ business_id: biz, question: 'Which products sell fastest?', from: '2026-01-01', to: '2026-12-31', lang: 'en' });
     expect(r.status).toBe(200);
-    const j = await r.json();
+    const j: any = await r.json();
     if (EXPECT === 'ai') {
       expect(j.mode).toBe('ai');
       expect(j.answer.length).toBeGreaterThan(20);
@@ -63,6 +63,6 @@ describe.skipIf(!URL)('ai-advisor edge function', () => {
     await sql(`update business_subscriptions set trial_ends_at = now() - interval '1 day' where business_id = $1`, [biz]);
     const r = await call({ business_id: biz, question: 'x', from: today, to: today });
     expect(r.status).toBe(403);
-    expect((await r.json()).error).toBe('feature_not_in_plan');
+    expect(((await r.json()) as any).error).toBe('feature_not_in_plan');
   });
 });

@@ -72,7 +72,7 @@ function OwnerDashboard() {
   const catData = (cats.data ?? []).filter((c) => Number(c.revenue) > 0);
   const catTop = catData.slice(0, 5);
   const catOther = catData.slice(5).reduce((a, c) => a + Number(c.revenue), 0);
-  const donut = [...catTop.map((c) => ({ name: c.category, value: Number(c.revenue) })), ...(catOther > 0 ? [{ name: t('dashboard.others'), value: catOther }] : [])];
+  const donut = [...catTop.map((c) => ({ name: c.category ?? t('common.uncategorised'), value: Number(c.revenue) })), ...(catOther > 0 ? [{ name: t('dashboard.others'), value: catOther }] : [])];
   const totalCat = donut.reduce((a, c) => a + c.value, 0);
 
   return (

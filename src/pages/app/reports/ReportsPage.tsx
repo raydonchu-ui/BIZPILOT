@@ -235,9 +235,9 @@ function CategoriesReport({ period }: { period: Period }) {
   return (
     <Q q={q}>{(rows) => (
       <Card>
-        <CardHeader title={t('reports.tabs.categories')} action={<ExportButton name="categories" rows={() => rows.map((r) => ({ category: r.category, units: r.units, revenue: r.revenue, gross_profit: r.gross_profit, margin_pct: r.margin_pct, revenue_share_pct: r.revenue_share_pct, inventory_value: r.inventory_value, products: r.products }))} />} />
+        <CardHeader title={t('reports.tabs.categories')} action={<ExportButton name="categories" rows={() => rows.map((r) => ({ category: r.category ?? t('common.uncategorised'), units: r.units, revenue: r.revenue, gross_profit: r.gross_profit, margin_pct: r.margin_pct, revenue_share_pct: r.revenue_share_pct, inventory_value: r.inventory_value, products: r.products }))} />} />
         <DataTable rows={rows} rowKey={(r) => r.id ?? 'none'} empty={<p className="py-8 text-center text-sm text-ink-muted">{t('common.noData')}</p>} columns={[
-          { key: 'c', header: t('common.category'), render: (r) => <span className="font-semibold">{r.category}</span> },
+          { key: 'c', header: t('common.category'), render: (r) => <span className="font-semibold">{r.category ?? t('common.uncategorised')}</span> },
           { key: 'u', header: t('dashboard.unitsSold'), align: 'right', render: (r) => formatNumber(r.units, lang) },
           { key: 'r', header: t('dashboard.revenue'), align: 'right', render: (r) => money(r.revenue) },
           { key: 's', header: t('reports.share'), align: 'right', hideOnMobile: true, render: (r) => formatPct(r.revenue_share_pct, lang) },

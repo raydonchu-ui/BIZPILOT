@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "test:db": "vitest run --dir tests/db",
-    "test:unit": "vitest run --dir src",
+    "test:db": "vitest run tests/db",
+    "test:unit": "vitest run src",
     "test:e2e": "playwright test",
     "db:reset": "supabase db reset"
   },

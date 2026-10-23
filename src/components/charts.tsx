@@ -2,6 +2,9 @@ import { Area, AreaChart, Bar, CartesianGrid, Cell, ComposedChart, Legend, Line,
 import { useI18n } from '../i18n';
 import { formatCompact, formatDate, formatMoney } from '../lib/format';
 
+// Respect the user's reduced-motion preference.
+const ANIMATE = typeof window === 'undefined' || !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
 export const CHART_COLORS = ['#156834', '#47bd6f', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6', '#9ca3af'];
 
 const axisProps = { tick: { fontSize: 11, fill: '#6b7280' }, tickLine: false, axisLine: false } as const;
@@ -25,8 +28,8 @@ export function SalesProfitChart({ data, grain = 'day', height = 280 }:
           <Tooltip formatter={(v: number, name) => [formatMoney(v, lang), name]} labelFormatter={(d) => formatDate(d as string, lang)}
             contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12 }} />
           <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
-          <Bar dataKey="net_sales" name={t('dashboard.netSales')} fill="#47bd6f" radius={[4, 4, 0, 0]} maxBarSize={22} />
-          <Line dataKey="gross_profit" name={t('dashboard.grossProfit')} stroke="#156834" strokeWidth={2.5} dot={{ r: 2.5 }} type="monotone" />
+          <Bar isAnimationActive={ANIMATE} dataKey="net_sales" name={t('dashboard.netSales')} fill="#47bd6f" radius={[4, 4, 0, 0]} maxBarSize={22} />
+          <Line isAnimationActive={ANIMATE} dataKey="gross_profit" name={t('dashboard.grossProfit')} stroke="#156834" strokeWidth={2.5} dot={{ r: 2.5 }} type="monotone" />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -47,7 +50,7 @@ export function ValueTrendChart({ data, height = 220 }: { data: { day: string; v
           <YAxis {...axisProps} tickFormatter={(v) => formatCompact(v, lang)} width={56} />
           <Tooltip formatter={(v: number) => [formatMoney(v, lang), t('dashboard.inventoryValue')]} labelFormatter={(d) => formatDate(d as string, lang)}
             contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12 }} />
-          <Area dataKey="value" stroke="#18813e" strokeWidth={2} fill="url(#invFill)" type="monotone" />
+          <Area isAnimationActive={ANIMATE} dataKey="value" stroke="#18813e" strokeWidth={2} fill="url(#invFill)" type="monotone" />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -61,7 +64,7 @@ export function DonutChart({ data, centerLabel, centerValue, height = 220 }:
     <div className="relative" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="62%" outerRadius="95%" paddingAngle={1.5} stroke="none">
+          <Pie isAnimationActive={ANIMATE} data={data} dataKey="value" nameKey="name" innerRadius="62%" outerRadius="95%" paddingAngle={1.5} stroke="none">
             {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
           </Pie>
           <Tooltip formatter={(v: number, n) => [formatMoney(v, lang), n]} contentStyle={{ borderRadius: 12, fontSize: 12 }} />

@@ -33,7 +33,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   { variant = 'primary', size = 'md', loading, icon, block, className, children, disabled, type = 'button', ...rest }, ref) {
   return (
     <button ref={ref} type={type} disabled={disabled || loading}
-      className={clsx('inline-flex select-none items-center justify-center rounded-lg font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-gray-950',
+      className={clsx('inline-flex select-none items-center justify-center whitespace-nowrap rounded-lg font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-gray-950',
         variants[variant], sizes[size], block && 'w-full', className)} {...rest}>
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
       {children}
@@ -253,6 +253,14 @@ export function Delta({ value, inverse, suffix }: { value: number | null | undef
   );
 }
 
+// Shows "12,000 FCFA" as a large amount with a smaller currency so narrow cards don't cut the figure.
+function splitCurrency(value: ReactNode): ReactNode {
+  if (typeof value !== 'string') return value;
+  const m = value.match(/^(.+?)[\s\u00a0\u202f]*(FCFA|XAF)$/);
+  if (!m) return value;
+  return <><span className="whitespace-nowrap tabular-nums">{m[1]}</span> <span className="whitespace-nowrap text-sm font-bold text-ink-muted dark:text-gray-400">{m[2]}</span></>;
+}
+
 export function StatCard({ label, value, icon, tone = 'green', delta, inverse, hint, to, deltaSuffix }:
   { label: ReactNode; value: ReactNode; icon?: ReactNode; tone?: Tone; delta?: number | null; inverse?: boolean; hint?: ReactNode; to?: string; deltaSuffix?: ReactNode }) {
   const body = (
@@ -261,7 +269,7 @@ export function StatCard({ label, value, icon, tone = 'green', delta, inverse, h
         {icon && <IconBubble tone={tone}>{icon}</IconBubble>}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-ink-muted dark:text-gray-400">{label}</p>
-          <p className="mt-1 truncate text-xl font-extrabold tracking-tight text-ink dark:text-white sm:text-2xl">{value}</p>
+          <p className="mt-1 text-xl font-extrabold tracking-tight text-ink dark:text-white 2xl:text-2xl">{splitCurrency(value)}</p>
           <div className="mt-1">{delta !== undefined ? <Delta value={delta} inverse={inverse} suffix={deltaSuffix} /> : hint && <span className="text-xs text-ink-muted dark:text-gray-400">{hint}</span>}</div>
         </div>
       </div>

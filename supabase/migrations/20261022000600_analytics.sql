@@ -256,7 +256,7 @@ begin
   d1 := app.report_from(p_business, p_from);
   select coalesce(sum(revenue), 0) into tot from app.product_period(p_business, d1, p_to);
   return coalesce((select jsonb_agg(t order by t.revenue desc) from (
-    select c.id, coalesce(c.name, '—') category,
+    select c.id, c.name category,
            coalesce(sum(pp.units), 0) units, coalesce(sum(pp.revenue), 0) revenue,
            round(coalesce(sum(pp.revenue - pp.cogs), 0), 2) gross_profit,
            case when sum(pp.revenue) > 0 then round(sum(pp.revenue - pp.cogs) / sum(pp.revenue) * 100, 1) end margin_pct,

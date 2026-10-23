@@ -10,7 +10,7 @@ import { useAction } from '../../../lib/useAction';
 import { uploadFile } from '../../../lib/hooks';
 import { formatDate, formatDateTime, formatMoney } from '../../../lib/format';
 import { Alert, Badge, Button, Card, CardHeader, DataTable, ErrorState, Field, Input, KeyValue, Modal, PageHeader, Select, Textarea, Tone } from '../../../components/ui';
-import { Plan, PlanCards, planLimitLines } from '../../public/PlanCards';
+import { Plan, PlanCards, planLimitLines, usePlans } from '../../public/PlanCards';
 
 const stateTone: Record<string, Tone> = { free: 'gray', trial: 'blue', active: 'green', renewal_due: 'amber', grace: 'red', expired: 'red', cancelled: 'amber', suspended: 'red' };
 
@@ -28,6 +28,7 @@ export default function BillingPage() {
   const { run, busy } = useAction();
   const [choice, setChoice] = useState<{ plan: Plan; period: 'monthly' | 'annual' } | null>(null);
   const instr = usePaymentInstructions();
+  const plans = usePlans();
   const history = useQuery({
     queryKey: ['billing', id], enabled: can('billing.manage'),
     queryFn: async () => unwrap(await supabase.from('billing_payments').select('*').eq('business_id', id).order('submitted_at', { ascending: false })) as any[],
@@ -35,6 +36,7 @@ export default function BillingPage() {
   if (!can('billing.manage')) return <ErrorState error={{ message: 'permission_denied' }} />;
   const s = biz.subscription;
   const planName = lang === 'fr' ? biz.plan.name_fr : biz.plan.name_en;
+  const planLabel = (code: string) => { const p = plans.data?.find((x) => x.code === code); return p ? (lang === 'fr' ? p.name_fr : p.name_en) : code; };
   const configured = ['mtn_momo', 'orange_money'].filter((m) => instr.data?.[m]?.enabled && instr.data?.[m]?.number);
   return (
     <div>
@@ -44,7 +46,7 @@ export default function BillingPage() {
           <CardHeader title={t('billing.currentPlan')} />
           <div className="flex flex-wrap items-center gap-3"><p className="text-2xl font-extrabold">{planName}</p><Badge tone={stateTone[s.state] ?? 'gray'}>{t(`subscriptionState.${s.state}`)}</Badge>{s.payment_pending && <Badge tone="amber">{t('billing.paymentPending')}</Badge>}</div>
           <div className="mt-4"><KeyValue cols={3} items={[
-            { label: t('billing.subscribedPlan'), value: s.plan_code },
+            { label: t('billing.subscribedPlan'), value: planLabel(s.plan_code) },
             ...(s.trial_ends_at && s.state === 'trial' ? [{ label: t('billing.trialEnds'), value: formatDate(s.trial_ends_at, lang) }] : []),
             ...(s.current_period_end ? [{ label: t('billing.periodEnds'), value: formatDate(s.current_period_end, lang) }] : []),
             ...(s.state === 'grace' && s.grace_ends_at ? [{ label: t('billing.graceEnds'), value: formatDate(s.grace_ends_at, lang) }] : []),
@@ -86,7 +88,7 @@ export default function BillingPage() {
         <CardHeader title={t('billing.history')} />
         <DataTable rows={history.data ?? []} rowKey={(r) => r.id} empty={<p className="py-6 text-center text-sm text-ink-muted">{t('billing.noHistory')}</p>} columns={[
           { key: 'd', header: t('common.date'), render: (r) => formatDateTime(r.submitted_at, lang) },
-          { key: 'p', header: t('billing.plan'), render: (r) => `${r.plan_code} · ${t(`site.pricing.${r.billing_period}`)}` },
+          { key: 'p', header: t('billing.plan'), render: (r) => `${planLabel(r.plan_code)} · ${t(`site.pricing.${r.billing_period}`)}` },
           { key: 'm', header: t('common.method'), render: (r) => <div><p>{t(`methods.${r.method}`)}</p><p className="font-mono text-xs text-ink-muted">{r.transaction_ref}</p></div> },
           { key: 'a', header: t('common.amount'), align: 'right', render: (r) => formatMoney(r.amount, lang) },
           { key: 's', header: t('common.status'), render: (r) => <div><Badge tone={r.status === 'verified' ? 'green' : r.status === 'rejected' ? 'red' : 'amber'}>{t(`billing.paymentStatus.${r.status}`)}</Badge>{r.review_note && <p className="mt-1 text-xs text-ink-muted">{r.review_note}</p>}</div> },

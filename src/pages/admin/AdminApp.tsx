@@ -143,7 +143,7 @@ function Payments() {
   const [review, setReview] = useState<{ p: any; approve: boolean } | null>(null);
   const q = useQuery({
     queryKey: ['admin-payments', status],
-    queryFn: async () => unwrap(await supabase.from('billing_payments').select('*, businesses(name)').eq('status', status).order('submitted_at', { ascending: status === 'pending' }).limit(200)) as any[],
+    queryFn: async () => unwrap(await supabase.from('billing_payments').select('*, businesses(name), plans(name_en, name_fr)').eq('status', status).order('submitted_at', { ascending: status === 'pending' }).limit(200)) as any[],
   });
   return (
     <div>
@@ -153,7 +153,7 @@ function Payments() {
           <DataTable rows={q.data ?? []} rowKey={(r) => r.id} empty={<p className="py-8 text-center text-sm text-ink-muted">{t('common.noData')}</p>} columns={[
             { key: 'd', header: t('common.date'), render: (r) => formatDateTime(r.submitted_at, lang) },
             { key: 'b', header: t('admin.business'), render: (r) => <span className="font-semibold">{r.businesses?.name}</span> },
-            { key: 'p', header: t('billing.plan'), render: (r) => `${r.plan_code} · ${r.billing_period}` },
+            { key: 'p', header: t('billing.plan'), render: (r) => `${(lang === 'fr' ? r.plans?.name_fr : r.plans?.name_en) ?? r.plan_code} · ${t(`site.pricing.${r.billing_period}`)}` },
             { key: 'm', header: t('common.method'), render: (r) => <div><p>{t(`methods.${r.method}`)}</p><p className="font-mono text-xs">{r.transaction_ref}</p><p className="text-xs text-ink-muted">{[r.payer_name, r.payer_phone].filter(Boolean).join(' · ')}</p></div> },
             { key: 'a', header: t('common.amount'), align: 'right', render: (r) => <div><p className="font-semibold">{formatMoney(r.amount, lang)}</p>{Number(r.amount) !== Number(r.expected_amount) && <Badge tone="red">{t('admin.expected', { amount: formatMoney(r.expected_amount, lang) })}</Badge>}</div> },
             { key: 'x', header: '', align: 'right', render: (r) => <div className="flex justify-end gap-1">

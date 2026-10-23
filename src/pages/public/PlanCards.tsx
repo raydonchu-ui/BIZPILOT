@@ -74,10 +74,12 @@ export function PlanCards({ onChoose, currentPlan, chooseLabel }:
                 {planLimitLines(p, t, lang).map((l) => <li key={l} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />{l}</li>)}
                 {p.features.map((f) => <li key={f} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />{t(`features.${f}`)}</li>)}
               </ul>
-              <Button className="mt-6" variant={p.highlight ? 'primary' : 'outline'} block disabled={isCurrent}
-                onClick={() => onChoose(p, period)}>
-                {isCurrent ? t('billing.currentPlan') : chooseLabel ?? t('site.pricing.cta')}
-              </Button>
+              {chooseLabel && price === 0 && !isCurrent
+                ? <p className="mt-6 rounded-lg bg-gray-50 px-3 py-2.5 text-center text-xs text-ink-muted dark:bg-gray-800 dark:text-gray-400">{t('billing.freeNoPayment')}</p>
+                : <Button className="mt-6" variant={p.highlight ? 'primary' : 'outline'} block disabled={isCurrent}
+                    onClick={() => onChoose(p, period)}>
+                    {isCurrent ? t('billing.currentPlan') : chooseLabel ?? t('site.pricing.cta')}
+                  </Button>}
             </div>
           );
         })}

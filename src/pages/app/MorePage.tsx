@@ -23,6 +23,7 @@ export default function MorePage() {
   ];
   return (
     <div className="mx-auto max-w-xl">
+      <h1 className="mb-4 text-2xl font-extrabold tracking-tight">{t('nav.more')}</h1>
       <Card className="mb-4">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-700 text-lg font-bold text-white">{(context?.profile?.full_name ?? '?').slice(0, 1)}</span>

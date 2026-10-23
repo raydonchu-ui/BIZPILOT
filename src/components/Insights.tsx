@@ -25,6 +25,7 @@ export function formatInsightParams(p: Record<string, any>, lang: 'en' | 'fr') {
   if (p?.gross_profit !== undefined && p?.prev_gross_profit !== undefined && Number(p.prev_gross_profit) !== 0) {
     out.change = formatPct(((p.gross_profit - p.prev_gross_profit) / Math.abs(p.prev_gross_profit)) * 100, lang, 0);
   }
+  if (p && 'category' in p && !p.category) out.category = lang === 'fr' ? 'Sans catégorie' : 'Uncategorised';
   return out;
 }
 
