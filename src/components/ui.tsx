@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, Children, cloneElement, forwardRef, InputHTMLAttributes, isValidElement, ReactElement, ReactNode, SelectHTMLAttributes,
-  TextareaHTMLAttributes, useEffect, useId, useRef } from 'react';
+  TextareaHTMLAttributes, useEffect, useId, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Inbox, Loader2, Lock, X } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Eye, EyeOff, Inbox, Loader2, Lock, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n';
 import { errorMessage } from '../lib/errors';
@@ -95,6 +95,23 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     );
   });
 
+// Password field with a show/hide toggle.
+export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>>(
+  function PasswordInput({ className, ...rest }, ref) {
+    const { t } = useI18n();
+    const [visible, setVisible] = useState(false);
+    return (
+      <div className="relative">
+        <input ref={ref} type={visible ? 'text' : 'password'} className={clsx(inputBase, 'h-10 pr-11', className)} {...rest} />
+        <button type="button" onClick={() => setVisible((v) => !v)} aria-pressed={visible}
+          aria-label={visible ? t('auth.hidePassword') : t('auth.showPassword')} title={visible ? t('auth.hidePassword') : t('auth.showPassword')}
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-gray-500 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 dark:text-gray-400 dark:hover:text-white">
+          {visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+        </button>
+      </div>
+    );
+  });
+
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea({ className, ...rest }, ref) {
   return <textarea ref={ref} className={clsx(inputBase, 'min-h-[80px] py-2', className)} {...rest} />;
 });
@@ -120,7 +137,7 @@ export function Checkbox({ label, checked, onChange, hint, disabled }:
   );
 }
 
-FORM_CONTROLS.push(Input, Textarea, Select);
+FORM_CONTROLS.push(Input, PasswordInput, Textarea, Select);
 
 // ---------------------------------------------------------------------------
 // Layout primitives

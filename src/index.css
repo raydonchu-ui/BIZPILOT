@@ -19,3 +19,8 @@
 }
 .print-only { display: none; }
 .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* iOS Safari zooms into any focused field under 16px; keep phone form text at 16px. */
+@media (max-width: 639px) {
+  input:not([type='checkbox']):not([type='radio']), select, textarea { font-size: 16px; }
+}

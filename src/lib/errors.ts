@@ -26,6 +26,10 @@ export function errorKey(err: unknown): { key: string; params?: TParams; raw: st
 export function errorMessage(err: unknown, t: (k: string, p?: TParams) => string, has: (k: string) => boolean): string {
   const { key, params, raw } = errorKey(err);
   if (has(key)) return t(key, params);
+  // Supabase Auth errors carry a stable code (e.g. over_email_send_rate_limit).
+  const code = (err as ErrLike | null)?.code;
+  if (code && has(`errors.auth_${code}`)) return t(`errors.auth_${code}`);
+  if (/Error sending .*email/i.test(raw)) return t('errors.email_send_failed');
   for (const [re, k] of CONSTRAINT_MESSAGES) if (re.test(raw)) return t(k);
   if (import.meta.env.DEV) console.error(err);
   return t('errors.generic');

@@ -86,6 +86,21 @@ Without this, the Advisor still works with rule-based answers.
 2. Supabase → **Edge Functions** → **Deploy a new function** → **Via editor**. Name it exactly `ai-advisor`, paste the contents of `supabase/functions/ai-advisor/index.ts`, and deploy.
 3. Supabase → **Edge Functions → Secrets** → add `ANTHROPIC_API_KEY` = your key.
 
+## Step 7b (optional): "Continue with Google"
+
+The button appears on the login and sign-up pages automatically once Google is switched on in Supabase.
+
+1. **console.cloud.google.com** → create a project (e.g. "BizPilot").
+2. **Google Auth Platform → Branding** (older menus: *OAuth consent screen*): app name `BizPilot`, your support email, the logo, home page `https://www.bizpilotmarket.com`, privacy policy `https://www.bizpilotmarket.com/privacy`, terms `https://www.bizpilotmarket.com/terms`. Under **Authorized domains** add `bizpilotmarket.com` and `supabase.co`.
+3. **Audience:** External, then **Publish app** (otherwise only test users can sign in).
+4. **Clients → Create client → Web application**:
+   - Authorized JavaScript origins: `https://www.bizpilotmarket.com` and `https://bizpilotmarket.com`
+   - Authorized redirect URIs: `https://cvruxxkgfbsatqvpysey.supabase.co/auth/v1/callback`
+5. Copy the **Client ID** and **Client secret** → Supabase → **Authentication → Sign In / Providers → Google** → enable, paste both, save. (The secret only goes here, never in Vercel or a chat.)
+6. Make sure **Authentication → URL Configuration** has Site URL `https://www.bizpilotmarket.com` and Redirect URLs `https://www.bizpilotmarket.com/**` and `https://bizpilotmarket.com/**`.
+
+Google's screen will say "continue to cvruxxkgfbsatqvpysey.supabase.co". Showing your own domain there needs Supabase's paid Custom Domain add-on.
+
 ## Step 8 (optional): Daily alerts
 
 Supabase → **Database → Extensions** → enable **pg_cron**. Then run `supabase/setup/03_optional_daily_alerts.sql` in the SQL Editor.
