@@ -218,7 +218,7 @@ export function Alert({ tone = 'amber', title, children, action }: { tone?: 'amb
     green: 'border-brand-200 bg-brand-50 text-brand-900 dark:border-brand-900 dark:bg-brand-950/60 dark:text-brand-100',
     blue: 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-100' }[tone];
   return (
-    <div className={clsx('flex flex-col gap-2 rounded-xl border px-4 py-3 text-sm sm:flex-row sm:items-center', c)} role="note">
+    <div className={clsx('flex flex-col gap-2 rounded-xl border px-4 py-3 text-sm sm:flex-row sm:items-center', c)} role={tone === 'red' ? 'alert' : 'note'}>
       <div className="flex-1">
         {title && <p className="font-semibold">{title}</p>}
         {children && <div className={clsx(title && 'mt-0.5', 'opacity-90')}>{children}</div>}

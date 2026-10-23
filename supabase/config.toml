@@ -245,6 +245,22 @@ otp_expiry = 3600
 # sender_name = "Admin"
 
 # Uncomment to customize email template
+[auth.email.template.confirmation]
+subject = "Confirm your BizPilot account / Confirmez votre compte BizPilot"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your BizPilot password / Réinitialisez votre mot de passe BizPilot"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new email for BizPilot / Confirmez votre nouvelle adresse"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.magic_link]
+subject = "Your BizPilot sign-in link / Votre lien de connexion BizPilot"
+content_path = "./supabase/templates/magic_link.html"
+
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"

@@ -10,6 +10,7 @@ Retail management, inventory and profit analytics for shop owners in Cameroon. A
 
 | Document | Contents |
 |---|---|
+| [docs/SETUP_SIMPLE.md](docs/SETUP_SIMPLE.md) | **Start here:** set up Supabase + Vercel from the browser, no command line |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deploying to your Supabase project and a static host, environment variables, auth settings, first administrator |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Payment verification, plans and pricing, backups and recovery, incident response, monitoring, maintenance |
 | [docs/FINANCIAL_RULES.md](docs/FINANCIAL_RULES.md) | How BizPilot computes cost, profit, stock value, balances and the analytics |

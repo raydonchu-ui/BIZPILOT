@@ -1,0 +1,6 @@
+Subject lines to paste in Supabase -> Authentication -> Emails (Templates):
+
+Confirm signup:      Confirm your BizPilot account / Confirmez votre compte BizPilot
+Reset password:      Reset your BizPilot password / Réinitialisez votre mot de passe BizPilot
+Change email address: Confirm your new email for BizPilot / Confirmez votre nouvelle adresse
+Magic link:          Your BizPilot sign-in link / Votre lien de connexion BizPilot

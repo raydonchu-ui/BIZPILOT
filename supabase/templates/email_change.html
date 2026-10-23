@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Confirm your new email</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f5f4;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f4;padding:24px 12px;">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+<tr><td style="background:#08261a;padding:20px 28px;">
+  <img src="{{ .SiteURL }}/brand/logo-mark.png" width="36" height="36" alt="" style="vertical-align:middle;border:0;">
+  <span style="vertical-align:middle;color:#ffffff;font-size:20px;font-weight:bold;margin-left:8px;">BizPilot</span>
+  <div style="color:#7dd79b;font-size:11px;letter-spacing:2px;margin-top:4px;">YOUR BUSINESS, AHEAD.</div>
+</td></tr>
+<tr><td style="padding:28px;">
+  <h1 style="margin:0 0 12px;font-size:22px;color:#111827;">Confirm your new email</h1>
+  <p style="margin:0 0 20px;font-size:15px;line-height:22px;color:#374151;">You asked to change your BizPilot email from <strong>{{ .Email }}</strong> to <strong>{{ .NewEmail }}</strong>. Click the button to confirm.</p>
+  <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:10px;background:#156834;">
+    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:13px 26px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">Confirm change / Confirmer</a>
+  </td></tr></table>
+  <p style="margin:20px 0 0;font-size:13px;line-height:20px;color:#6b7280;">If you did not ask for this change, do not click the link and change your password.</p>
+  <hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0;">
+  <h2 style="margin:0 0 12px;font-size:18px;color:#111827;">Confirmez votre nouvelle adresse</h2>
+  <p style="margin:0 0 12px;font-size:15px;line-height:22px;color:#374151;">Vous avez demandé à remplacer votre adresse BizPilot <strong>{{ .Email }}</strong> par <strong>{{ .NewEmail }}</strong>. Cliquez sur le bouton pour confirmer.</p>
+  <p style="margin:0;font-size:13px;line-height:20px;color:#6b7280;">Si vous n’avez pas demandé ce changement, ne cliquez pas et changez votre mot de passe.</p>
+  <hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0;">
+  <p style="margin:0;font-size:12px;line-height:18px;color:#6b7280;">If the button does not work, copy this link into your browser / Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
+  <a href="{{ .ConfirmationURL }}" style="color:#156834;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+</td></tr>
+<tr><td style="background:#f9fafb;padding:16px 28px;font-size:12px;line-height:18px;color:#6b7280;">
+  BizPilot never asks for your password or a mobile money PIN by email or phone.<br>
+  BizPilot ne vous demande jamais votre mot de passe ni votre code mobile money par e-mail ou téléphone.
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>
