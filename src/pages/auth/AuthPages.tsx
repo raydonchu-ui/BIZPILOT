@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MailCheck } from 'lucide-react';
@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n';
 import { fetchAuthProviders, supabase, supabaseConfigured } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth';
+import { createNonce, googleClientId, loadGoogleIdentity, type GoogleCredentialResponse } from '../../lib/googleIdentity';
 import { Alert, Button, Checkbox, Field, Input, PasswordInput, Spinner } from '../../components/ui';
 import { Logo } from '../../components/Logo';
 import { LanguageSwitch } from '../../components/LanguageSwitch';
@@ -52,12 +53,65 @@ function GoogleIcon() {
   );
 }
 
-// "Continue with Google", shown only when Google is enabled in Supabase.
-function GoogleSignIn({ note }: { note?: ReactNode }) {
+// Google's own button (Google Identity Services). Google shows our site in its window; the ID
+// token is exchanged for a Supabase session. Calls onUnavailable if the script cannot load.
+function GoogleIdentityButton({ context, onUnavailable, onError }:
+  { context: 'signin' | 'signup'; onUnavailable: () => void; onError: (msg: string) => void }) {
+  const { t, lang, has } = useI18n();
+  const box = useRef<HTMLDivElement>(null);
+  const nonce = useRef<string>('');
+  const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [gis, n] = await Promise.all([loadGoogleIdentity(), createNonce()]);
+        if (cancelled || !box.current) return;
+        nonce.current = n.raw;
+        gis.initialize({
+          client_id: googleClientId!, nonce: n.hashed, ux_mode: 'popup', auto_select: false, itp_support: true,
+          use_fedcm_for_button: true, context,
+          callback: async (res: GoogleCredentialResponse) => {
+            setBusy(true);
+            const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: res.credential, nonce: nonce.current });
+            setBusy(false);
+            if (error) {
+              onError(has(`errors.${error.message}`) || has(`errors.auth_${error.code}`) ? errorMessage(error, t, has) : t('errors.google_unavailable'));
+              setAttempt((a) => a + 1); // fresh nonce for the next try
+            }
+            // On success the auth listener receives the session and the page redirects to /app.
+          },
+        });
+        box.current.replaceChildren();
+        gis.renderButton(box.current, {
+          type: 'standard', theme: 'outline', size: 'large', shape: 'rectangular', logo_alignment: 'center',
+          text: context === 'signup' ? 'signup_with' : 'continue_with', width: Math.min(400, box.current.clientWidth || 400),
+          locale: lang,
+        });
+      } catch {
+        if (!cancelled) onUnavailable();
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang, context, attempt]);
+  return (
+    <div className="relative flex min-h-[44px] justify-center" aria-busy={busy}>
+      <div ref={box} className="w-full max-w-[400px] [&>div]:mx-auto" data-testid="gis-button" />
+      {busy && <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-white/80 dark:bg-gray-950/80"><Spinner /></div>}
+    </div>
+  );
+}
+
+// "Continue with Google", shown only when Google is enabled in Supabase. Uses Google's own
+// button when VITE_GOOGLE_CLIENT_ID is set, otherwise (or if it fails to load) the redirect flow.
+function GoogleSignIn({ note, context = 'signin' }: { note?: ReactNode; context?: 'signin' | 'signup' }) {
   const { t, has } = useI18n();
   const providers = useQuery({ queryKey: ['auth-providers'], queryFn: fetchAuthProviders, staleTime: 5 * 60_000 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useRedirect, setUseRedirect] = useState(!googleClientId);
   if (!providers.data?.google) return null;
   const start = async () => {
     setLoading(true); setError(null);
@@ -69,9 +123,14 @@ function GoogleSignIn({ note }: { note?: ReactNode }) {
   };
   return (
     <div className="mb-6 space-y-3">
-      <Button variant="outline" block size="lg" loading={loading} icon={<GoogleIcon />} onClick={start}>{t('auth.continueWithGoogle')}</Button>
+      {useRedirect
+        ? <Button variant="outline" block size="lg" loading={loading} icon={<GoogleIcon />} onClick={start}>{t('auth.continueWithGoogle')}</Button>
+        : <GoogleIdentityButton context={context} onUnavailable={() => setUseRedirect(true)} onError={(m) => setError(m)} />}
       {note && <p className="text-center text-xs text-ink-muted dark:text-gray-400">{note}</p>}
       {error && <Alert tone="red">{error}</Alert>}
+      {!useRedirect && error && (
+        <p className="text-center text-xs"><button type="button" onClick={start} className="font-semibold text-brand-700 underline dark:text-brand-400">{t('auth.googleOtherWay')}</button></p>
+      )}
       <div className="flex items-center gap-3 text-xs text-ink-muted dark:text-gray-400">
         <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />{t('auth.orEmail')}<span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
       </div>
@@ -160,7 +219,7 @@ export function SignupPage() {
   return (
     <AuthShell title={t('auth.signupTitle')} subtitle={t('auth.signupSubtitle')}
       footer={<>{t('auth.haveAccount')} <Link to="/login" className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.login')}</Link></>}>
-      <GoogleSignIn note={<>{gBefore}{termsLink}{gMiddle}{privacyLink}{gAfter}</>} />
+      <GoogleSignIn context="signup" note={<>{gBefore}{termsLink}{gMiddle}{privacyLink}{gAfter}</>} />
       <form onSubmit={submit} className="space-y-4">
         <Field label={t('auth.fullName')} htmlFor="fn" required><Input id="fn" required autoComplete="name" value={f.full_name} onChange={set('full_name')} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
