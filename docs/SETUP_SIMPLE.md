@@ -49,6 +49,8 @@ If you change an environment variable later, redeploy (Deployments → ⋯ → R
 - **Confirm email:** ON
 - **Minimum password length:** 8
 
+**Authentication → Emails → SMTP Settings (do this before the templates):** Supabase only lets you edit email templates once custom SMTP is on, and its built-in sender is limited to a few emails per hour. Connect Resend first. See [Sending email with Resend](#sending-email-with-resend) below.
+
 **Authentication → Emails → Templates**: for each template below, paste the subject and the HTML from the repo:
 
 | Template | Subject | HTML file |
@@ -59,8 +61,6 @@ If you change an environment variable later, redeploy (Deployments → ⋯ → R
 | Magic link | `Your BizPilot sign-in link / Votre lien de connexion BizPilot` | `supabase/templates/magic_link.html` |
 
 The emails are in English and French together, and they show the BizPilot logo from your site, so do step 3 first.
-
-**Authentication → Emails → SMTP Settings (strongly recommended):** Supabase's built-in email sender only sends a few emails per hour and is meant for testing. Use Resend. See [Sending email with Resend](#sending-email-with-resend) below.
 
 ## Step 5: Make yourself the administrator
 
