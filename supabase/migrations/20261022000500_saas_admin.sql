@@ -663,11 +663,12 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- Notifications (generated from real records; in-app delivery only)
 -- ---------------------------------------------------------------------------
-create or replace function public.generate_alerts(p_business uuid)
+-- Alert generation. app.build_alerts has no caller check and is not exposed to API roles; the
+-- app calls public.generate_alerts (members only) and a scheduler can call app.generate_all_alerts().
+create or replace function app.build_alerts(p_business uuid)
 returns int language plpgsql security definer set search_path = public as $$
 declare today date; n int := 0; c int; st public.business_settings; sub jsonb; r record; added int;
 begin
-  if not app.is_member(p_business) then perform app.raise('permission_denied'); end if;
   today := app.biz_today(p_business);
   select * into st from public.business_settings where business_id = p_business;
 
@@ -735,6 +736,25 @@ begin
   end if;
   return n;
 end $$;
+
+create or replace function public.generate_alerts(p_business uuid)
+returns int language plpgsql security definer set search_path = public as $$
+begin
+  if not app.is_member(p_business) then perform app.raise('permission_denied'); end if;
+  return app.build_alerts(p_business);
+end $$;
+
+create or replace function app.generate_all_alerts()
+returns int language plpgsql security definer set search_path = public as $$
+declare b uuid; n int := 0;
+begin
+  for b in select id from public.businesses loop
+    n := n + app.build_alerts(b);
+  end loop;
+  return n;
+end $$;
+revoke all on function app.build_alerts(uuid) from public, anon, authenticated;
+revoke all on function app.generate_all_alerts() from public, anon, authenticated;
 
 create or replace function public.mark_notifications_read(p_business uuid, p_ids uuid[] default null)
 returns void language plpgsql security definer set search_path = public as $$

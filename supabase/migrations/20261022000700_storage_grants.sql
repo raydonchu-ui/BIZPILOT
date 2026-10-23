@@ -71,3 +71,5 @@ revoke execute on function app.audit(uuid, text, text, text, jsonb) from anon, a
 revoke execute on function app.rate_limit(text, int, int) from anon, authenticated, public;
 revoke execute on function app.refresh_expense(uuid) from anon, authenticated, public;
 revoke execute on function app.bootstrap_platform_admin(text) from anon, authenticated, public;
+revoke execute on function app.build_alerts(uuid) from anon, authenticated, public;
+revoke execute on function app.generate_all_alerts() from anon, authenticated, public;
