@@ -137,6 +137,19 @@ You need your **own domain** (e.g. `bizpilot.cm` or `getbizpilot.com`). Resend c
 8. Supabase → **Authentication → Rate Limits**: raise **emails per hour** (e.g. to 100). Supabase keeps a low limit even with your own SMTP.
 9. Test: sign up with a fresh email, then use **Forgot password?**. Check the inbox and spam. In Gmail, **⋮ → Show original** should say `SPF: PASS`, `DKIM: PASS`, `DMARC: PASS`.
 
+#### If sign-up says "Error sending confirmation email"
+
+Supabase could not hand the email to Resend. The exact reason is in Supabase → **Logs → Auth** (search `smtp` or `mail`). Usual causes, by log message:
+
+| Log says | Fix |
+|---|---|
+| `535` / `authentication failed` / `invalid API key` | Password must be the full `re_…` key, Username exactly `resend`. Create a new key if unsure (old one deleted or copied with a space). |
+| `domain is not verified` / `450` / `403` | Sender email must end with the domain that is **Verified** in Resend (e.g. `no-reply@bizpilotmarket.com`). A key limited to one domain can only send from that domain. |
+| `timeout` / `connection refused` | Host `smtp.resend.com`, port `465` (or `587`). |
+| `template` / `parse` | A template was pasted incompletely. Paste the whole file from `supabase/templates/` again. |
+
+Then check Resend → **Logs**: if the attempt does not appear there at all, Supabase never reached Resend (host, port or key).
+
 To look fully professional, also give the website the same domain (Vercel → Project → Domains, e.g. `app.yourdomain.com`), then update the Supabase **Site URL** and **Redirect URLs** to it. The email logo and links will then all use your own domain.
 
 ### Check that it works
