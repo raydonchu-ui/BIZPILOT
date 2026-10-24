@@ -174,6 +174,31 @@ describe('Fapshi edge function', () => {
     } finally { failInitiate = false; }
   });
 
+  it('uses the sandbox for test keys and lets only administrators pay in test mode', async () => {
+    const env = (base: string) => loadConfig((k) => ({ SUPABASE_URL, SUPABASE_ANON_KEY: ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY,
+      FAPSHI_BASE_URL: base, FAPSHI_API_USER: ' u ', FAPSHI_API_KEY: 'FAK_TEST_abc', FAPSHI_WEBHOOK_SECRET: SECRET } as Record<string, string>)[k]);
+    const live = env('https://live.fapshi.com/');
+    expect(live).toMatchObject({ fapshiBase: 'https://sandbox.fapshi.com', sandbox: true, apiUser: 'u' });
+    expect(loadConfig((k) => ({ FAPSHI_BASE_URL: 'https://live.fapshi.com', FAPSHI_API_KEY: 'FAK_live' } as Record<string, string>)[k]).sandbox).toBe(false);
+    // Point the sandbox config at the simulated Fapshi.
+    const sb = { ...cfg, sandbox: true };
+    const call = (body: unknown, auth?: string) => handle(new Request(`${SUPABASE_URL}/functions/v1/fapshi`, { method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: `Bearer ${auth}` } : {}) }, body: JSON.stringify(body) }), sb, fetchMock);
+    const tk = token();
+    const o = await placeOnline(tk);
+    const guest = await call({ action: 'order', order_id: o.order_id, token: tk, phone: '670000000' });
+    expect(guest.status).toBe(503);
+    expect(((await guest.json()) as any).error).toBe('online_payments_test_mode');
+    const { data } = await owner.client.auth.getSession();
+    const notAdmin = await call({ action: 'subscription', business_id: biz, plan_code: 'starter', period: 'monthly', phone: '670000000' }, data.session!.access_token);
+    expect(((await notAdmin.json()) as any).error).toBe('online_payments_test_mode');
+    await sql('insert into platform_admins (user_id) values ($1) on conflict do nothing', [owner.id]);
+    try {
+      const ok = (await (await call({ action: 'subscription', business_id: biz, plan_code: 'starter', period: 'monthly', phone: '670000000' }, data.session!.access_token)).json()) as any;
+      expect(ok).toMatchObject({ mode: 'direct', test_mode: true });
+    } finally { await sql('delete from platform_admins where user_id = $1', [owner.id]); }
+  });
+
   it('reports an unreachable Fapshi address instead of crashing', async () => {
     const bad = { ...cfg, fapshiBase: 'https://fapshi.unreachable.invalid' };
     const failing: typeof fetch = async (input, init) => (String(input).startsWith(bad.fapshiBase) ? Promise.reject(new TypeError('fetch failed')) : fetch(input, init));
@@ -236,7 +261,7 @@ describe('Fapshi edge function', () => {
     const adm = await createUser('fx-admin');
     await sql('insert into platform_admins (user_id) values ($1)', [adm.id]);
     const { data: ad } = await adm.client.auth.getSession();
-    expect(await (await post({ action: 'balance' }, { auth: ad.session!.access_token })).json()).toMatchObject({ service: 'BizPilot', balance: 123456, currency: 'XAF', live: false,
+    expect(await (await post({ action: 'balance' }, { auth: ad.session!.access_token })).json()).toMatchObject({ service: 'BizPilot', balance: 123456, currency: 'XAF', live: true,
       direct_pay: { ok: false, message: 'Direct pay is not enabled for this service' } });
     // The status row is not readable by ordinary users.
     const { data: rows } = await owner.client.from('app_config').select('key').eq('key', 'fapshi_direct_pay');

@@ -163,8 +163,8 @@ async function invokeFapshi(body: Record<string, unknown>) {
   return data as any;
 }
 export type PayStart =
-  | { mode: 'direct'; payment_id: string; amount: number }
-  | { mode: 'link'; payment_id: string; link: string; direct_failed?: boolean; direct_error?: string };
+  | { mode: 'direct'; payment_id: string; amount: number; test_mode?: boolean }
+  | { mode: 'link'; payment_id: string; link: string; direct_failed?: boolean; direct_error?: string; test_mode?: boolean };
 export type Medium = 'mobile money' | 'orange money';
 
 /** MTN or Orange from a Cameroon number (MTN 67/650-654/680-684, Orange 69/655-659/685-689). */

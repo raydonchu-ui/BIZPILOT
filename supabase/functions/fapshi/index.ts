@@ -32,6 +32,8 @@ export interface FapshiConfig {
   apiKey: string;
   webhookSecret: string;
   siteUrl: string;
+  /** Fapshi sandbox (test keys): no real money moves and Fapshi approves test payments on its own. */
+  sandbox: boolean;
 }
 
 type Fetch = typeof fetch;
@@ -67,13 +69,19 @@ function pickKey(raw: string | undefined) {
 }
 
 export function loadConfig(env: (k: string) => string | undefined): FapshiConfig {
+  const apiKey = (env('FAPSHI_API_KEY') ?? '').trim();
+  let fapshiBase = (env('FAPSHI_BASE_URL') ?? 'https://sandbox.fapshi.com').trim().replace(/\/+$/, '');
+  // Test keys (FAK_TEST_…) only work on the sandbox: use it even if the live address was entered.
+  const testKey = apiKey.startsWith('FAK_TEST_');
+  if (testKey && /live\.fapshi\.com/.test(fapshiBase)) fapshiBase = 'https://sandbox.fapshi.com';
   return {
+    sandbox: testKey || /sandbox\.fapshi\.com/.test(fapshiBase),
     supabaseUrl: env('SUPABASE_URL') ?? '',
     anonKey: pickKey(env('SUPABASE_ANON_KEY')) || pickKey(env('SUPABASE_PUBLISHABLE_KEYS')),
     serviceKey: pickKey(env('SUPABASE_SERVICE_ROLE_KEY')) || pickKey(env('SUPABASE_SECRET_KEYS')),
-    fapshiBase: (env('FAPSHI_BASE_URL') ?? 'https://sandbox.fapshi.com').replace(/\/+$/, ''),
-    apiUser: env('FAPSHI_API_USER') ?? '',
-    apiKey: env('FAPSHI_API_KEY') ?? '',
+    fapshiBase,
+    apiUser: (env('FAPSHI_API_USER') ?? '').trim(),
+    apiKey,
     webhookSecret: env('FAPSHI_WEBHOOK_SECRET') ?? '',
     siteUrl: (env('SITE_URL') ?? 'https://www.bizpilotmarket.com').replace(/\/+$/, ''),
   };
@@ -195,7 +203,7 @@ async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any, direct?: { 
       const att = await rpc(cfg, f, 'fapshi_attach', { p_payment: begin.payment_id, p_trans_id: dp.data.transId, p_link: null }, { service: true });
       if (att.error) return json({ error: 'payment_record_failed' }, 500);
       await saveDirectStatus(cfg, f, { ok: true });
-      return json({ mode: 'direct', payment_id: begin.payment_id, amount });
+      return json({ mode: 'direct', payment_id: begin.payment_id, amount, test_mode: cfg.sandbox });
     }
     // Direct pay refused (Fapshi disables it on live services until its support activates it):
     // fall back to the payment page and keep Fapshi's reason for the administrators.
@@ -215,7 +223,7 @@ async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any, direct?: { 
   const attached = await rpc(cfg, f, 'fapshi_attach', { p_payment: begin.payment_id, p_trans_id: init.data.transId, p_link: init.data.link },
     { service: true });
   if (attached.error) return json({ error: 'payment_record_failed' }, 500);
-  return json({ mode: 'link', link: init.data.link, payment_id: begin.payment_id, direct_failed: Boolean(direct), ...(directError ? { direct_error: directError } : {}) });
+  return json({ mode: 'link', link: init.data.link, payment_id: begin.payment_id, direct_failed: Boolean(direct), test_mode: cfg.sandbox, ...(directError ? { direct_error: directError } : {}) });
 }
 
 function directOptions(body: any) {
@@ -250,6 +258,13 @@ export async function handle(req: Request, cfg: FapshiConfig, f: Fetch = fetch):
   try { body = await req.json(); } catch { return json({ error: 'invalid_request' }, 400); }
   const user = bearerToken(req.headers.get('Authorization'));
 
+  // With sandbox keys Fapshi approves payments without taking any money, so only platform
+  // administrators may start one (to test); customers are told online payment is not available.
+  if (cfg.sandbox && (body?.action === 'order' || body?.action === 'subscription')) {
+    const admin = user ? await rpc(cfg, f, 'admin_market_overview', {}, { user }) : null;
+    if (!admin || admin.error) return json({ error: 'online_payments_test_mode' }, 503);
+  }
+
   if (body?.action === 'order') {
     if (!UUID.test(String(body.order_id ?? ''))) return json({ error: 'invalid_request' }, 400);
     const token = typeof body.token === 'string' && body.token.length <= 128 ? body.token : null;
@@ -283,7 +298,7 @@ export async function handle(req: Request, cfg: FapshiConfig, f: Fetch = fetch):
       return json({ error: pe.error, details: JSON.stringify({ reason: pe.reason }) }, 502);
     }
     return json({ service: bal.data?.service ?? null, balance: Number(bal.data?.balance ?? 0), currency: bal.data?.currency ?? 'XAF',
-      live: cfg.fapshiBase.includes('live.'), direct_pay: await loadDirectStatus(cfg, f) });
+      live: !cfg.sandbox, direct_pay: await loadDirectStatus(cfg, f) });
   }
 
   if (body?.action === 'verify') {

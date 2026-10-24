@@ -100,7 +100,8 @@ Commission (default 0 %) applies to the goods amount of delivered orders. For ca
 5. **BizPilot → Admin → Marketplace:** tick **Online payments (Fapshi) available** and set the fees (or leave 0 %). Save.
 6. Sellers can now tick **Pay online** under **My Store → Payments**.
 7. Test one order end to end in sandbox mode, then switch the secrets to live credentials and the live URL.
-8. Ask Fapshi support to **activate direct pay** on the live service, so payers get the request on their phone. Until then, payers are sent to the Fapshi payment page automatically.
+8. **Test keys are safe on the live site.** A key starting with `FAK_TEST_` is a sandbox key, and the function always uses `https://sandbox.fapshi.com` for it. Sandbox approves test payments without moving any money, so in test mode only platform administrators can start a payment, and customers see "Mobile Money payment is not available yet". Admin → Mobile Money shows a TEST mode notice until live keys are set.
+9. Ask Fapshi support to **activate direct pay** on the live service, so payers get the request on their phone. Until then, payers are sent to the Fapshi payment page automatically.
 
 ## Plans
 

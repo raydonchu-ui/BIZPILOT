@@ -10,7 +10,7 @@ import { formatMoney } from '../lib/format';
 import { detectMedium, Medium, PayStart, verifyPayment } from '../lib/market';
 import { Alert, Button, Field, Input } from './ui';
 
-type Phase = { k: 'form' } | { k: 'waiting'; paymentId: string; since: number } | { k: 'paid' } | { k: 'failed'; reason: string }
+type Phase = { k: 'form' } | { k: 'waiting'; paymentId: string; since: number; test?: boolean } | { k: 'paid' } | { k: 'failed'; reason: string }
   | { k: 'page'; link: string };
 
 const POLL_MS = 5000;
@@ -67,7 +67,7 @@ export function MobileMoneyPay({ amount, defaultPhone, request, onPaid, compact,
     setBusy(true);
     try {
       const r = await request(phone, medium);
-      if (r.mode === 'direct') setPhase({ k: 'waiting', paymentId: r.payment_id, since: Date.now() });
+      if (r.mode === 'direct') setPhase({ k: 'waiting', paymentId: r.payment_id, since: Date.now(), test: r.test_mode });
       // Fapshi refused to push the request to the phone (direct pay not activated on the Fapshi
       // account): say so plainly and continue on Fapshi's secure page, where the number is entered.
       else if (r.direct_failed) setPhase({ k: 'page', link: r.link });
@@ -120,6 +120,7 @@ export function MobileMoneyPay({ amount, defaultPhone, request, onPaid, compact,
             <p className="mt-1 text-sm">{t('pay.checkPhoneBody', { amount: formatMoney(amount, lang), phone })}</p>
           </div>
         </div>
+        {phase.test && <Alert tone="blue" title={t('pay.testTitle')}>{t('pay.testBody')}</Alert>}
         <ol className="list-decimal space-y-1 pl-6 text-sm text-ink-soft dark:text-gray-300">
           <li>{t('pay.step1')}</li><li>{t('pay.step2')}</li><li>{t('pay.step3')}</li>
         </ol>

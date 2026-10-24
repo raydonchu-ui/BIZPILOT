@@ -325,7 +325,7 @@ test('an administrator verifies the store and can hide a listing', async ({ brow
     // Balance read on the server from the (simulated) Fapshi account.
     await expect(page.getByText('Live from your Fapshi account')).toBeVisible();
     // The last direct-pay answer from Fapshi (accepted in the last test) is shown to the admin.
-    await expect(page.getByText(/Phone requests \(sandbox\): working/)).toBeVisible();
+    await expect(page.getByText(/Phone requests \(live\): working/)).toBeVisible();
   }
   await ctx.close();
 });

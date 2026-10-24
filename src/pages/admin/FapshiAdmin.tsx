@@ -96,6 +96,12 @@ export function FapshiAdmin() {
           <ol className="mt-1 list-decimal space-y-0.5 pl-5">{t('fapshiAdmin.checkSteps').split('|').map((x) => <li key={x}>{x}</li>)}</ol>
         </Alert></div>
       )}
+      {balance.data && !balance.data.live && (
+        <div className="mt-4"><Alert tone="amber" title={t('fapshiAdmin.testModeTitle')}>
+          <p>{t('fapshiAdmin.testModeBody')}</p>
+          <ol className="mt-2 list-decimal space-y-0.5 pl-5">{t('fapshiAdmin.goLiveSteps').split('|').map((x) => <li key={x}>{x}</li>)}</ol>
+        </Alert></div>
+      )}
       {balance.data && <DirectPayStatus info={balance.data} />}
       <Card className="mt-4">
         <div className="mb-3 flex flex-wrap items-center gap-3">
