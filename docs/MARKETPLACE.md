@@ -37,6 +37,8 @@ Payment: `cod_pending → cod_collected`; `awaiting_payment → paid` (or `faile
 
 What Fapshi offers, from its official docs (docs.fapshi.com):
 - a hosted checkout (`initiate-pay`) whose link expires after 24 hours;
+- **direct pay** (`direct-pay`): the payment request goes straight to the payer's phone and they approve it with their Mobile Money PIN. Fapshi **disables it by default on live services**; ask Fapshi support to activate it for your service;
+- the service balance (`balance`);
 - `payment-status`, limited to 6 checks per minute per transaction;
 - a webhook for SUCCESSFUL, FAILED and EXPIRED, sent **once**, authenticated with an `x-wh-secret` header;
 - payouts through a separate service that Fapshi must enable.
@@ -55,6 +57,23 @@ Fapshi documents **no split payments, no automatic recurring charges and no refu
 6. Refunds to buyers are sent by BizPilot the same way and recorded in **Admin → Orders** (`refund_pending → refunded`).
 7. Subscriptions can also be paid with Fapshi from **Subscription → choose a plan**. A verified payment extends the plan by one month or one year automatically. There is no automatic renewal: the owner pays each period.
 
+### Paying by phone (direct pay)
+
+1. The payer enters their MTN MoMo or Orange Money number (the checkout phone is used for orders; the operator is detected from the number and can be changed).
+2. The `fapshi` function sends `direct-pay` with the amount from the database. Fapshi pushes the request to the phone.
+3. The page shows "Approve the payment on your phone" and asks the server every 5 seconds. The server asks Fapshi (`payment-status`, throttled), and the webhook usually arrives first.
+4. When Fapshi reports SUCCESSFUL, `fapshi_apply` marks the order paid, or activates the plan through a verified `billing_payments` row (method `fapshi`). The page updates by itself.
+5. Declined, cancelled or insufficient balance: the page says so, and the payer can try again. Nothing is marked paid from the browser.
+6. If direct pay is not activated on the Fapshi service, the function automatically falls back to the Fapshi payment page. The payer can also choose that page themselves.
+
+The money is collected into BizPilot's Fapshi service: it shows in the Fapshi dashboard balance at once, and withdrawals are made from there. **Admin → Mobile Money** shows:
+- the live Fapshi balance, read on the server, so the keys never reach the browser;
+- what was received today, in 7 days and in 30 days (subscriptions and orders);
+- requests still waiting for approval;
+- every payment with its Fapshi transaction ID.
+
+It refreshes every 15 seconds. **Admin → Overview** also shows "Mobile Money today".
+
 Commission (default 0 %) applies to the goods amount of delivered orders. For cash on delivery the seller owes it, and it shows as a negative balance. The online fee (default 0 %) applies to online orders only. Both are shown to sellers on **My Store → Payments** and **Payments** before they use online payment.
 
 ## Turning on online payments
@@ -65,14 +84,14 @@ Commission (default 0 %) applies to the goods amount of delivered orders. For ca
    3. Test first with the **sandbox** service and the test numbers (MTN 670000000 succeeds, 670000001 fails).
 2. **Supabase → Edge Functions → Deploy a new function → Via editor:**
    1. Name it exactly `fapshi`.
-   2. Paste `supabase/functions/fapshi/index.ts` (one file, no dependencies) and deploy.
+   2. **Delete all the template code** in the editor (the "Hello" example that imports `@supabase/server`). Paste the whole of `supabase/functions/fapshi/index.ts` (one file, no dependencies) and deploy.
    3. In the function's settings, **turn off "Verify JWT"**, because Fapshi's webhook has no Supabase token. The function checks every caller itself.
 3. **Supabase → Edge Functions → Secrets**, add:
    - `FAPSHI_API_USER`, `FAPSHI_API_KEY`;
    - `FAPSHI_BASE_URL`: `https://sandbox.fapshi.com` while testing, `https://live.fapshi.com` for real money;
    - `FAPSHI_WEBHOOK_SECRET`: a long random text you invent;
    - `SITE_URL`: `https://www.bizpilotmarket.com`.
-   - `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are provided by Supabase. Never put any of these in Vercel or the browser.
+   - `SUPABASE_URL`, plus the anon/publishable and service-role/secret keys, are provided by Supabase. The function reads either the old variable names or the new `SUPABASE_PUBLISHABLE_KEYS`/`SUPABASE_SECRET_KEYS`. Never put any of these in Vercel or the browser.
 4. **Fapshi dashboard → your service:**
    - webhook URL: `https://cvruxxkgfbsatqvpysey.supabase.co/functions/v1/fapshi/webhook`;
    - webhook secret: the same value as `FAPSHI_WEBHOOK_SECRET`;
@@ -80,6 +99,7 @@ Commission (default 0 %) applies to the goods amount of delivered orders. For ca
 5. **BizPilot → Admin → Marketplace:** tick **Online payments (Fapshi) available** and set the fees (or leave 0 %). Save.
 6. Sellers can now tick **Pay online** under **My Store → Payments**.
 7. Test one order end to end in sandbox mode, then switch the secrets to live credentials and the live URL.
+8. Ask Fapshi support to **activate direct pay** on the live service, so payers get the request on their phone. Until then, payers are sent to the Fapshi payment page automatically.
 
 ## Plans
 
@@ -116,7 +136,7 @@ Each file checks that it is run in the right order and only once. They add table
 
 ## Testing
 
-- **DB tests:** `tests/db/marketplace.test.ts` (16 tests) and `tests/db/fapshi_function.test.ts` (5 tests: the edge function against the real local database with a simulated Fapshi API).
+- **DB tests:** `tests/db/marketplace.test.ts` (16 tests) and `tests/db/fapshi_function.test.ts` (9 tests, including phone payment, fallback to the payment page and the admin-only balance: the edge function against the real local database with a simulated Fapshi API).
 - **Browser tests:** `e2e/marketplace.spec.ts` covers seller setup, guest checkout, fulfilment, review, online payment and admin moderation. For the online payment test, run:
   ```
   node e2e/fapshiMock.mjs &

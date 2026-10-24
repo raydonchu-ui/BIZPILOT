@@ -6,17 +6,17 @@ import { CheckCircle2, Copy, CreditCard, Loader2, MapPin, MessageCircle, Phone, 
 import { useI18n } from '../../i18n';
 import { rpc } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { errorMessage } from '../../lib/errors';
 import { formatDateTime, formatMoney } from '../../lib/format';
-import { guestOrders, guestToken, rememberGuestOrder, siteOrigin, startOrderPayment, verifyPayment, waLink } from '../../lib/market';
+import { guestOrders, guestToken, rememberGuestOrder, requestOrderPayment, siteOrigin, verifyPayment, waLink } from '../../lib/market';
 import { useAction } from '../../lib/useAction';
 import { useToast } from '../../lib/toast';
 import { MarketImage, OrderStatusBadge, OrderTimeline, PaymentStatusBadge, ReportButton } from '../../components/market';
+import { MobileMoneyPay } from '../../components/MobileMoneyPay';
 import { Alert, Button, Card, ConfirmDialog, EmptyState, Field, LinkButton, PageLoader, Textarea } from '../../components/ui';
 
 export function OrderPage() {
   const { id } = useParams();
-  const { t, lang, has } = useI18n();
+  const { t, lang } = useI18n();
   const { session } = useAuth();
   const [params] = useSearchParams();
   const toast = useToast();
@@ -33,8 +33,8 @@ export function OrderPage() {
   }, [urlToken, q.data]);
   const { run, busy } = useAction();
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [paying, setPaying] = useState(false);
   const [msg, setMsg] = useState('');
+  const [paidNow, setPaidNow] = useState(false);
   if (q.isLoading) return <PageLoader />;
   if (q.error || !q.data) {
     return <div className="mx-auto max-w-xl px-4 py-16"><h1 className="sr-only">{t('market.orderNotFound')}</h1><EmptyState icon={<Store className="h-6 w-6" />} title={t('market.orderNotFound')} body={session ? t('market.orderNotFoundBody') : t('market.orderNotFoundGuest')}
@@ -42,10 +42,6 @@ export function OrderPage() {
   }
   const o = q.data;
   const link = `${siteOrigin()}/order/${o.id}${token ? `?t=${token}` : ''}`;
-  const pay = async () => {
-    setPaying(true);
-    try { await startOrderPayment(o.id, token); } catch (e) { toast(errorMessage(e, t, has), 'error'); setPaying(false); }
-  };
   const send = async (e: FormEvent) => {
     e.preventDefault();
     if (!msg.trim()) return;
@@ -70,15 +66,21 @@ export function OrderPage() {
         {!o.signed_in_owner && <Button variant="outline" size="sm" icon={<Copy className="h-4 w-4" />} onClick={copy}>{t('market.copyOrderLink')}</Button>}
       </div>
 
+      {paidNow && o.payment_status === 'paid' && (
+        <div className="mt-4"><Alert tone="green" title={t('pay.paidTitle')}>{t('pay.orderPaidBody', { amount: formatMoney(o.total, lang) })}</Alert></div>
+      )}
       {o.can_pay && (
         <Card className="mt-4 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <CreditCard className="h-6 w-6 text-amber-700" />
+          <div className="flex items-start gap-3">
+            <CreditCard className="h-6 w-6 shrink-0 text-amber-700" />
             <div className="flex-1">
               <p className="font-bold">{o.payment_status === 'failed' ? t('market.paymentFailedTitle') : t('market.awaitingPaymentTitle')}</p>
               <p className="text-sm">{t('market.awaitingPaymentBody', { time: o.expires_at ? formatDateTime(o.expires_at, lang) : '' })}</p>
             </div>
-            <Button size="lg" loading={paying} onClick={pay}>{t('market.payAmount', { amount: formatMoney(o.total, lang) })}</Button>
+          </div>
+          <div className="mt-3">
+            <MobileMoneyPay compact amount={Number(o.total)} defaultPhone={o.customer_phone} waitingFor={params.get('waiting')}
+              request={(phone, medium) => requestOrderPayment(o.id, token, phone, medium)} onPaid={() => { setPaidNow(true); q.refetch(); }} />
           </div>
         </Card>
       )}

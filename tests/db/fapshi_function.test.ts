@@ -1,7 +1,7 @@
 // The Fapshi edge function, run in Node against the local Supabase stack with a simulated Fapshi API.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomBytes } from 'node:crypto';
-import { handle, loadConfig, safeEqual } from '../../supabase/functions/fapshi/index.ts';
+import { cmPhone, handle, loadConfig, safeEqual } from '../../supabase/functions/fapshi/index.ts';
 import { ANON_KEY, SERVICE_KEY, SUPABASE_URL, addProduct, anon, closeDb, createBusiness, createUser, openStock, rpc, sql, uid, type TestUser } from './helpers';
 
 const FAPSHI = 'https://fapshi.test';
@@ -15,6 +15,7 @@ const cfg = loadConfig((k) => ({
 const tx = new Map<string, { amount: number; externalId: string; status: string }>();
 const calls: { method: string; path: string; body: any; headers: Record<string, string> }[] = [];
 let failInitiate = false;
+let directDisabled = false;
 const fetchMock: typeof fetch = async (input, init) => {
   const url = String(input);
   if (!url.startsWith(FAPSHI)) return fetch(input, init);
@@ -34,6 +35,13 @@ const fetchMock: typeof fetch = async (input, init) => {
     if (!t) return new Response(JSON.stringify({ message: 'Not found' }), { status: 404 });
     return ok({ transId: id, status: t.status, amount: t.amount, externalId: t.externalId, medium: 'mobile money', payerName: 'Awa' });
   }
+  if (path === '/direct-pay') {
+    if (directDisabled) return new Response(JSON.stringify({ message: 'Direct pay is not enabled for this service' }), { status: 403 });
+    const transId = `dp${randomBytes(4).toString('hex')}`;
+    tx.set(transId, { amount: body.amount, externalId: body.externalId, status: 'PENDING' });
+    return ok({ message: 'Request successful', transId, dateInitiated: new Date().toISOString() });
+  }
+  if (path === '/balance') return ok({ service: 'BizPilot', balance: 123456, currency: 'XAF' });
   if (path === '/expire-pay') {
     const t = tx.get(body.transId);
     if (t && t.status !== 'SUCCESSFUL') t.status = 'EXPIRED';
@@ -160,5 +168,55 @@ describe('Fapshi edge function', () => {
       const rows = await sql('select trans_id from online_payments where order_id = $1', [o.order_id]);
       expect(rows.every((x: any) => x.trans_id === null)).toBe(true);
     } finally { failInitiate = false; }
+  });
+
+  it('reads the new Supabase key format and normalises Cameroon phone numbers', () => {
+    const c = loadConfig((k) => ({ SUPABASE_URL: 'x', SUPABASE_PUBLISHABLE_KEYS: '{"default":"sb_publishable_a"}', SUPABASE_SECRET_KEYS: '{"default":"sb_secret_b"}' } as Record<string, string>)[k]);
+    expect(c.anonKey).toBe('sb_publishable_a');
+    expect(c.serviceKey).toBe('sb_secret_b');
+    expect(cmPhone('+237 670 00 00 00')).toBe('670000000');
+    expect(cmPhone('690000000')).toBe('690000000');
+    expect(cmPhone('12345')).toBeNull();
+  });
+
+  it('subscription by phone prompt: the owner approves on their phone and the plan activates automatically', async () => {
+    const { data } = await owner.client.auth.getSession();
+    const auth = data.session!.access_token;
+    expect((await post({ action: 'subscription', business_id: biz, plan_code: 'business', period: 'monthly', phone: '123' }, { auth })).status).toBe(400);
+    const res = await post({ action: 'subscription', business_id: biz, plan_code: 'business', period: 'monthly', phone: '+237 670 000 000', medium: 'mobile money' }, { auth });
+    const out = await res.json();
+    expect(out.mode).toBe('direct');
+    const dp = calls.filter((c) => c.path === '/direct-pay').pop()!;
+    expect(dp.body).toMatchObject({ amount: 3000, phone: '670000000', medium: 'mobile money', externalId: out.payment_id });
+    // Still waiting while the owner has not approved.
+    expect((await (await post({ action: 'verify', payment_id: out.payment_id })).json()).status).toBe('pending');
+    const [{ trans_id }] = await sql('select trans_id from online_payments where id = $1', [out.payment_id]);
+    tx.get(trans_id)!.status = 'SUCCESSFUL';
+    await sql('update online_payments set last_checked_at = null where id = $1', [out.payment_id]);
+    expect((await (await post({ action: 'verify', payment_id: out.payment_id })).json()).status).toBe('successful');
+    const [sub] = await sql('select plan_code, status from business_subscriptions where business_id = $1', [biz]);
+    expect(sub).toEqual({ plan_code: 'business', status: 'active' });
+    const [bp] = await sql(`select status, method, amount from billing_payments where transaction_ref = $1`, [trans_id]);
+    expect(bp).toMatchObject({ status: 'verified', method: 'fapshi' });
+  });
+
+  it('falls back to the Fapshi payment page when direct pay is not enabled on the service', async () => {
+    const { data } = await owner.client.auth.getSession();
+    directDisabled = true;
+    try {
+      const out = await (await post({ action: 'subscription', business_id: biz, plan_code: 'starter', period: 'monthly', phone: '690000000' }, { auth: data.session!.access_token })).json();
+      expect(out.mode).toBe('link');
+      expect(out.direct_failed).toBe(true);
+      expect(out.link).toMatch(/^https:\/\/checkout\.fapshi\.test\//);
+    } finally { directDisabled = false; }
+  });
+
+  it('shows the Fapshi balance to platform administrators only', async () => {
+    const { data } = await owner.client.auth.getSession();
+    expect((await post({ action: 'balance' }, { auth: data.session!.access_token })).status).toBe(403);
+    const adm = await createUser('fx-admin');
+    await sql('insert into platform_admins (user_id) values ($1)', [adm.id]);
+    const { data: ad } = await adm.client.auth.getSession();
+    expect(await (await post({ action: 'balance' }, { auth: ad.session!.access_token })).json()).toEqual({ service: 'BizPilot', balance: 123456, currency: 'XAF' });
   });
 });

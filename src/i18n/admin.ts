@@ -1,7 +1,7 @@
 export const en = {
   admin: {
     badge: 'Admin', backToApp: 'Back to app', privacyNote: 'You see platform metadata and usage counts only. Business records are visible only while an owner has granted support access, and every support session is logged.',
-    nav: { overview: 'Overview', market: 'Marketplace', stores: 'Stores', listings: 'Listings', reports: 'Reports', orders: 'Orders', settlements: 'Settlements', businesses: 'Businesses', payments: 'Payments', plans: 'Plans', config: 'Settings', announcements: 'Announcements', support: 'Support', ai: 'AI usage', audit: 'Audit log' },
+    nav: { overview: 'Overview', fapshi: 'Mobile Money', market: 'Marketplace', stores: 'Stores', listings: 'Listings', reports: 'Reports', orders: 'Orders', settlements: 'Settlements', businesses: 'Businesses', payments: 'Payments', plans: 'Plans', config: 'Settings', announcements: 'Announcements', support: 'Support', ai: 'AI usage', audit: 'Audit log' },
     stats: { businesses: 'Businesses', new30: '{n} new in 30 days', users: 'Users', paid: 'Paid subscriptions', trials: '{n} on trial', revenue30: 'Verified revenue (30 days)',
       pending: 'Payments to verify', support: 'Open support requests', ai30: 'AI questions (30 days)', aiFail: '{n} failed', sales30: 'Sales recorded (30 days)', usageOnly: 'Count only', byPlan: 'Businesses by effective plan' },
     businessesSub: 'Registered businesses, owners and subscription status.', searchBusinesses: 'Name or owner email', subscription: 'Subscription', usage: 'Usage',
@@ -21,12 +21,21 @@ export const en = {
     aiSub: 'Daily AI Advisor usage across all businesses.', ai: { queries: 'Questions', completed: 'Answered', failed: 'Failed', fallback: 'Rule-based', tokens: 'Tokens in / out', businesses: 'Businesses' },
     auditSub: 'Administrative, billing and support-access actions.',
   },
+  fapshiAdmin: {
+    sub: 'Payments customers approved on their phone (MTN MoMo or Orange Money). Each one is confirmed by the server with Fapshi before it counts, and the money lands in your Fapshi account.',
+    openDashboard: 'Open Fapshi dashboard', balance: 'Fapshi balance', balanceHint: 'Live from your Fapshi account',
+    balanceError: 'The Fapshi balance could not be read. Check that the fapshi function is deployed with FAPSHI_API_USER and FAPSHI_API_KEY set.',
+    today: 'Mobile Money today', week: 'Last 7 days', month: 'Last 30 days', payments: '{n} payments', split: 'Subscriptions {subs} · Orders {orders}',
+    filter: { successful: 'Received', open: 'Waiting for approval', failed: 'Failed', all: 'All' }, waiting: '{n} waiting for the customer to approve',
+    auto: 'Updates automatically', none: 'No payments yet', order: 'Order {n}', subscription: 'Subscription {plan} · {period}', payer: 'Payer',
+    note: 'Fapshi keeps the money in your Fapshi account; withdraw it to your bank or Mobile Money from the Fapshi dashboard. Subscriptions are activated automatically when the payment is confirmed.',
+  },
 };
 
 export const fr: typeof en = {
   admin: {
     badge: 'Admin', backToApp: 'Retour à l’application', privacyNote: 'Vous voyez uniquement les métadonnées et compteurs d’usage. Les données d’un commerce ne sont visibles que si son propriétaire a accordé un accès support, et chaque session support est journalisée.',
-    nav: { overview: 'Vue d’ensemble', market: 'Marché', stores: 'Boutiques', listings: 'Annonces', reports: 'Signalements', orders: 'Commandes', settlements: 'Reversements', businesses: 'Commerces', payments: 'Paiements', plans: 'Plans', config: 'Paramètres', announcements: 'Annonces', support: 'Support', ai: 'Usage IA', audit: 'Journal' },
+    nav: { overview: 'Vue d’ensemble', fapshi: 'Mobile Money', market: 'Marché', stores: 'Boutiques', listings: 'Annonces', reports: 'Signalements', orders: 'Commandes', settlements: 'Reversements', businesses: 'Commerces', payments: 'Paiements', plans: 'Plans', config: 'Paramètres', announcements: 'Annonces', support: 'Support', ai: 'Usage IA', audit: 'Journal' },
     stats: { businesses: 'Commerces', new30: '{n} nouveaux en 30 jours', users: 'Utilisateurs', paid: 'Abonnements payants', trials: '{n} en essai', revenue30: 'Revenus vérifiés (30 jours)',
       pending: 'Paiements à vérifier', support: 'Demandes ouvertes', ai30: 'Questions IA (30 jours)', aiFail: '{n} en échec', sales30: 'Ventes enregistrées (30 jours)', usageOnly: 'Comptage uniquement', byPlan: 'Commerces par plan effectif' },
     businessesSub: 'Commerces inscrits, propriétaires et statut d’abonnement.', searchBusinesses: 'Nom ou e-mail du propriétaire', subscription: 'Abonnement', usage: 'Usage',
@@ -45,5 +54,14 @@ export const fr: typeof en = {
     newAnnouncement: 'Nouvelle annonce', level: 'Niveau', endsAt: 'Fin', replyPlaceholder: 'Réponse (affichée à l’utilisateur dans Aide & support)', replyNote: 'Les réponses sont affichées dans l’application. Aucun e-mail n’est envoyé automatiquement — répondez par e-mail si nécessaire.',
     aiSub: 'Usage quotidien du Conseiller IA, tous commerces confondus.', ai: { queries: 'Questions', completed: 'Répondues', failed: 'Échecs', fallback: 'Par règles', tokens: 'Tokens entrée / sortie', businesses: 'Commerces' },
     auditSub: 'Actions d’administration, de facturation et d’accès support.',
+  },
+  fapshiAdmin: {
+    sub: 'Paiements que les clients ont approuvés sur leur téléphone (MTN MoMo ou Orange Money). Chacun est confirmé par le serveur auprès de Fapshi avant d’être compté, et l’argent arrive sur votre compte Fapshi.',
+    openDashboard: 'Ouvrir le tableau de bord Fapshi', balance: 'Solde Fapshi', balanceHint: 'En direct depuis votre compte Fapshi',
+    balanceError: 'Impossible de lire le solde Fapshi. Vérifiez que la fonction fapshi est déployée avec FAPSHI_API_USER et FAPSHI_API_KEY.',
+    today: 'Mobile Money aujourd’hui', week: '7 derniers jours', month: '30 derniers jours', payments: '{n} paiements', split: 'Abonnements {subs} · Commandes {orders}',
+    filter: { successful: 'Reçus', open: 'En attente d’approbation', failed: 'Échoués', all: 'Tous' }, waiting: '{n} en attente d’approbation du client',
+    auto: 'Mise à jour automatique', none: 'Aucun paiement pour l’instant', order: 'Commande {n}', subscription: 'Abonnement {plan} · {period}', payer: 'Payeur',
+    note: 'Fapshi garde l’argent sur votre compte Fapshi ; retirez-le vers votre banque ou Mobile Money depuis le tableau de bord Fapshi. Les abonnements sont activés automatiquement dès que le paiement est confirmé.',
   },
 };

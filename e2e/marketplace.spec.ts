@@ -189,31 +189,98 @@ test('the buyer sees the delivery and leaves a verified review', async ({ browse
   await ctx.close();
 });
 
-test('online payment: Fapshi checkout → webhook verified on the server → order paid', async ({ browser }) => {
-  const mock = await fetch('http://localhost:4999/__tx').then((r) => r.ok).catch(() => false);
-  test.skip(!mock, 'Fapshi mock / edge function not running');
-  await sql(`update app_config set value = value || '{"online_payments_enabled": true}' where key = 'marketplace'`);
-  await sql(`update stores set online_payment_enabled = true where slug = $1`, [slug]);
-  const { ctx, page } = await guest(browser);
-  const errors = watchErrors(page);
+const MOCK = 'http://localhost:4999';
+async function mockRunning() { return fetch(`${MOCK}/__tx`).then((r) => r.ok).catch(() => false); }
+/** The newest direct-pay request the simulated Fapshi received for this phone. */
+async function lastPhoneRequest(phone: string) {
+  const all = await fetch(`${MOCK}/__tx`).then((r) => r.json()) as Record<string, { phone?: string; amount: number; status: string; medium?: string }>;
+  const ids = Object.keys(all).filter((k) => all[k].phone === phone);
+  return ids.length ? { id: ids[ids.length - 1], ...all[ids[ids.length - 1]] } : null;
+}
+
+async function checkoutOnline(page: Page, name: string, phone: string) {
   await page.goto(`/s/${slug}`);
   await page.getByRole('link', { name: new RegExp(product) }).first().click();
   await page.getByRole('button', { name: 'Add to cart' }).click();
   await page.getByRole('link', { name: /Cart/ }).click();
   await page.getByRole('button', { name: 'Checkout' }).click();
-  await page.getByLabel(/^Full name/).fill('Olive Online');
-  await page.getByLabel(/^Phone number/).fill('670000000');
+  await page.getByLabel(/^Full name/).fill(name);
+  await page.getByLabel(/^Phone number/).fill(phone);
   await page.getByRole('radio', { name: /Pick up at the store/ }).click();
   await page.getByRole('radio', { name: /Pay online/ }).click();
   await page.getByRole('button', { name: /Order and pay/ }).click();
-  // Simulated Fapshi hosted checkout.
-  await expect(page.getByRole('heading', { name: 'Pay 8000 XAF' })).toBeVisible();
-  await page.getByRole('button', { name: 'Pay now' }).click();
-  // Back on BizPilot: the page asks the server, which asks Fapshi; then shows the order.
-  await expect(page).toHaveURL(/\/order\//, { timeout: 30_000 });
+}
+
+test('online payment: request sent to the customer phone → approved → verified on the server → order paid', async ({ browser }) => {
+  test.skip(!(await mockRunning()), 'Fapshi mock / edge function not running');
+  await fetch(`${MOCK}/__direct/on`, { method: 'POST' });
+  await sql(`update app_config set value = value || '{"online_payments_enabled": true}' where key = 'marketplace'`);
+  await sql(`update stores set online_payment_enabled = true where slug = $1`, [slug]);
+  const { ctx, page } = await guest(browser);
+  const errors = watchErrors(page);
+  await checkoutOnline(page, 'Olive Online', '670000001');
+  // No redirect: the request goes to the phone and the order page waits for the approval.
+  await expect(page).toHaveURL(/\/order\/.*waiting=/);
+  await expect(page.getByText('Approve the payment on your phone')).toBeVisible();
+  const req = await lastPhoneRequest('670000001');
+  expect(req).toMatchObject({ amount: 8000, status: 'PENDING', medium: 'mobile money' });
+  // The customer enters their PIN on the phone (simulated); Fapshi notifies the server.
+  await fetch(`${MOCK}/__phone/${req!.id}/pay`, { method: 'POST' });
+  await expect(page.getByText('Payment received')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('Paid online')).toBeVisible({ timeout: 30_000 });
   const [o] = await sql<{ payment_status: string; verified: boolean }>(`select o.payment_status, p.verified_at is not null verified from market_orders o join online_payments p on p.order_id = o.id where o.customer_name = 'Olive Online' order by o.created_at desc limit 1`);
   expect(o).toEqual({ payment_status: 'paid', verified: true });
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
+
+test('online payment: a declined phone request can be retried; without direct pay the Fapshi page is used', async ({ browser }) => {
+  test.skip(!(await mockRunning()), 'Fapshi mock / edge function not running');
+  await fetch(`${MOCK}/__direct/on`, { method: 'POST' });
+  const { ctx, page } = await guest(browser);
+  const errors = watchErrors(page);
+  await checkoutOnline(page, 'Dora Declined', '690000002');
+  await expect(page.getByText('Approve the payment on your phone')).toBeVisible();
+  const req = await lastPhoneRequest('690000002');
+  expect(req?.medium).toBe('orange money');
+  await fetch(`${MOCK}/__phone/${req!.id}/fail`, { method: 'POST' });
+  await expect(page.getByText(/The payment was not completed/)).toBeVisible({ timeout: 30_000 });
+  // Direct pay switched off on the Fapshi service: the same button falls back to the hosted page.
+  await fetch(`${MOCK}/__direct/off`, { method: 'POST' });
+  await page.getByRole('button', { name: /Send payment request/ }).click();
+  await expect(page.getByRole('heading', { name: 'Pay 8000 XAF' })).toBeVisible();
+  await page.getByRole('button', { name: 'Pay now' }).click();
+  await expect(page).toHaveURL(/\/order\//, { timeout: 30_000 });
+  await expect(page.getByText('Paid online')).toBeVisible({ timeout: 30_000 });
+  await fetch(`${MOCK}/__direct/on`, { method: 'POST' });
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
+
+test('subscription: the owner pays by phone and the plan activates; the admin sees the money', async ({ browser }) => {
+  test.skip(!(await mockRunning()), 'Fapshi mock / edge function not running');
+  await fetch(`${MOCK}/__direct/on`, { method: 'POST' });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  await sellerLogin(page);
+  await page.goto('/app/billing');
+  const card = page.locator('div.relative', { has: page.getByRole('heading', { name: 'Business', exact: true }) });
+  await card.getByRole('button', { name: 'Pay for this plan' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Mobile Money number/).fill('670000003');
+  await expect(dialog.getByText('MTN Mobile Money number')).toBeVisible();
+  await dialog.getByRole('button', { name: /Send payment request/ }).click();
+  await expect(dialog.getByText('Approve the payment on your phone')).toBeVisible();
+  const req = await lastPhoneRequest('670000003');
+  expect(req?.status).toBe('PENDING');
+  await fetch(`${MOCK}/__phone/${req!.id}/pay`, { method: 'POST' });
+  await expect(page.getByText('Payment confirmed. Your plan is now active.')).toBeVisible({ timeout: 30_000 });
+  const [b] = await sql<{ plan_code: string; status: string; method: string; verified: boolean }>(
+    `select s.plan_code, s.status, bp.method, bp.status = 'verified' verified from business_subscriptions s join businesses b on b.id = s.business_id
+       join auth.users u on u.id = b.created_by join billing_payments bp on bp.business_id = b.id
+      where u.email = $1 order by bp.submitted_at desc limit 1`, [seller.email]);
+  expect(b).toMatchObject({ plan_code: 'business', status: 'active', method: 'fapshi', verified: true });
   expect(errors).toEqual([]);
   await ctx.close();
 });
@@ -244,5 +311,16 @@ test('an administrator verifies the store and can hide a listing', async ({ brow
   await page.goto(`/s/${slug}`);
   await expect(page.getByText('Verified').first()).toBeVisible();
   await expect(page.getByText('No products in this category yet.')).toBeVisible();
+  // Mobile Money: payments confirmed with Fapshi appear on the admin dashboard by themselves.
+  await page.goto('/admin');
+  await expect(page.getByText('Mobile Money today')).toBeVisible();
+  if (await mockRunning()) {
+    await page.goto('/admin/fapshi');
+    await expect(page.getByRole('heading', { name: 'Mobile Money' })).toBeVisible();
+    await expect(page.getByRole('row', { name: /Subscription business/ }).first()).toContainText(`Awa Mode ${id}`);
+    await expect(page.getByRole('row', { name: /Order ORD-/ }).first()).toContainText('Verified');
+    // Balance read on the server from the (simulated) Fapshi account.
+    await expect(page.getByText('Live from your Fapshi account')).toBeVisible();
+  }
   await ctx.close();
 });

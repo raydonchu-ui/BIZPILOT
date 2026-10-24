@@ -162,16 +162,37 @@ async function invokeFapshi(body: Record<string, unknown>) {
   }
   return data as any;
 }
-export async function startOrderPayment(orderId: string, token: string | null) {
-  const d = await invokeFapshi({ action: 'order', order_id: orderId, token });
-  if (!d?.link) throw new ApiError({ message: d?.error ?? 'payment_provider_error' });
-  window.location.assign(d.link);
+export type PayStart =
+  | { mode: 'direct'; payment_id: string; amount: number }
+  | { mode: 'link'; payment_id: string; link: string; direct_failed?: boolean };
+export type Medium = 'mobile money' | 'orange money';
+
+/** MTN or Orange from a Cameroon number (MTN 67/650-654/680-684, Orange 69/655-659/685-689). */
+export function detectMedium(phone: string): Medium | null {
+  let d = phone.replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('237')) d = d.slice(3);
+  if (!/^6\d{8}$/.test(d)) return null;
+  const p2 = Number(d.slice(0, 2)); const p3 = Number(d.slice(0, 3));
+  if (p2 === 67 || (p3 >= 650 && p3 <= 654) || (p3 >= 680 && p3 <= 684)) return 'mobile money';
+  if (p2 === 69 || (p3 >= 655 && p3 <= 659) || (p3 >= 685 && p3 <= 689)) return 'orange money';
+  return null;
 }
-export async function startSubscriptionPayment(businessId: string, plan: string, period: 'monthly' | 'annual') {
-  const d = await invokeFapshi({ action: 'subscription', business_id: businessId, plan_code: plan, period });
-  if (!d?.link) throw new ApiError({ message: d?.error ?? 'payment_provider_error' });
-  window.location.assign(d.link);
+
+/** Asks Fapshi to send the payment request to the phone (or returns a payment page link). */
+export async function requestOrderPayment(orderId: string, token: string | null, phone?: string, medium?: Medium) {
+  const d = await invokeFapshi({ action: 'order', order_id: orderId, token, ...(phone ? { phone, medium } : {}) });
+  if (!d?.payment_id) throw new ApiError({ message: d?.error ?? 'payment_provider_error' });
+  return d as PayStart;
 }
+export async function requestSubscriptionPayment(businessId: string, plan: string, period: 'monthly' | 'annual', phone?: string, medium?: Medium) {
+  const d = await invokeFapshi({ action: 'subscription', business_id: businessId, plan_code: plan, period, ...(phone ? { phone, medium } : {}) });
+  if (!d?.payment_id) throw new ApiError({ message: d?.error ?? 'payment_provider_error' });
+  return d as PayStart;
+}
+export async function fapshiBalance() {
+  return invokeFapshi({ action: 'balance' }) as Promise<{ service: string | null; balance: number; currency: string }>;
+}
+
 export async function verifyPayment(paymentId: string) {
   return invokeFapshi({ action: 'verify', payment_id: paymentId }) as Promise<{ status: string; kind: string; order_id: string | null;
     order_payment_status: string | null; order_status: string | null }>;

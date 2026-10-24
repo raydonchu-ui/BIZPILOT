@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ArrowLeft, Bot, Building2, CreditCard, FileClock, Flag, Gauge, HandCoins, LifeBuoy, Megaphone, PackageCheck, Settings2, ShoppingBasket, Store, Tags } from 'lucide-react';
+import { ArrowLeft, Banknote, Bot, Building2, CreditCard, FileClock, Flag, Gauge, HandCoins, LifeBuoy, Megaphone, PackageCheck, Settings2, ShoppingBasket, Store, Tags } from 'lucide-react';
+import { FapshiAdmin, FapshiTodayStat } from './FapshiAdmin';
 import { ListingsAdmin, MarketOverview, OrdersAdmin, ReportsAdmin, SettlementsAdmin, StoresAdmin } from './MarketAdmin';
 import { useMarketConfig } from '../../lib/market';
 import { useI18n } from '../../i18n';
@@ -22,7 +23,7 @@ const NAV = [
   { to: '/admin/support', key: 'support', icon: LifeBuoy }, { to: '/admin/ai', key: 'ai', icon: Bot }, { to: '/admin/audit', key: 'audit', icon: FileClock },
 ];
 const MARKET_NAV: { to: string; key: string; icon: typeof Store; end?: boolean }[] = [
-  { to: '/admin/market', key: 'market', icon: ShoppingBasket }, { to: '/admin/stores', key: 'stores', icon: Store },
+  { to: '/admin/fapshi', key: 'fapshi', icon: Banknote }, { to: '/admin/market', key: 'market', icon: ShoppingBasket }, { to: '/admin/stores', key: 'stores', icon: Store },
   { to: '/admin/listings', key: 'listings', icon: Tags }, { to: '/admin/reports', key: 'reports', icon: Flag },
   { to: '/admin/orders', key: 'orders', icon: PackageCheck }, { to: '/admin/settlements', key: 'settlements', icon: HandCoins },
 ];
@@ -58,6 +59,7 @@ export default function AdminApp() {
             <Route path="ai" element={<AiUsage />} />
             <Route path="audit" element={<Audit />} />
             {market && <>
+              <Route path="fapshi" element={<FapshiAdmin />} />
               <Route path="market" element={<MarketOverview />} />
               <Route path="stores" element={<StoresAdmin />} />
               <Route path="listings" element={<ListingsAdmin />} />
@@ -74,7 +76,8 @@ export default function AdminApp() {
 
 function Overview() {
   const { t, lang } = useI18n();
-  const q = useRpc<any>('admin_stats', {});
+  const q = useRpc<any>('admin_stats', {}, { refetchInterval: 30_000 });
+  const market = Boolean(useMarketConfig().data);
   if (q.isLoading) return <PageLoader />;
   if (q.error) return <ErrorState error={q.error} />;
   const s = q.data;
@@ -86,6 +89,7 @@ function Overview() {
         <StatCard label={t('admin.stats.users')} value={formatNumber(s.users, lang)} />
         <StatCard label={t('admin.stats.paid')} value={formatNumber(s.active_paid, lang)} hint={t('admin.stats.trials', { n: s.trials })} />
         <StatCard label={t('admin.stats.revenue30')} value={formatMoney(s.verified_revenue_30d, lang)} tone="amber" />
+        {market && <FapshiTodayStat />}
         <StatCard label={t('admin.stats.pending')} value={s.pending_payments} tone="red" to="/admin/payments" />
         <StatCard label={t('admin.stats.support')} value={s.open_support} tone="blue" to="/admin/support" />
         <StatCard label={t('admin.stats.ai30')} value={s.ai_queries_30d} hint={t('admin.stats.aiFail', { n: s.ai_failures_30d })} tone="purple" to="/admin/ai" />

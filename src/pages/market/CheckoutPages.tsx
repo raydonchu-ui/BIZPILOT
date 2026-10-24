@@ -10,7 +10,7 @@ import { useAuth } from '../../lib/auth';
 import { errorKey, errorMessage } from '../../lib/errors';
 import { formatMoney } from '../../lib/format';
 import { newId } from '../../lib/ids';
-import { newAccessToken, rememberGuestOrder, startOrderPayment, useCart, useMarketConfig } from '../../lib/market';
+import { newAccessToken, rememberGuestOrder, detectMedium, requestOrderPayment, useCart, useMarketConfig } from '../../lib/market';
 import { MarketImage, QtyStepper } from '../../components/market';
 import { Alert, Button, Card, Checkbox, EmptyState, Field, Input, LinkButton, PageLoader, Select, Textarea } from '../../components/ui';
 import { useStore } from './StorePages';
@@ -164,7 +164,12 @@ export function CheckoutPage() {
       clear();
       if (res.payment_method === 'online' && res.payment_status !== 'paid') {
         try {
-          await startOrderPayment(res.order_id, tokenRef.current);
+          // Send the payment request straight to the phone given at checkout; the order page then
+          // waits for the customer to approve it. Without direct pay, Fapshi's payment page opens.
+          const medium = detectMedium(f.phone);
+          const p = await requestOrderPayment(res.order_id, tokenRef.current, medium ? f.phone : undefined, medium ?? undefined);
+          if (p.mode === 'direct') nav(`/order/${res.order_id}?placed=1&waiting=${p.payment_id}`, { replace: true });
+          else window.location.assign(p.link);
           return;
         } catch {
           nav(`/order/${res.order_id}?placed=1&pay=failed`, { replace: true });

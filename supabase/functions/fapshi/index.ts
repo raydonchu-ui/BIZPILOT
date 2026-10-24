@@ -1,9 +1,13 @@
 // BizPilot online payments with Fapshi — Supabase Edge Function (Deno). No dependencies.
 //
-// POST {action: "order", order_id, token?}          buyer starts paying an online order
-// POST {action: "subscription", business_id, plan_code, period}   owner pays a subscription period
-// POST {action: "verify", payment_id}                 asks Fapshi for the status (after the buyer returns)
-// POST .../fapshi/webhook                             Fapshi status notification (x-wh-secret header)
+// POST {action: "order", order_id, token?, phone?, medium?}                  buyer pays an online order
+// POST {action: "subscription", business_id, plan_code, period, phone?, medium?}   owner pays a plan period
+//   With a phone number, Fapshi sends the payment request straight to that phone (direct pay): the
+//   payer only approves the withdrawal on their MTN / Orange Money account. Without one (or when
+//   direct pay is not enabled on the Fapshi service), a Fapshi hosted payment page is used instead.
+// POST {action: "verify", payment_id}       asks Fapshi for the status (the app polls this while waiting)
+// POST {action: "balance"}                  platform administrators: the Fapshi service balance
+// POST .../fapshi/webhook                   Fapshi status notification (x-wh-secret header)
 //
 // Security:
 //   * Fapshi credentials and the webhook secret are edge-function secrets; they never reach the browser.
@@ -41,15 +45,32 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
+/** Cameroon mobile number as Fapshi expects it (9 digits, e.g. 67XXXXXXX), or null. */
+export function cmPhone(v: unknown) {
+  let d = String(v ?? '').replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('237')) d = d.slice(3);
+  return /^6\d{8}$/.test(d) ? d : null;
+}
+const MEDIUMS = ['mobile money', 'orange money'];
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TRANS = /^[A-Za-z0-9_-]{4,64}$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+// Supabase provides the legacy keys (SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY) and, on projects
+// using the new API keys, SUPABASE_PUBLISHABLE_KEYS / SUPABASE_SECRET_KEYS (JSON: {"default": "sb_…"}).
+function pickKey(raw: string | undefined) {
+  if (!raw) return '';
+  const v = raw.trim();
+  if (!v.startsWith('{')) return v;
+  try { const o = JSON.parse(v) as Record<string, string>; return o.default ?? Object.values(o)[0] ?? ''; } catch { return ''; }
+}
+
 export function loadConfig(env: (k: string) => string | undefined): FapshiConfig {
   return {
     supabaseUrl: env('SUPABASE_URL') ?? '',
-    anonKey: env('SUPABASE_ANON_KEY') ?? '',
-    serviceKey: env('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    anonKey: pickKey(env('SUPABASE_ANON_KEY')) || pickKey(env('SUPABASE_PUBLISHABLE_KEYS')),
+    serviceKey: pickKey(env('SUPABASE_SERVICE_ROLE_KEY')) || pickKey(env('SUPABASE_SECRET_KEYS')),
     fapshiBase: (env('FAPSHI_BASE_URL') ?? 'https://sandbox.fapshi.com').replace(/\/+$/, ''),
     apiUser: env('FAPSHI_API_USER') ?? '',
     apiKey: env('FAPSHI_API_KEY') ?? '',
@@ -109,7 +130,7 @@ async function refresh(cfg: FapshiConfig, f: Fetch, transId: string) {
   return { result: applied.data };
 }
 
-async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any) {
+async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any, direct?: { phone: string; medium?: string; name?: string }) {
   // Close earlier unpaid links of the same order so only one can be paid (best effort).
   for (const prev of (begin.previous ?? []) as string[]) {
     if (!TRANS.test(prev)) continue;
@@ -118,13 +139,28 @@ async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any) {
   }
   const amount = Number(begin.amount);
   if (!Number.isInteger(amount) || amount < 100) return json({ error: 'online_minimum_amount' }, 400);
-  const init = await fapshi(cfg, f, 'POST', '/initiate-pay', {
-    amount,
+  const common = {
     ...(begin.email && EMAIL.test(begin.email) ? { email: begin.email } : {}),
-    redirectUrl: `${cfg.siteUrl}${begin.return_path}`,
     userId: String(begin.user_id ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 100) || undefined,
     externalId: begin.payment_id,
     message: String(begin.message ?? 'BizPilot').slice(0, 120),
+  };
+  if (direct) {
+    // The request appears on the payer's phone; they approve it with their Mobile Money PIN.
+    const dp = await fapshi(cfg, f, 'POST', '/direct-pay', {
+      amount, phone: direct.phone, ...(direct.medium ? { medium: direct.medium } : {}),
+      ...(direct.name ? { name: direct.name.slice(0, 80) } : {}), ...common,
+    });
+    if (dp.ok && TRANS.test(String(dp.data?.transId ?? ''))) {
+      const att = await rpc(cfg, f, 'fapshi_attach', { p_payment: begin.payment_id, p_trans_id: dp.data.transId, p_link: null }, { service: true });
+      if (att.error) return json({ error: 'payment_record_failed' }, 500);
+      return json({ mode: 'direct', payment_id: begin.payment_id, amount });
+    }
+    // Direct pay refused (e.g. not activated on the Fapshi service): fall back to the payment page.
+    console.error('fapshi direct-pay failed', dp.status, dp.data?.message ?? '');
+  }
+  const init = await fapshi(cfg, f, 'POST', '/initiate-pay', {
+    amount, redirectUrl: `${cfg.siteUrl}${begin.return_path}`, ...common,
   });
   if (!init.ok || !init.data?.link || !TRANS.test(String(init.data?.transId ?? ''))) {
     console.error('fapshi initiate-pay failed', init.status, init.data?.message ?? '');
@@ -133,7 +169,15 @@ async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any) {
   const attached = await rpc(cfg, f, 'fapshi_attach', { p_payment: begin.payment_id, p_trans_id: init.data.transId, p_link: init.data.link },
     { service: true });
   if (attached.error) return json({ error: 'payment_record_failed' }, 500);
-  return json({ link: init.data.link, payment_id: begin.payment_id });
+  return json({ mode: 'link', link: init.data.link, payment_id: begin.payment_id, direct_failed: Boolean(direct) });
+}
+
+function directOptions(body: any) {
+  if (body?.phone === undefined || body?.phone === null || body?.phone === '') return { ok: true as const, direct: undefined };
+  const phone = cmPhone(body.phone);
+  if (!phone) return { ok: false as const };
+  const medium = MEDIUMS.includes(body.medium) ? body.medium : undefined;
+  return { ok: true as const, direct: { phone, medium, name: typeof body.name === 'string' ? body.name : undefined } };
 }
 
 export async function handle(req: Request, cfg: FapshiConfig, f: Fetch = fetch): Promise<Response> {
@@ -163,18 +207,32 @@ export async function handle(req: Request, cfg: FapshiConfig, f: Fetch = fetch):
   if (body?.action === 'order') {
     if (!UUID.test(String(body.order_id ?? ''))) return json({ error: 'invalid_request' }, 400);
     const token = typeof body.token === 'string' && body.token.length <= 128 ? body.token : null;
+    const d = directOptions(body);
+    if (!d.ok) return json({ error: 'invalid_phone' }, 400);
     const begin = await rpc(cfg, f, 'market_payment_begin', { p_order: body.order_id, p_token: token }, { user });
     if (begin.error) return json({ error: begin.error.message, details: begin.error.details }, 400);
-    return startPayment(cfg, f, begin.data);
+    return startPayment(cfg, f, begin.data, d.direct);
   }
 
   if (body?.action === 'subscription') {
     if (!user) return json({ error: 'not_authenticated' }, 401);
     if (!UUID.test(String(body.business_id ?? ''))) return json({ error: 'invalid_request' }, 400);
+    const d = directOptions(body);
+    if (!d.ok) return json({ error: 'invalid_phone' }, 400);
     const begin = await rpc(cfg, f, 'billing_fapshi_begin',
       { p_business: body.business_id, p_plan: String(body.plan_code ?? ''), p_period: body.period === 'annual' ? 'annual' : 'monthly' }, { user });
     if (begin.error) return json({ error: begin.error.message, details: begin.error.details }, 400);
-    return startPayment(cfg, f, begin.data);
+    return startPayment(cfg, f, begin.data, d.direct);
+  }
+
+  if (body?.action === 'balance') {
+    // Only platform administrators (checked by the database with the caller's own token).
+    if (!user) return json({ error: 'not_authenticated' }, 401);
+    const check = await rpc(cfg, f, 'admin_market_overview', {}, { user });
+    if (check.error) return json({ error: 'permission_denied' }, 403);
+    const bal = await fapshi(cfg, f, 'GET', '/balance');
+    if (!bal.ok) return json({ error: 'payment_provider_error', provider_message: bal.data?.message ?? null }, 502);
+    return json({ service: bal.data?.service ?? null, balance: Number(bal.data?.balance ?? 0), currency: bal.data?.currency ?? 'XAF' });
   }
 
   if (body?.action === 'verify') {

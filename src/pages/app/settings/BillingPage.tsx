@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Smartphone } from 'lucide-react';
@@ -9,9 +9,9 @@ import { supabase } from '../../../lib/supabase';
 import { rpc, unwrap } from '../../../lib/api';
 import { useAction } from '../../../lib/useAction';
 import { uploadFile } from '../../../lib/hooks';
-import { startSubscriptionPayment, useMarketConfig } from '../../../lib/market';
+import { requestSubscriptionPayment, useMarketConfig } from '../../../lib/market';
+import { MobileMoneyPay } from '../../../components/MobileMoneyPay';
 import { useToast } from '../../../lib/toast';
-import { errorMessage } from '../../../lib/errors';
 import { formatDate, formatDateTime, formatMoney } from '../../../lib/format';
 import { Alert, Badge, Button, Card, CardHeader, DataTable, ErrorState, Field, Input, KeyValue, Modal, PageHeader, Select, Textarea, Tone } from '../../../components/ui';
 import { Plan, PlanCards, planLimitLines, usePlans } from '../../public/PlanCards';
@@ -111,17 +111,19 @@ export default function BillingPage() {
 function SubmitPaymentModal({ plan, period, methods, onClose }: { plan: Plan; period: 'monthly' | 'annual'; methods: string[]; onClose: () => void }) {
   const { t, lang } = useI18n();
   const { id } = useBiz();
-  const { refreshContext } = useAuth();
+  const { refreshContext, context } = useAuth();
   const { run, busy } = useAction();
   const amount = period === 'annual' ? (plan.price_annual ?? plan.price_monthly * 12) : plan.price_monthly;
   const online = Boolean(useMarketConfig().data?.online_payments_enabled);
-  const [paying, setPaying] = useState(false);
+  const [manual, setManual] = useState(false);
   const toast = useToast();
-  const { has } = useI18n();
-  const payOnline = async () => {
-    setPaying(true);
-    try { await startSubscriptionPayment(id, plan.code, period); } catch (e) { toast(errorMessage(e, t, has), 'error'); setPaying(false); }
-  };
+  const onPaid = useCallback(() => {
+    // The server has already verified the payment with Fapshi and activated the plan.
+    toast(t('billing.paidActivated'), 'success');
+    refreshContext();
+    setTimeout(onClose, 2500);
+  }, [toast, t, refreshContext, onClose]);
+  const showManual = !online || manual;
   const [f, setF] = useState({ method: methods[0] ?? 'mtn_momo', transaction_ref: '', payer_phone: '', payer_name: '', note: '' });
   const [file, setFile] = useState<File | null>(null);
   const submit = async () => {
@@ -133,17 +135,18 @@ function SubmitPaymentModal({ plan, period, methods, onClose }: { plan: Plan; pe
   };
   return (
     <Modal open onClose={onClose} title={t('billing.submitTitle', { plan: lang === 'fr' ? plan.name_fr : plan.name_en })}
-      footer={<><Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button><Button loading={busy} disabled={f.transaction_ref.trim().length < 4} onClick={submit}>{t('billing.submitPayment')}</Button></>}>
+      footer={<><Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>{showManual && <Button loading={busy} disabled={f.transaction_ref.trim().length < 4} onClick={submit}>{t('billing.submitPayment')}</Button>}</>}>
       <div className="space-y-3">
         <Alert tone="blue">{t('billing.amountToPay', { amount: formatMoney(amount, lang), period: t(`site.pricing.${period}`) })}</Alert>
         {online && (
-          <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950/40">
-            <p className="font-bold">{t('billing.payOnlineTitle')}</p>
-            <p className="mt-1 text-sm text-ink-soft dark:text-gray-300">{t('billing.payOnlineBody')}</p>
-            <Button className="mt-3" loading={paying} onClick={payOnline}>{t('billing.payOnlineButton', { amount: formatMoney(amount, lang) })}</Button>
-            <p className="mt-3 text-xs text-ink-muted">{t('billing.orManual')}</p>
-          </div>
+          <MobileMoneyPay amount={amount} defaultPhone={context?.profile?.phone}
+            request={(phone, medium) => requestSubscriptionPayment(id, plan.code, period, phone, medium)} onPaid={onPaid} />
         )}
+        {online && !manual && (
+          <button type="button" className="text-sm font-semibold text-ink-soft underline-offset-2 hover:underline" onClick={() => setManual(true)}>{t('billing.orManualLink')}</button>
+        )}
+        {showManual && <>
+        {online && <p className="text-xs text-ink-muted">{t('billing.orManual')}</p>}
         <Field label={t('common.method')}><Select value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>{(methods.length ? methods : ['mtn_momo', 'orange_money']).map((m) => <option key={m} value={m}>{t(`methods.${m}`)}</option>)}<option value="bank_transfer">{t('methods.bank_transfer')}</option></Select></Field>
         <Field label={t('billing.transactionRef')} required hint={t('billing.transactionRefHint')}><Input value={f.transaction_ref} onChange={(e) => setF({ ...f, transaction_ref: e.target.value })} /></Field>
         <div className="grid grid-cols-2 gap-3">
@@ -152,6 +155,7 @@ function SubmitPaymentModal({ plan, period, methods, onClose }: { plan: Plan; pe
         </div>
         <Field label={t('billing.proof')} hint={t('billing.proofHint')}><Input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
         <Field label={t('common.notes')}><Textarea rows={2} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></Field>
+        </>}
       </div>
     </Modal>
   );
