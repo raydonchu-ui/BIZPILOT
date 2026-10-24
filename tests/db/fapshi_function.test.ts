@@ -165,9 +165,24 @@ describe('Fapshi edge function', () => {
       const o = await placeOnline(tk);
       const r = await post({ action: 'order', order_id: o.order_id, token: tk });
       expect(r.status).toBe(502);
+      // The payer and the admin see Fapshi's actual reason: here, the API keys were rejected.
+      expect(await r.json()).toMatchObject({ error: 'payment_provider_auth', details: JSON.stringify({ reason: 'Invalid API credentials' }) });
       const rows = await sql('select trans_id from online_payments where order_id = $1', [o.order_id]);
       expect(rows.every((x: any) => x.trans_id === null)).toBe(true);
+      const [st] = await sql(`select value from app_config where key = 'fapshi_direct_pay'`);
+      expect(st.value.last_error).toMatchObject({ where: 'initiate-pay', code: 'payment_provider_auth', http_status: 403, message: 'Invalid API credentials' });
     } finally { failInitiate = false; }
+  });
+
+  it('reports an unreachable Fapshi address instead of crashing', async () => {
+    const bad = { ...cfg, fapshiBase: 'https://fapshi.unreachable.invalid' };
+    const failing: typeof fetch = async (input, init) => (String(input).startsWith(bad.fapshiBase) ? Promise.reject(new TypeError('fetch failed')) : fetch(input, init));
+    const tk = token();
+    const o = await placeOnline(tk);
+    const r = await handle(new Request(`${SUPABASE_URL}/functions/v1/fapshi`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'order', order_id: o.order_id, token: tk }) }), bad, failing);
+    expect(r.status).toBe(502);
+    expect(((await r.json()) as any).error).toBe('payment_provider_unreachable');
   });
 
   it('reads the new Supabase key format and normalises Cameroon phone numbers', () => {

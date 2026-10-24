@@ -121,6 +121,18 @@ async function saveDirectStatus(cfg: FapshiConfig, f: Fetch, value: Record<strin
     body: JSON.stringify({ key: 'fapshi_direct_pay', value: { ...value, at: new Date().toISOString() }, is_public: false }),
   }).catch(() => null);
 }
+/** Fapshi's refusal as an error the app can explain: wrong keys, unreachable, or another reason. */
+export function providerError(res: { status: number; data: any }) {
+  const reason = cleanMessage(res.data?.message) || `HTTP ${res.status}`;
+  const error = res.status === 0 ? 'payment_provider_unreachable'
+    : res.status === 401 || res.status === 403 || /credential|api ?(user|key)|unauthori[sz]ed|forbidden|invalid key/i.test(reason) ? 'payment_provider_auth'
+    : 'payment_provider_refused';
+  return { error, reason, http_status: res.status };
+}
+async function saveLastError(cfg: FapshiConfig, f: Fetch, where: string, pe: ReturnType<typeof providerError>) {
+  const cur = (await loadDirectStatus(cfg, f)) ?? {};
+  await saveDirectStatus(cfg, f, { ...cur, last_error: { where, code: pe.error, http_status: pe.http_status, message: pe.reason, at: new Date().toISOString() } });
+}
 async function loadDirectStatus(cfg: FapshiConfig, f: Fetch) {
   const res = await f(`${cfg.supabaseUrl}/rest/v1/app_config?key=eq.fapshi_direct_pay&select=value`, { headers: serviceHeaders(cfg) }).catch(() => null);
   if (!res?.ok) return null;
@@ -129,11 +141,17 @@ async function loadDirectStatus(cfg: FapshiConfig, f: Fetch) {
 }
 
 async function fapshi(cfg: FapshiConfig, f: Fetch, method: 'GET' | 'POST', path: string, body?: unknown) {
-  const res = await f(`${cfg.fapshiBase}${path}`, {
-    method,
-    headers: { apiuser: cfg.apiUser, apikey: cfg.apiKey, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+  let res: Response;
+  try {
+    res = await f(`${cfg.fapshiBase}${path}`, {
+      method,
+      headers: { apiuser: cfg.apiUser, apikey: cfg.apiKey, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch (e) {
+    // Wrong FAPSHI_BASE_URL, DNS or network failure: report it instead of crashing.
+    return { ok: false, status: 0, data: { message: `cannot reach ${cfg.fapshiBase}: ${String((e as Error)?.message ?? e).slice(0, 120)}` } as any };
+  }
   let data: any = null;
   try { data = await res.json(); } catch { data = null; }
   return { ok: res.ok, status: res.status, data };
@@ -189,8 +207,10 @@ async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any, direct?: { 
     amount, redirectUrl: `${cfg.siteUrl}${begin.return_path}`, ...common,
   });
   if (!init.ok || !init.data?.link || !TRANS.test(String(init.data?.transId ?? ''))) {
-    console.error('fapshi initiate-pay failed', init.status, init.data?.message ?? '');
-    return json({ error: 'payment_provider_error', provider_message: init.data?.message ?? null }, 502);
+    const pe = init.ok ? { error: 'payment_provider_refused', reason: 'no payment link returned', http_status: init.status } : providerError(init);
+    console.error('fapshi initiate-pay failed', init.status, pe.reason);
+    await saveLastError(cfg, f, 'initiate-pay', pe);
+    return json({ error: pe.error, details: JSON.stringify({ reason: pe.reason }), ...(directError ? { direct_error: directError } : {}) }, 502);
   }
   const attached = await rpc(cfg, f, 'fapshi_attach', { p_payment: begin.payment_id, p_trans_id: init.data.transId, p_link: init.data.link },
     { service: true });
@@ -257,7 +277,11 @@ export async function handle(req: Request, cfg: FapshiConfig, f: Fetch = fetch):
     const check = await rpc(cfg, f, 'admin_market_overview', {}, { user });
     if (check.error) return json({ error: 'permission_denied' }, 403);
     const bal = await fapshi(cfg, f, 'GET', '/balance');
-    if (!bal.ok) return json({ error: 'payment_provider_error', provider_message: bal.data?.message ?? null }, 502);
+    if (!bal.ok) {
+      const pe = providerError(bal);
+      console.error('fapshi balance failed', bal.status, pe.reason);
+      return json({ error: pe.error, details: JSON.stringify({ reason: pe.reason }) }, 502);
+    }
     return json({ service: bal.data?.service ?? null, balance: Number(bal.data?.balance ?? 0), currency: bal.data?.currency ?? 'XAF',
       live: cfg.fapshiBase.includes('live.'), direct_pay: await loadDirectStatus(cfg, f) });
   }
@@ -282,5 +306,10 @@ export async function handle(req: Request, cfg: FapshiConfig, f: Fetch = fetch):
 const D = (globalThis as any).Deno;
 if (D?.serve) {
   const cfg = loadConfig((k) => D.env.get(k));
-  D.serve((req: Request) => handle(req, cfg));
+  D.serve(async (req: Request) => {
+    try { return await handle(req, cfg); } catch (e) {
+      console.error('fapshi function error', String((e as Error)?.stack ?? e).slice(0, 500));
+      return json({ error: 'internal_error' }, 500);
+    }
+  });
 }

@@ -51,14 +51,19 @@ function DirectPayStatus({ info }: { info: Awaited<ReturnType<typeof fapshiBalan
   const { t, lang } = useI18n();
   const d = info.direct_pay;
   const mode = info.live ? t('fapshiAdmin.modeLive') : t('fapshiAdmin.modeSandbox');
-  if (!d) return <div className="mt-4"><Alert tone="blue" title={t('fapshiAdmin.directUnknownTitle', { mode })}>{t('fapshiAdmin.directUnknown')}</Alert></div>;
-  if (d.ok) return <div className="mt-4"><Alert tone="green" title={t('fapshiAdmin.directOkTitle', { mode })}>{t('fapshiAdmin.directOk', { time: formatDateTime(d.at, lang) })}</Alert></div>;
+  const last = d?.last_error && (!d.ok || !d.at || new Date(d.last_error.at) > new Date(d.at)) ? d.last_error : null;
+  const lastError = last && (
+    <div className="mt-4"><Alert tone="amber" title={t('fapshiAdmin.lastErrorTitle')}>
+      {t('fapshiAdmin.lastError', { time: formatDateTime(last.at, lang), where: last.where, message: last.message })}</Alert></div>
+  );
+  if (!d || typeof d.ok !== 'boolean') return <>{lastError}<div className="mt-4"><Alert tone="blue" title={t('fapshiAdmin.directUnknownTitle', { mode })}>{t('fapshiAdmin.directUnknown')}</Alert></div></>;
+  if (d.ok) return <>{lastError}<div className="mt-4"><Alert tone="green" title={t('fapshiAdmin.directOkTitle', { mode })}>{t('fapshiAdmin.directOk', { time: formatDateTime(d.at, lang) })}</Alert></div></>;
   return (
-    <div className="mt-4"><Alert tone="red" title={t('fapshiAdmin.directOffTitle', { mode })}>
+    <>{lastError}<div className="mt-4"><Alert tone="red" title={t('fapshiAdmin.directOffTitle', { mode })}>
       <p>{t('fapshiAdmin.directOff', { time: formatDateTime(d.at, lang), message: d.message ?? `HTTP ${d.http_status ?? ''}` })}</p>
       <p className="mt-2 font-semibold">{t('fapshiAdmin.directHowTitle')}</p>
-      <ol className="mt-1 list-decimal space-y-0.5 pl-5">{(t('fapshiAdmin.directHow') as unknown as string).split('|').map((x) => <li key={x}>{x}</li>)}</ol>
-    </Alert></div>
+      <ol className="mt-1 list-decimal space-y-0.5 pl-5">{t('fapshiAdmin.directHow').split('|').map((x) => <li key={x}>{x}</li>)}</ol>
+    </Alert></div></>
   );
 }
 
@@ -78,13 +83,19 @@ export function FapshiAdmin() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label={t('fapshiAdmin.balance')} tone="blue"
           value={balance.data ? formatMoney(balance.data.balance, lang, balance.data.currency || 'XAF') : balance.isLoading ? '…' : '—'}
-          hint={balance.data ? t('fapshiAdmin.balanceHint') : balance.error ? errorMessage(balance.error, t, has) : undefined} />
+          hint={balance.data ? t('fapshiAdmin.balanceHint') : balance.error ? t('fapshiAdmin.balanceUnavailable') : undefined} />
         <StatCard label={t('fapshiAdmin.today')} value={s ? formatMoney(s.today, lang) : '…'} hint={s ? t('fapshiAdmin.payments', { n: s.todayCount }) : undefined} />
         <StatCard label={t('fapshiAdmin.week')} value={s ? formatMoney(s.week, lang) : '…'} />
         <StatCard label={t('fapshiAdmin.month')} value={s ? formatMoney(s.month, lang) : '…'} tone="amber"
           hint={s ? t('fapshiAdmin.split', { subs: formatMoney(s.monthSubs, lang), orders: formatMoney(s.monthOrders, lang) }) : undefined} />
       </div>
-      {balance.error && <div className="mt-4"><Alert tone="amber">{t('fapshiAdmin.balanceError')}</Alert></div>}
+      {balance.error && (
+        <div className="mt-4"><Alert tone="red" title={t('fapshiAdmin.connectionTitle')}>
+          <p>{errorMessage(balance.error, t, has)}</p>
+          <p className="mt-2 font-semibold">{t('fapshiAdmin.checkTitle')}</p>
+          <ol className="mt-1 list-decimal space-y-0.5 pl-5">{t('fapshiAdmin.checkSteps').split('|').map((x) => <li key={x}>{x}</li>)}</ol>
+        </Alert></div>
+      )}
       {balance.data && <DirectPayStatus info={balance.data} />}
       <Card className="mt-4">
         <div className="mb-3 flex flex-wrap items-center gap-3">

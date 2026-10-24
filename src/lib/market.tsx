@@ -191,7 +191,8 @@ export async function requestSubscriptionPayment(businessId: string, plan: strin
 }
 export async function fapshiBalance() {
   return invokeFapshi({ action: 'balance' }) as Promise<{ service: string | null; balance: number; currency: string; live?: boolean;
-    direct_pay?: { ok: boolean; at: string; http_status?: number; message?: string } | null }>;
+    direct_pay?: { ok: boolean; at: string; http_status?: number; message?: string;
+      last_error?: { where: string; code: string; http_status: number; message: string; at: string } } | null }>;
 }
 
 export async function verifyPayment(paymentId: string) {
