@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Smartphone } from 'lucide-react';
 import { useI18n } from '../../../i18n';
@@ -8,6 +9,9 @@ import { supabase } from '../../../lib/supabase';
 import { rpc, unwrap } from '../../../lib/api';
 import { useAction } from '../../../lib/useAction';
 import { uploadFile } from '../../../lib/hooks';
+import { startSubscriptionPayment, useMarketConfig } from '../../../lib/market';
+import { useToast } from '../../../lib/toast';
+import { errorMessage } from '../../../lib/errors';
 import { formatDate, formatDateTime, formatMoney } from '../../../lib/format';
 import { Alert, Badge, Button, Card, CardHeader, DataTable, ErrorState, Field, Input, KeyValue, Modal, PageHeader, Select, Textarea, Tone } from '../../../components/ui';
 import { Plan, PlanCards, planLimitLines, usePlans } from '../../public/PlanCards';
@@ -27,6 +31,8 @@ export default function BillingPage() {
   const { refreshContext } = useAuth();
   const { run, busy } = useAction();
   const [choice, setChoice] = useState<{ plan: Plan; period: 'monthly' | 'annual' } | null>(null);
+  const [params] = useSearchParams();
+  useEffect(() => { if (params.get('payment') === 'successful') refreshContext(); }, [params, refreshContext]);
   const instr = usePaymentInstructions();
   const plans = usePlans();
   const history = useQuery({
@@ -35,12 +41,14 @@ export default function BillingPage() {
   });
   if (!can('billing.manage')) return <ErrorState error={{ message: 'permission_denied' }} />;
   const s = biz.subscription;
+  const returned = params.get('payment');
   const planName = lang === 'fr' ? biz.plan.name_fr : biz.plan.name_en;
   const planLabel = (code: string) => { const p = plans.data?.find((x) => x.code === code); return p ? (lang === 'fr' ? p.name_fr : p.name_en) : code; };
   const configured = ['mtn_momo', 'orange_money'].filter((m) => instr.data?.[m]?.enabled && instr.data?.[m]?.number);
   return (
     <div>
       <PageHeader title={t('nav.billing')} subtitle={t('billing.subtitle')} />
+      {returned && <div className="mb-4"><Alert tone={returned === 'successful' ? 'green' : 'amber'}>{t(returned === 'successful' ? 'billing.onlinePaid' : 'billing.onlineNotPaid')}</Alert></div>}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader title={t('billing.currentPlan')} />
@@ -106,6 +114,14 @@ function SubmitPaymentModal({ plan, period, methods, onClose }: { plan: Plan; pe
   const { refreshContext } = useAuth();
   const { run, busy } = useAction();
   const amount = period === 'annual' ? (plan.price_annual ?? plan.price_monthly * 12) : plan.price_monthly;
+  const online = Boolean(useMarketConfig().data?.online_payments_enabled);
+  const [paying, setPaying] = useState(false);
+  const toast = useToast();
+  const { has } = useI18n();
+  const payOnline = async () => {
+    setPaying(true);
+    try { await startSubscriptionPayment(id, plan.code, period); } catch (e) { toast(errorMessage(e, t, has), 'error'); setPaying(false); }
+  };
   const [f, setF] = useState({ method: methods[0] ?? 'mtn_momo', transaction_ref: '', payer_phone: '', payer_name: '', note: '' });
   const [file, setFile] = useState<File | null>(null);
   const submit = async () => {
@@ -120,6 +136,14 @@ function SubmitPaymentModal({ plan, period, methods, onClose }: { plan: Plan; pe
       footer={<><Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button><Button loading={busy} disabled={f.transaction_ref.trim().length < 4} onClick={submit}>{t('billing.submitPayment')}</Button></>}>
       <div className="space-y-3">
         <Alert tone="blue">{t('billing.amountToPay', { amount: formatMoney(amount, lang), period: t(`site.pricing.${period}`) })}</Alert>
+        {online && (
+          <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950/40">
+            <p className="font-bold">{t('billing.payOnlineTitle')}</p>
+            <p className="mt-1 text-sm text-ink-soft dark:text-gray-300">{t('billing.payOnlineBody')}</p>
+            <Button className="mt-3" loading={paying} onClick={payOnline}>{t('billing.payOnlineButton', { amount: formatMoney(amount, lang) })}</Button>
+            <p className="mt-3 text-xs text-ink-muted">{t('billing.orManual')}</p>
+          </div>
+        )}
         <Field label={t('common.method')}><Select value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>{(methods.length ? methods : ['mtn_momo', 'orange_money']).map((m) => <option key={m} value={m}>{t(`methods.${m}`)}</option>)}<option value="bank_transfer">{t('methods.bank_transfer')}</option></Select></Field>
         <Field label={t('billing.transactionRef')} required hint={t('billing.transactionRefHint')}><Input value={f.transaction_ref} onChange={(e) => setF({ ...f, transaction_ref: e.target.value })} /></Field>
         <div className="grid grid-cols-2 gap-3">

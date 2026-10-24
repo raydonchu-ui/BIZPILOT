@@ -5,15 +5,16 @@ import { useAuth } from '../../lib/auth';
 import { useBiz } from '../../lib/business';
 import { Badge, Card } from '../../components/ui';
 import { LanguageSwitch } from '../../components/LanguageSwitch';
-import { NAV } from '../../components/layout/AppLayout';
+import { useVisibleNav } from '../../components/layout/AppLayout';
 
 export default function MorePage() {
   const { t } = useI18n();
   const { context, signOut } = useAuth();
   const { biz, can } = useBiz();
   const nav = useNavigate();
+  const nav_ = useVisibleNav();
   const items = [
-    ...NAV.filter((n) => n.to !== '/app' && (!n.perm || can(n.perm))).map((n) => ({ to: n.to, icon: n.icon, label: t(`nav.${n.key}`) })),
+    ...nav_.filter((n) => n.to !== '/app').map((n) => ({ to: n.to, icon: n.icon, label: t(`nav.${n.key}`) })),
     { to: '/app/setup', icon: ListChecks, label: t('nav.setup') },
     ...(can('imports.manage') ? [{ to: '/app/import', icon: Upload, label: t('nav.import') }] : []),
     { to: '/app/notifications', icon: Bell, label: t('nav.notifications') },

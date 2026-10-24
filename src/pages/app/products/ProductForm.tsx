@@ -1,7 +1,7 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Camera, ChevronDown, ImagePlus, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronDown, Copy, Globe, ImagePlus, Plus, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
@@ -16,6 +16,7 @@ import { ATTRIBUTE_FIELDS, barcodeProblem, COMMON_UNITS, DEFAULT_ATTRIBUTE_SET, 
 import { Alert, Button, Card, Checkbox, ErrorState, Field, Input, PageHeader, PageLoader, Select, Textarea, UpgradeNotice } from '../../../components/ui';
 import { CameraScanner } from '../../../components/ProductPicker';
 import { VariantGenerator, variantPayload, type VariantOption, type VariantRow } from '../../../components/VariantGenerator';
+import { publicUrl, uploadStorefrontImage, useMarketConfig } from '../../../lib/market';
 
 interface UnitRow { id?: string; key: string; name: string; factor: string; selling_price: string; barcode: string; is_default_purchase: boolean; is_default_sale: boolean; active: boolean; used?: boolean }
 
@@ -23,8 +24,9 @@ const blank = {
   name: '', sku: '', barcode: '', category_id: '', subcategory: '', brand: '', description: '', base_unit: 'piece',
   allow_fraction: false, purchase_cost: '', selling_price: '', min_stock: '', lead_time_days: '', min_order_qty: '',
   preferred_supplier_id: '', location: '', track_expiry: false, variant_of: '', variant_label: '', image_path: '' as string | null,
+  online_published: false, online_images: [] as string[], compare_at_price: '',
 };
-type SectionKey = 'pricing' | 'identifiers' | 'variants' | 'details' | 'more';
+type SectionKey = 'pricing' | 'identifiers' | 'variants' | 'details' | 'online' | 'more';
 
 // Collapsible card: keeps the form short; optional sections open on demand.
 function Section({ id, title, subtitle, open, onToggle, children, optional }:
@@ -66,7 +68,9 @@ export default function ProductForm() {
   const [newCat, setNewCat] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [open, setOpen] = useState<Record<SectionKey, boolean>>({ pricing: true, identifiers: false, variants: false, details: false, more: false });
+  const [open, setOpen] = useState<Record<SectionKey, boolean>>({ pricing: true, identifiers: false, variants: false, details: false, online: false, more: false });
+  const market = Boolean(useMarketConfig().data);
+  const [onlineUploading, setOnlineUploading] = useState(false);
   const [useVariants, setUseVariants] = useState(false);
   const [vOptions, setVOptions] = useState<VariantOption[]>([{ name: '', values: '' }]);
   const [vRows, setVRows] = useState<VariantRow[]>([]);
@@ -107,13 +111,14 @@ export default function ProductForm() {
       selling_price: String(p.selling_price ?? ''), min_stock: String(p.min_stock ?? ''), lead_time_days: p.lead_time_days?.toString() ?? '',
       min_order_qty: p.min_order_qty?.toString() ?? '', preferred_supplier_id: p.preferred_supplier_id ?? '', location: p.location ?? '',
       track_expiry: p.track_expiry, variant_of: p.variant_of ?? '', variant_label: p.variant_label ?? '', image_path: p.image_path,
+      online_published: Boolean(p.online_published), online_images: p.online_images ?? [], compare_at_price: p.compare_at_price?.toString() ?? '',
     });
     setAttrs(Object.fromEntries(Object.entries(p.attributes ?? {}).map(([k, v]) => [k, String(v)])));
     setUnits((p.product_units ?? []).map((u: ProductUnit) => ({ id: u.id, key: u.id, name: u.name, factor: String(u.factor), selling_price: u.selling_price?.toString() ?? '',
       barcode: u.barcode ?? '', is_default_purchase: u.is_default_purchase, is_default_sale: u.is_default_sale, active: u.active, used: existing.data!.used.has(u.id) })));
     // Open the sections that already hold information.
     setOpen({ pricing: true, identifiers: true, variants: existing.data.kids.length > 0 || Boolean(p.variant_of),
-      details: Boolean(p.description || p.image_path || Object.keys(p.attributes ?? {}).length), more: Boolean(p.preferred_supplier_id || p.location || (p.product_units ?? []).length) });
+      details: Boolean(p.description || p.image_path || Object.keys(p.attributes ?? {}).length), online: Boolean(p.online_published || p.online_images?.length), more: Boolean(p.preferred_supplier_id || p.location || (p.product_units ?? []).length) });
   }, [existing.data]);
 
   if (!can('products.manage')) return <ErrorState error={{ message: 'permission_denied' }} />;
@@ -135,6 +140,20 @@ export default function ProductForm() {
 
   const set = (k: keyof typeof blank) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
   const setUnit = (key: string, patch: Partial<UnitRow>) => setUnits((u) => u.map((r) => (r.key === key ? { ...r, ...patch } : patch.is_default_purchase ? { ...r, is_default_purchase: false } : patch.is_default_sale ? { ...r, is_default_sale: false } : r)));
+
+  const addOnlineImage = async (file?: Blob, name?: string) => {
+    if (!file) return;
+    setOnlineUploading(true);
+    const path = await run(() => uploadStorefrontImage(id, 'products', file, name));
+    setOnlineUploading(false);
+    if (path) setF((x) => ({ ...x, online_images: [...x.online_images, path].slice(0, 8) }));
+  };
+  // Copies the private shop photo into the public storefront (the shop photo itself stays private).
+  const copyShopPhoto = async () => {
+    if (!img.data) return;
+    const blob = await (await fetch(img.data)).blob();
+    await addOnlineImage(blob, f.image_path ?? 'photo.jpg');
+  };
 
   const onImage = async (file?: File) => {
     if (!file) return;
@@ -164,6 +183,9 @@ export default function ProductForm() {
         preferred_supplier_id: f.preferred_supplier_id || null, location: f.location.trim() || null, track_expiry: f.track_expiry,
         variant_of: f.variant_of || null, variant_label: f.variant_of ? f.variant_label.trim() || null : null, image_path: f.image_path || null,
         ...(upgraded ? { attributes } : {}),
+        // Online-store fields exist only once the marketplace database upgrade is applied.
+        ...(market ? { online_images: f.online_images, compare_at_price: f.compare_at_price === '' ? null : toNumber(f.compare_at_price),
+          ...(f.variant_of ? {} : { online_published: f.online_published }) } : {}),
       };
       let pid = productId;
       if (editing) {
@@ -355,6 +377,41 @@ export default function ProductForm() {
             </div>
           </div>
         </Section>
+
+        {market && !f.variant_of && (
+          <Section id="online" title={t('seller.product.sectionTitle')} subtitle={t('seller.product.sectionSub')} open={open.online} onToggle={() => toggle('online')} optional>
+            <div className="space-y-4">
+              <Checkbox checked={f.online_published} onChange={(v) => setF((x) => ({ ...x, online_published: v }))} label={t('seller.product.publish')}
+                hint={isParent || useVariants ? t('seller.product.publishVariantsHint') : t('seller.product.publishHint')} />
+              <Field label={t('seller.product.comparePrice')} optional hint={t('seller.product.comparePriceHint')}>
+                <Input type="number" min="0" step="any" inputMode="decimal" value={f.compare_at_price} onChange={set('compare_at_price')} suffix="FCFA" />
+              </Field>
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-ink-soft dark:text-gray-300">{t('seller.product.photos')} <span className="text-xs font-normal text-ink-muted">({t('seller.product.photosHint')})</span></p>
+                <div className="flex flex-wrap gap-3">
+                  {f.online_images.map((p, i) => (
+                    <div key={p} className="relative h-24 w-24 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                      <img src={publicUrl(p) ?? ''} alt={t('seller.product.photoN', { n: i + 1 })} className="h-full w-full object-cover" />
+                      {i === 0 && <span className="absolute left-1 top-1 rounded bg-brand-700 px-1.5 text-[10px] font-bold text-white">{t('seller.product.main')}</span>}
+                      <button type="button" aria-label={t('seller.product.removePhoto', { n: i + 1 })} onClick={() => setF((x) => ({ ...x, online_images: x.online_images.filter((y) => y !== p) }))}
+                        className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 shadow"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  ))}
+                  {f.online_images.length < 8 && (
+                    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gray-300 text-xs text-ink-muted hover:border-brand-500 dark:border-gray-700">
+                      <ImagePlus className="h-6 w-6" />{onlineUploading ? t('common.loading') : t('products.addImage')}
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => addOnlineImage(e.target.files?.[0], e.target.files?.[0]?.name)} />
+                    </label>
+                  )}
+                </div>
+                {img.data && f.online_images.length < 8 && (
+                  <Button size="sm" variant="ghost" className="mt-2" icon={<Copy className="h-4 w-4" />} onClick={copyShopPhoto}>{t('seller.product.useShopPhoto')}</Button>
+                )}
+                <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-muted"><Globe className="mt-0.5 h-3.5 w-3.5 shrink-0" />{t('seller.product.photosPublic')}</p>
+              </div>
+            </div>
+          </Section>
+        )}
 
         <Section id="more" title={t('catalog.sections.more')} subtitle={t('catalog.sections.moreSub')} open={open.more} onToggle={() => toggle('more')} optional>
           <div className="grid gap-4 sm:grid-cols-2">

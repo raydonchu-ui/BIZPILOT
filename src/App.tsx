@@ -14,6 +14,8 @@ import { AuthDiagnosticsPage } from './pages/auth/AuthDiagnostics';
 import { OnboardingPage } from './pages/auth/Onboarding';
 import { PwaPrompt } from './components/PwaPrompt';
 import { StoreLockGate } from './components/StoreLock';
+import { CartProvider } from './lib/market';
+import { MarketLayout } from './pages/market/MarketLayout';
 
 const Dashboard = lazy(() => import('./pages/app/Dashboard'));
 const SetupChecklist = lazy(() => import('./pages/app/SetupChecklist'));
@@ -46,6 +48,20 @@ const NotificationsPage = lazy(() => import('./pages/app/NotificationsPage'));
 const HelpPage = lazy(() => import('./pages/app/HelpPage'));
 const MorePage = lazy(() => import('./pages/app/MorePage'));
 const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
+const MyStorePage = lazy(() => import('./pages/app/store/MyStorePage'));
+const SellerOrdersPage = lazy(() => import('./pages/app/store/OrdersPage'));
+const SellerOrderDetail = lazy(() => import('./pages/app/store/OrdersPage').then((m) => ({ default: m.OrderDetailPage })));
+const SellerPaymentsPage = lazy(() => import('./pages/app/store/PaymentsPromotions'));
+const PromotionsPage = lazy(() => import('./pages/app/store/PaymentsPromotions').then((m) => ({ default: m.PromotionsPage })));
+const MarketHome = lazy(() => import('./pages/market/MarketHome'));
+const MarketSearch = lazy(() => import('./pages/market/MarketHome').then((m) => ({ default: m.SearchPage })));
+const StorePage = lazy(() => import('./pages/market/StorePages').then((m) => ({ default: m.StorePage })));
+const ProductPage = lazy(() => import('./pages/market/StorePages').then((m) => ({ default: m.ProductPage })));
+const CartPage = lazy(() => import('./pages/market/CheckoutPages').then((m) => ({ default: m.CartPage })));
+const CheckoutPage = lazy(() => import('./pages/market/CheckoutPages').then((m) => ({ default: m.CheckoutPage })));
+const OrderPage = lazy(() => import('./pages/market/OrderPages').then((m) => ({ default: m.OrderPage })));
+const PayReturnPage = lazy(() => import('./pages/market/OrderPages').then((m) => ({ default: m.PayReturnPage })));
+const AccountPage = lazy(() => import('./pages/market/AccountPage'));
 
 // Signed-in area. Store Lock is checked first (the server refuses business data while locked);
 // requirePin asks for a PIN to be created before the dashboard is shown for the first time.
@@ -79,9 +95,22 @@ function RequireAdmin({ children }: { children: ReactNode }) {
 
 export function App() {
   return (
+    <CartProvider>
     <Suspense fallback={<PageLoader />}>
       <PwaPrompt />
       <Routes>
+        {/* BizPilot Market: public shopping (no Store Lock: shoppers' own data only). */}
+        <Route element={<MarketLayout />}>
+          <Route path="market" element={<MarketHome />} />
+          <Route path="market/search" element={<MarketSearch />} />
+          <Route path="s/:slug" element={<StorePage />} />
+          <Route path="s/:slug/p/:id" element={<ProductPage />} />
+          <Route path="cart" element={<CartPage />} />
+          <Route path="checkout" element={<CheckoutPage />} />
+          <Route path="order/:id" element={<OrderPage />} />
+          <Route path="pay/return" element={<PayReturnPage />} />
+          <Route path="account" element={<AccountPage />} />
+        </Route>
         <Route element={<PublicLayout />}>
           <Route index element={<Home />} />
           <Route path="features" element={<Features />} />
@@ -140,10 +169,16 @@ export function App() {
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="help" element={<HelpPage />} />
           <Route path="more" element={<MorePage />} />
+          <Route path="store" element={<MyStorePage />} />
+          <Route path="orders" element={<SellerOrdersPage />} />
+          <Route path="orders/:orderId" element={<SellerOrderDetail />} />
+          <Route path="payments" element={<SellerPaymentsPage />} />
+          <Route path="promotions" element={<PromotionsPage />} />
           <Route path="*" element={<Navigate to="/app" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
+    </CartProvider>
   );
 }

@@ -5,15 +5,18 @@ import { CheckCircle2, Circle, PartyPopper } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useBiz } from '../../lib/business';
 import { supabase } from '../../lib/supabase';
+import { rpc } from '../../lib/api';
+import { useMarketConfig } from '../../lib/market';
 import { Card, LinkButton, PageHeader, PageLoader } from '../../components/ui';
 
 export function dashboardVisitedKey(id: string) { return `bizpilot.visitedDashboard.${id}`; }
 
 export default function SetupChecklist() {
   const { t } = useI18n();
-  const { id, has } = useBiz();
+  const { id, has, can } = useBiz();
+  const market = Boolean(useMarketConfig().data) && can('store.manage');
   const { data, isLoading } = useQuery({
-    queryKey: ['setup', id],
+    queryKey: ['setup', id, market],
     queryFn: async () => {
       const head = { count: 'exact' as const, head: true };
       const [b, p, m, s, pu, sa] = await Promise.all([
@@ -26,7 +29,9 @@ export default function SetupChecklist() {
       ]);
       let visited = false;
       try { visited = Boolean(localStorage.getItem(dashboardVisitedKey(id))); } catch { /* ignore */ }
+      const store = market ? await rpc<any>('store_readiness', { p_business: id }).catch(() => null) : null;
       return {
+        store: Boolean(store?.published),
         business: Boolean(b.data && (b.data.phone || b.data.city || b.data.address || b.data.logo_path)),
         products: (p.count ?? 0) > 0, opening: (m.count ?? 0) > 0, suppliers: (s.count ?? 0) > 0,
         purchase: (pu.count ?? 0) > 0, sale: (sa.count ?? 0) > 0, dashboard: visited,
@@ -41,6 +46,7 @@ export default function SetupChecklist() {
     ...(has('suppliers') ? [{ key: 'suppliers', to: '/app/suppliers?new=1', done: data.suppliers }] : []),
     ...(has('purchases') ? [{ key: 'purchase', to: '/app/purchases/new', done: data.purchase }] : []),
     { key: 'sale', to: '/app/sales/new', done: data.sale },
+    ...(market ? [{ key: 'store', to: '/app/store', done: data.store }] : []),
     { key: 'dashboard', to: '/app', done: data.dashboard },
   ];
   const done = steps.filter((s) => s.done).length;

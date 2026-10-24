@@ -38,3 +38,38 @@ test('previous database: onboarding with a new business type, quick product, no 
   await page.goto('/app/products/categories');
   await expect(page.getByText(/database upgrade/)).toBeVisible();
 });
+
+test('previous database: the marketplace says it opens soon and every seller page still works', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|favicon/.test(m.text())) errors.push(m.text()); });
+  await page.addInitScript(() => localStorage.setItem('bizpilot.lang', 'en'));
+  for (const path of ['/market', '/market/search?q=x', '/s/some-store', '/cart']) {
+    await page.goto(path);
+    await expect(page.getByText('BizPilot Market is opening soon')).toBeVisible();
+  }
+  const email = `legacy-m-${randomUUID().slice(0, 6)}@e2e.bizpilot.local`;
+  await page.goto('/signup');
+  await page.getByLabel(/^Your full name/).fill('Legacy Seller');
+  await page.getByLabel(/^Email address/).fill(email);
+  await page.getByLabel(/^Password/).fill('Legacy-pass-123!');
+  await page.getByLabel(/^Confirm password/).fill('Legacy-pass-123!');
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await page.getByLabel(/^Business name/).fill('Legacy Market Shop');
+  await page.getByRole('button', { name: 'Create my business' }).click();
+  await expect(page.getByRole('heading', { name: 'Getting started' })).toBeVisible();
+  // Online-store features are hidden or explained, never broken.
+  const nav = page.getByRole('navigation', { name: 'App' });
+  await expect(nav.getByRole('link', { name: /^Orders/ })).toHaveCount(0);
+  await nav.getByRole('link', { name: 'My Store' }).click();
+  await expect(page.getByText('The online store needs a database update')).toBeVisible();
+  for (const path of ['/app', '/app/products', '/app/products/new', '/app/orders', '/app/payments', '/app/billing']) {
+    await page.goto(path);
+    await expect(page.locator('h1').first()).toBeVisible();
+    await expect(page.getByText('An unexpected error occurred')).toHaveCount(0);
+  }
+  await page.goto('/app/products/new');
+  await expect(page.getByRole('button', { name: /Online store/ })).toHaveCount(0); // product form section hidden
+  expect(errors).toEqual([]);
+});

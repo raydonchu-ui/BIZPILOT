@@ -1,6 +1,6 @@
 export const en = {
   site: {
-    nav: { features: 'Features', how: 'How it works', inventory: 'Inventory', analytics: 'Analytics', ai: 'AI Advisor', pricing: 'Pricing',
+    nav: { market: 'Marketplace', features: 'Features', how: 'How it works', inventory: 'Inventory', analytics: 'Analytics', ai: 'AI Advisor', pricing: 'Pricing',
       about: 'About', faq: 'FAQ', contact: 'Contact', login: 'Log in', signup: 'Start free', openApp: 'Open my store' },
     footer: {
       blurb: 'Retail management, inventory and profit analytics for shop owners in Cameroon.',
@@ -13,7 +13,7 @@ export const en = {
       heroTitle: 'Know your stock. Understand your profit.',
       heroTitleAccent: 'Make smarter business decisions.',
       heroBody: 'BizPilot records every wholesale purchase, sale and expense, keeps your stock accurate, and shows you what really makes money in your shop — from your phone or your computer.',
-      ctaPrimary: 'Start Managing Your Store', ctaSecondary: 'Explore Features',
+      ctaPrimary: 'Start Managing Your Store', ctaSecondary: 'Explore Features', ctaMarket: 'Shop on BizPilot Market',
       heroPoints: ['Free plan, no card needed', 'Works on any smartphone', 'MTN MoMo & Orange Money recorded'],
       previewCaption: 'Illustrative preview with sample figures',
       problemTitle: 'Running a shop is hard when the numbers live in a notebook',
@@ -195,7 +195,7 @@ export const en = {
 
 export const fr: typeof en = {
   site: {
-    nav: { features: 'Fonctionnalités', how: 'Comment ça marche', inventory: 'Stock', analytics: 'Analyses', ai: 'Conseiller IA', pricing: 'Tarifs',
+    nav: { market: 'Marché', features: 'Fonctionnalités', how: 'Comment ça marche', inventory: 'Stock', analytics: 'Analyses', ai: 'Conseiller IA', pricing: 'Tarifs',
       about: 'À propos', faq: 'FAQ', contact: 'Contact', login: 'Connexion', signup: 'Commencer', openApp: 'Ouvrir ma boutique' },
     footer: {
       blurb: 'Gestion commerciale, stock et analyse des bénéfices pour les commerçants au Cameroun.',
@@ -208,7 +208,7 @@ export const fr: typeof en = {
       heroTitle: 'Maîtrisez votre stock. Comprenez vos bénéfices.',
       heroTitleAccent: 'Prenez de meilleures décisions.',
       heroBody: 'BizPilot enregistre chaque achat en gros, chaque vente et chaque dépense, garde votre stock exact et vous montre ce qui rapporte vraiment dans votre boutique — depuis votre téléphone ou votre ordinateur.',
-      ctaPrimary: 'Gérer ma boutique', ctaSecondary: 'Découvrir les fonctionnalités',
+      ctaPrimary: 'Gérer ma boutique', ctaSecondary: 'Découvrir les fonctionnalités', ctaMarket: 'Acheter sur BizPilot Market',
       heroPoints: ['Plan gratuit, sans carte', 'Fonctionne sur tout smartphone', 'MTN MoMo et Orange Money enregistrés'],
       previewCaption: 'Aperçu illustratif avec des chiffres d’exemple',
       problemTitle: 'Gérer une boutique est difficile quand les chiffres sont dans un cahier',

@@ -11,6 +11,7 @@ export interface Product {
   min_stock: number; lead_time_days: number | null; min_order_qty: number | null; preferred_supplier_id: string | null;
   location: string | null; track_expiry: boolean; variant_of: string | null; variant_label: string | null; status: 'active' | 'archived';
   attributes?: Record<string, string | number> | null;
+  online_published?: boolean; online_images?: string[]; compare_at_price?: number | null; admin_hidden?: boolean; admin_hidden_reason?: string | null;
   created_at: string; updated_at: string; categories?: { name: string } | null; product_units?: ProductUnit[];
 }
 

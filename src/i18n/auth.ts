@@ -18,6 +18,7 @@ export const en = {
     notConfigured: 'This deployment is not connected to a database yet.',
   },
   onboarding: {
+    justShopping: 'Just here to shop?', goToMarket: 'Go to BizPilot Market',
     title: 'Set up your business', subtitle: 'This takes about a minute. You can change everything later in Settings.',
     businessName: 'Business name', ownerName: 'Owner’s name', businessPhone: 'Business phone', businessEmail: 'Business email',
     category: 'Type of business', country: 'Country', countryNote: 'BizPilot is currently available in Cameroon only.',
@@ -36,6 +37,7 @@ export const en = {
       suppliers: { t: 'Add suppliers', d: 'The wholesalers you buy from.' },
       purchase: { t: 'Record a wholesale purchase', d: 'Record goods received from a supplier.' },
       sale: { t: 'Record your first sale', d: 'Use the fast sales screen.' },
+      store: { t: 'Open your online store', d: 'Publish your products on BizPilot Market and share your store link.' },
       dashboard: { t: 'Review your dashboard', d: 'See sales, profit and stock alerts.' },
     },
     go: 'Start', importInstead: 'Import from CSV',
@@ -62,6 +64,7 @@ export const fr: typeof en = {
     notConfigured: 'Ce déploiement n’est pas encore connecté à une base de données.',
   },
   onboarding: {
+    justShopping: 'Vous venez seulement acheter ?', goToMarket: 'Aller sur BizPilot Market',
     title: 'Configurez votre commerce', subtitle: 'Cela prend environ une minute. Tout reste modifiable dans les Paramètres.',
     businessName: 'Nom du commerce', ownerName: 'Nom du propriétaire', businessPhone: 'Téléphone du commerce', businessEmail: 'E-mail du commerce',
     category: 'Type de commerce', country: 'Pays', countryNote: 'BizPilot est actuellement disponible au Cameroun uniquement.',
@@ -80,6 +83,7 @@ export const fr: typeof en = {
       suppliers: { t: 'Ajouter des fournisseurs', d: 'Les grossistes chez qui vous achetez.' },
       purchase: { t: 'Enregistrer un achat en gros', d: 'Les marchandises reçues d’un fournisseur.' },
       sale: { t: 'Enregistrer votre première vente', d: 'Utilisez l’écran de vente rapide.' },
+      store: { t: 'Ouvrir votre boutique en ligne', d: 'Publiez vos produits sur BizPilot Market et partagez le lien de votre boutique.' },
       dashboard: { t: 'Consulter le tableau de bord', d: 'Ventes, bénéfices et alertes de stock.' },
     },
     go: 'Commencer', importInstead: 'Importer un CSV',

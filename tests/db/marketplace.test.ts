@@ -24,7 +24,7 @@ async function listedProduct(owner: TestUser, biz: string, fields: Record<string
 
 const order = (items: { product_id: string; quantity: number }[], extra: Record<string, unknown> = {}) => ({
   client_ref: uid(), access_token: token(), items, delivery_method: 'pickup', payment_method: 'cod',
-  customer: { name: 'Awa Buyer', phone: '699112233', email: 'awa@example.com' }, ...extra,
+  customer: { name: 'Awa Buyer', phone: `69${Math.floor(1e6 + Math.random() * 8.9e6)}`, email: 'awa@example.com' }, ...extra,
 });
 
 async function setConfig(patch: Record<string, unknown>) {
@@ -34,6 +34,7 @@ async function setConfig(patch: Record<string, unknown>) {
 describe('marketplace: stores, listings, checkout, stock and payments', () => {
   let owner: TestUser; let biz: string; let zones: any[]; let tee: any; let zoneAkwa: string;
   beforeAll(async () => {
+    await sql(`delete from rate_limits where key like 'order_%' or key like 'pay_begin:%' or key like 'report_ip:%'`);
     await setConfig({ online_payments_enabled: false, commission_pct: 0, online_fee_pct: 0 });
     owner = await createUser('mk-owner');
     biz = await setupStore(owner, 'Mode Akwa');
@@ -106,10 +107,11 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
   it('a cash-on-delivery order reserves stock: no overselling online or at the counter', async () => {
     const p = await listedProduct(owner, biz, { name: 'Last jacket' }, 2);
     const tk = token();
-    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 2 }]), access_token: tk } });
+    const buyer = { name: 'Awa Buyer', phone: '699112233', email: 'awa@example.com' };
+    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 2 }], { customer: buyer }), access_token: tk } });
     expect(o.payment_status).toBe('cod_pending');
     // Retrying the same request does not create a second order.
-    const again = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 2 }]), access_token: tk, client_ref: (await sql('select client_ref from market_orders where id = $1', [o.order_id]))[0].client_ref } });
+    const again = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 2 }], { customer: buyer }), access_token: tk, client_ref: (await sql('select client_ref from market_orders where id = $1', [o.order_id]))[0].client_ref } });
     expect(again.duplicate).toBe(true);
     const card = (await rpc(guest, 'market_product', { p_id: p.id }));
     expect(n(card.available)).toBe(0);
@@ -334,6 +336,20 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
     await expectError(rpc(owner.client, 'store_set_published', { p_business: biz, p_publish: true }), 'store_suspended');
     await rpc(adm.client, 'admin_market_store_update', { p_business: biz, p: { status: 'published', verification: 'verified' } });
     expect((await rpc(guest, 'market_store', { p_slug: slug })).verified).toBe(true);
+  });
+
+  it('fraud controls: one phone number cannot flood a store with orders', async () => {
+    const p = await listedProduct(owner, biz, { name: 'Socks', selling_price: 500 }, 50);
+    const customer = { name: 'Flood', phone: '699880011' };
+    // At most 3 open cash-on-delivery orders per phone and store…
+    for (let i = 0; i < 3; i++) await rpc(guest, 'market_place_order', { p: order([{ product_id: p.id, quantity: 1 }], { customer }) });
+    await expectError(rpc(guest, 'market_place_order', { p: order([{ product_id: p.id, quantity: 1 }], { customer }) }), 'too_many_open_orders');
+    // …and at most 10 placed orders per phone per hour (refused attempts are not counted).
+    await setConfig({ max_open_cod_per_phone: 50 });
+    try {
+      for (let i = 0; i < 7; i++) await rpc(guest, 'market_place_order', { p: order([{ product_id: p.id, quantity: 1 }], { customer }) });
+      await expectError(rpc(guest, 'market_place_order', { p: order([{ product_id: p.id, quantity: 1 }], { customer }) }), 'rate_limited');
+    } finally { await setConfig({ max_open_cod_per_phone: 3 }); }
   });
 
   it('signed-in customers: saved addresses, order history, favourites; guest orders can be claimed', async () => {

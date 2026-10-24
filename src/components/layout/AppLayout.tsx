@@ -3,9 +3,9 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
-  BarChart3, Bell, Bot, Boxes, ChevronDown, ClipboardCheck, CreditCard, HelpCircle, Home, LayoutDashboard, Lock, LogOut, Menu,
-  MessageSquare, Moon, MoreHorizontal, Package, Plus, Receipt, Search, Settings, ShieldCheck, ShoppingBag, ShoppingCart,
-  Sun, Truck, Upload, UserCog, Users, Wallet, WifiOff, X, Megaphone, Store,
+  BadgePercent, BarChart3, Bell, Bot, Boxes, ChevronDown, ClipboardCheck, CreditCard, ExternalLink, FolderTree, HelpCircle, Home, LayoutDashboard, Lock,
+  LogOut, Menu, MessageSquare, Moon, MoreHorizontal, Package, PackageCheck, Plus, Receipt, Search, Settings, ShieldCheck, ShoppingBag,
+  ShoppingCart, Sun, Truck, Upload, UserCog, Users, Wallet, WifiOff, X, Megaphone, Store,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../lib/auth';
@@ -20,28 +20,62 @@ import { LanguageSwitch } from '../LanguageSwitch';
 import { Badge, Button, Input } from '../ui';
 import { useOfflineQueue } from '../../lib/offline';
 import { notificationText } from '../../pages/app/notificationsText';
+import { useMarketConfig } from '../../lib/market';
 
-interface NavItem { to: string; key: string; icon: typeof Home; perm?: string; feature?: string; badge?: string; end?: boolean }
+/** Marketplace summary for the seller (orders to confirm, store readiness). Null when not available. */
+export function useSellerSummary() {
+  const { id, can } = useBiz();
+  const market = useMarketConfig().data;
+  return useQuery({
+    queryKey: ['seller-summary', id],
+    enabled: Boolean(market) && can('orders.manage'),
+    refetchInterval: 60_000,
+    queryFn: () => rpc<any>('seller_market_summary', { p_business: id }),
+  });
+}
+
+interface NavItem {
+  to: string; key: string; icon: typeof Home; group: NavGroup; perm?: string; feature?: string; badge?: string; end?: boolean;
+  /** Needs the marketplace database upgrade. */
+  market?: boolean;
+}
+export type NavGroup = 'main' | 'online' | 'shop' | 'catalog' | 'buy' | 'money' | 'insights' | 'business';
+export const NAV_GROUPS: NavGroup[] = ['main', 'online', 'shop', 'catalog', 'buy', 'money', 'insights', 'business'];
 
 export const NAV: NavItem[] = [
-  { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
-  { to: '/app/sales', key: 'sales', icon: ShoppingCart, perm: 'sales.view' },
-  { to: '/app/purchases', key: 'purchases', icon: ShoppingBag, perm: 'purchases.manage', feature: 'purchases' },
-  { to: '/app/products', key: 'products', icon: Package, perm: 'products.view' },
-  { to: '/app/inventory', key: 'inventory', icon: Boxes, perm: 'inventory.view' },
-  { to: '/app/suppliers', key: 'suppliers', icon: Truck, perm: 'purchases.manage', feature: 'suppliers' },
-  { to: '/app/customers', key: 'customers', icon: Users, perm: 'customers.manage' },
-  { to: '/app/expenses', key: 'expenses', icon: Receipt, perm: 'expenses.manage', feature: 'expenses' },
-  { to: '/app/cash', key: 'cash', icon: Wallet, perm: 'cash.manage' },
-  { to: '/app/reports', key: 'reports', icon: BarChart3, perm: 'reports.view' },
-  { to: '/app/advisor', key: 'advisor', icon: Bot, perm: 'reports.view', badge: 'new' },
-  { to: '/app/staff', key: 'staff', icon: UserCog, perm: 'staff.manage' },
-  { to: '/app/settings', key: 'settings', icon: Settings, perm: 'settings.manage' },
+  { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true, group: 'main' },
+  { to: '/app/store', key: 'myStore', icon: Store, perm: 'store.manage', group: 'online' },
+  { to: '/app/orders', key: 'orders', icon: PackageCheck, perm: 'orders.manage', group: 'online', market: true },
+  { to: '/app/promotions', key: 'promotions', icon: BadgePercent, perm: 'store.manage', feature: 'promotions', group: 'online', market: true },
+  { to: '/app/sales', key: 'sales', icon: ShoppingCart, perm: 'sales.view', group: 'shop' },
+  { to: '/app/customers', key: 'customers', icon: Users, perm: 'customers.manage', group: 'shop' },
+  { to: '/app/products', key: 'products', icon: Package, perm: 'products.view', group: 'catalog' },
+  { to: '/app/products/categories', key: 'categories', icon: FolderTree, perm: 'products.manage', group: 'catalog' },
+  { to: '/app/inventory', key: 'inventory', icon: Boxes, perm: 'inventory.view', group: 'catalog' },
+  { to: '/app/purchases', key: 'purchases', icon: ShoppingBag, perm: 'purchases.manage', feature: 'purchases', group: 'buy' },
+  { to: '/app/suppliers', key: 'suppliers', icon: Truck, perm: 'purchases.manage', feature: 'suppliers', group: 'buy' },
+  { to: '/app/payments', key: 'payments', icon: CreditCard, perm: 'cash.manage', group: 'money', market: true },
+  { to: '/app/cash', key: 'cash', icon: Wallet, perm: 'cash.manage', group: 'money' },
+  { to: '/app/expenses', key: 'expenses', icon: Receipt, perm: 'expenses.manage', feature: 'expenses', group: 'money' },
+  { to: '/app/reports', key: 'reports', icon: BarChart3, perm: 'reports.view', group: 'insights' },
+  { to: '/app/advisor', key: 'advisor', icon: Bot, perm: 'reports.view', badge: 'new', group: 'insights' },
+  { to: '/app/staff', key: 'staff', icon: UserCog, perm: 'staff.manage', group: 'business' },
+  { to: '/app/settings', key: 'settings', icon: Settings, perm: 'settings.manage', group: 'business' },
 ];
 
-function useVisibleNav() {
-  const { can } = useBiz();
-  return NAV.filter((n) => !n.perm || can(n.perm));
+export function useVisibleNav() {
+  const { can, biz } = useBiz();
+  const market = useMarketConfig().data;
+  // Before the marketplace database update the server knows no store permission: owners still see
+  // My Store, which explains the update.
+  return NAV.filter((n) => (!n.perm || can(n.perm) || (n.perm === 'store.manage' && !market && biz.role === 'owner'))
+    && (!n.market || Boolean(market)));
+}
+
+/** The nav entry that best matches the current path (longest prefix), so nested pages stay highlighted. */
+export function activeNav(path: string, items: NavItem[]) {
+  return items.filter((n) => (n.end ? path === n.to : path === n.to || path.startsWith(`${n.to}/`)))
+    .sort((a, b) => b.to.length - a.to.length)[0]?.to;
 }
 
 export function AppLayout() {
@@ -110,8 +144,12 @@ export function AppLayout() {
 
 function SidebarContent() {
   const { t, lang } = useI18n();
-  const { biz, has } = useBiz();
+  const { biz, has, can } = useBiz();
   const items = useVisibleNav();
+  const loc = useLocation();
+  const current = activeNav(loc.pathname, items);
+  const summary = useSellerSummary();
+  const toConfirm = Number(summary.data?.to_confirm ?? 0);
   const sub = biz.subscription;
   const planName = lang === 'fr' ? biz.plan.name_fr : biz.plan.name_en;
   const renew = sub.state === 'trial' ? sub.trial_ends_at : sub.current_period_end;
@@ -127,18 +165,34 @@ function SidebarContent() {
         </Link>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label="App">
-        {items.map((n) => {
-          const locked = n.feature && !has(n.feature);
+        {NAV_GROUPS.map((g) => {
+          const groupItems = items.filter((n) => n.group === g);
+          if (!groupItems.length) return null;
           return (
-            <NavLink key={n.to} to={n.to} end={n.end}
-              className={({ isActive }) => clsx('flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition',
-                isActive ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-200 hover:bg-white/10 hover:text-white')}>
-              <n.icon className="h-5 w-5 shrink-0" />
-              <span className="flex-1 truncate">{t(`nav.${n.key}`)}</span>
-              {locked ? <Lock className="h-3.5 w-3.5 opacity-60" /> : n.badge && <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold text-white">{t('nav.newBadge')}</span>}
-            </NavLink>
+            <div key={g} className={g === 'main' ? '' : 'pt-2.5'}>
+              {g !== 'main' && <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-gray-400">{t(`navGroups.${g}`)}</p>}
+              {groupItems.map((n) => {
+                const locked = n.feature && !has(n.feature);
+                const active = current === n.to;
+                return (
+                  <Link key={n.to} to={n.to} aria-current={active ? 'page' : undefined}
+                    className={clsx('flex items-center gap-3 rounded-xl px-3 py-[7px] text-[15px] font-medium transition',
+                      active ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-200 hover:bg-white/10 hover:text-white')}>
+                    <n.icon className="h-5 w-5 shrink-0" />
+                    <span className="flex-1 truncate">{t(`nav.${n.key}`)}</span>
+                    {n.key === 'orders' && toConfirm > 0 ? <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-gray-900" aria-label={t('orders.toConfirmCount', { n: toConfirm })}>{toConfirm}</span>
+                      : locked ? <Lock className="h-3.5 w-3.5 opacity-60" /> : n.badge && <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold text-white">{t('nav.newBadge')}</span>}
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
+        {can('store.manage') && summary.data?.readiness?.published && summary.data.readiness.slug && (
+          <a href={`/s/${summary.data.readiness.slug}`} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-brand-200 hover:bg-white/10">
+            <ExternalLink className="h-5 w-5" />{t('nav.viewStore')}
+          </a>
+        )}
         <div className="my-3 border-t border-white/10" />
         <NavLink to="/app/help" className={({ isActive }) => clsx('flex items-center gap-3 rounded-xl px-3 py-2 text-sm', isActive ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/10')}><HelpCircle className="h-5 w-5" />{t('nav.help')}</NavLink>
         <NavLink to="/app/help?feedback=1" className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-gray-300 hover:bg-white/10"><MessageSquare className="h-5 w-5" />{t('nav.feedback')}</NavLink>

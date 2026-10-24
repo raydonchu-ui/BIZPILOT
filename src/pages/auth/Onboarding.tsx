@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../lib/auth';
 import { rpc } from '../../lib/api';
@@ -55,6 +55,7 @@ export function OnboardingPage({ addAnother }: { addAnother?: boolean }) {
       <div className="mx-auto max-w-3xl px-4 pb-16">
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t('onboarding.title')}</h1>
         <p className="mt-1 text-sm text-ink-muted dark:text-gray-400">{t('onboarding.subtitle')}</p>
+        {!addAnother && <p className="mt-2 text-sm">{t('onboarding.justShopping')} <Link to="/market" className="font-semibold text-brand-700 hover:underline">{t('onboarding.goToMarket')}</Link></p>}
         <Card className="mt-6">
           <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
             <Field label={t('onboarding.businessName')} required className="sm:col-span-2"><Input required minLength={2} maxLength={120} value={f.name} onChange={set('name')} placeholder="Boutique Ma Bonne Étoile" /></Field>

@@ -2,16 +2,16 @@
 
 This list is deliberately blunt. "Not tested" means it was not run, not that it fails.
 
-## Not deployed
+## Deployment
 
-- Nothing is deployed to `https://cvruxxkgfbsatqvpysey.supabase.co` or any web host. Deploying needs the project's anon key, plus the database password or a Supabase access token, and a static host account. See [DEPLOYMENT.md](DEPLOYMENT.md).
+- The website is deployed on Vercel (www.bizpilotmarket.com) from the `main` branch. The database upgrades (`04`, `05`) and the edge functions (`ai-advisor`, `fapshi`) are applied by the project owner in the Supabase dashboard; this session has no Supabase access token or database password. Until they are applied, the app runs without the new features (see SETUP_SIMPLE.md).
 - All verification ran against a local Supabase stack (Postgres 17, CLI-managed containers). Hosted settings (auth emails, SMTP, rate limits, storage limits, edge runtime) can differ.
 
 ## Integrations
 
 | Area | Status |
 |---|---|
-| MTN MoMo / Orange Money | **Not integrated.** Subscription payments are recorded by the user and verified manually by an administrator. There are no provider APIs, webhooks or automatic reconciliation. Customer sale payments by mobile money are recorded as a method and reference only |
+| MTN MoMo / Orange Money (Fapshi) | **Implemented, not tested against Fapshi itself.** Marketplace orders and subscriptions can be paid online through Fapshi's hosted checkout. The edge function was tested against the real local database with a **simulated** Fapshi API that follows Fapshi's documented requests, responses and webhook. No real or sandbox Fapshi credentials were available, so a real sandbox transaction still has to be done (see MARKETPLACE.md). Manual subscription payments (reference + admin verification) still work. In-shop mobile money sales are recorded as a method and reference only |
 | AI Advisor | Function code is implemented. Tested locally with **no key** (rule-based fallback) and with an **invalid key** (the SDK reached Anthropic, got 401, recorded the failure, fell back). **A real AI answer was not tested** (no API key was available). The `server-side-fallback` beta parameter was not checked against the live API |
 | Email notifications | **Not implemented.** Alerts are in-app only. Auth emails (confirmation, reset) use Supabase Auth and need SMTP configured in production. Support replies show in the app, not by email |
 | SMS / WhatsApp | Not implemented (receipts can be printed or saved as PDF from the browser) |
@@ -52,6 +52,18 @@ The Terms, Privacy Policy and Billing Policy pages are **drafts written for a Ca
 - Tax obligations for selling the subscription (VAT on digital services, invoicing requirements).
 - Wording on refunds, price changes and data retention in the Billing Policy.
 - The operator's identity. The legal pages don't yet name the company running BizPilot (legal name, address, RCCM, taxpayer number, contact). Add it once the operating entity exists.
+
+## BizPilot Market (October 2026)
+
+- **Payments:** Fapshi has no split payments, automatic recurring charges or refund API. Online payments go to BizPilot's Fapshi account. Seller payouts and buyer refunds are sent outside the app and recorded by an administrator with their reference. Subscriptions are paid one period at a time.
+- **Accounting of online payments:** on delivery, the shop sale is recorded with payment method "Other" (money held by BizPilot) and the seller's BizPilot balance increases. The money reaches the seller's real accounts only when BizPilot pays out.
+- **Delivery fees:** cash collected with a cash-on-delivery order goes into the cash account as a deposit, not as a sale. Delivery fees of online orders stay in the seller balance.
+- **Notifications:** customers follow their order on its page and see the store's messages there. No email or SMS is sent (email delivery was failing on the live project, see SETUP_SIMPLE.md). Sellers get in-app notifications and can message customers on WhatsApp from the order.
+- **Guest order links:** guests keep a private order link (stored on their device). Anyone with the link can open that one order, so customers should not share it publicly.
+- **Expiry:** unpaid and unconfirmed orders are expired when someone uses the marketplace or a seller opens their dashboard (no background job). Until then their stock stays reserved only until the reservation time ends.
+- **Search:** simple text matching (name, brand, description, category, store); no fuzzy matching or images search. Fine for thousands of listings; a search index would be needed at a much larger scale.
+- **Variants on the storefront:** chosen by option buttons when all variants share the same detail fields (size, colour…); otherwise by their labels.
+- **Not tested:** real Fapshi transactions, live webhook delivery, and payouts. Store verification is a manual review by an administrator (no document upload).
 
 ## Catalogue and Store Lock (October 2026)
 

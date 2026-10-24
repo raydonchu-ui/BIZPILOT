@@ -10,7 +10,8 @@ out=$1; shift
   echo "-- Paste into Supabase Dashboard -> SQL Editor -> New query, then Run. Run it ONCE."
   echo "-- Adds features only: existing businesses, products, sales and users are not changed."
   echo "begin;"
-  for f in "$@"; do echo; echo "-- ===== $(basename "$f") ====="; cat "$f"; done
+  # Comment-only lines are left out to keep the file small enough for the SQL Editor.
+  for f in "$@"; do echo; echo "-- ===== $(basename "$f") ====="; grep -v -E '^\s*--' "$f" | grep -v -E '^\s*$'; done
   echo
   echo "commit;"
 } > "$out"

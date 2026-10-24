@@ -1,4 +1,4 @@
--- BizPilot setup PART 10 of 11. Run parts in order.
+-- BizPilot setup PART 10 of 17. Run parts in order.
 begin;
 create or replace function app.try_uuid(v text) returns uuid language plpgsql immutable as $$
 begin

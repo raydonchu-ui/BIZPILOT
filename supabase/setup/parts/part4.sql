@@ -1,4 +1,4 @@
--- BizPilot setup PART 4 of 11. Run parts in order.
+-- BizPilot setup PART 4 of 17. Run parts in order.
 begin;
 create or replace function public.cancel_purchase(p_purchase uuid, p_reason text)
 returns void language plpgsql security definer set search_path = public as $$

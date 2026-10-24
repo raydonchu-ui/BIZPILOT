@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Filter, FolderTree, Package, Plus, Upload } from 'lucide-react';
+import { Download, EyeOff, Filter, FolderTree, Globe, Package, Plus, Upload } from 'lucide-react';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { supabase } from '../../../lib/supabase';
-import { unwrap } from '../../../lib/api';
+import { rpc, unwrap } from '../../../lib/api';
+import { useMarketConfig } from '../../../lib/market';
+import { useAction } from '../../../lib/useAction';
 import { Product, subcategoriesOf, useCategories, useCategoryTree, useSignedUrl } from '../../../lib/hooks';
 import { formatNumber } from '../../../lib/format';
 import { downloadCsv } from '../../../lib/csv';
 import { Badge, Button, Card, DataTable, EmptyState, ErrorState, Input, LinkButton, PageHeader, PageLoader, Pagination, Select, Tabs, useMoney } from '../../../components/ui';
 
 const PAGE = 25;
-type F = 'all' | 'low' | 'out' | 'archived';
+type F = 'all' | 'online' | 'low' | 'out' | 'archived';
 
 export function stockBadge(p: Pick<Product, 'qty_on_hand' | 'min_stock' | 'status'>, t: (k: string) => string) {
   if (p.status === 'archived') return <Badge tone="gray">{t('common.archived')}</Badge>;
@@ -41,6 +43,14 @@ export default function ProductsPage() {
   const [brand, setBrand] = useState('');
   const [sort, setSort] = useState('name');
   const [page, setPage] = useState(0);
+  const [picked, setPicked] = useState<string[]>([]);
+  const market = Boolean(useMarketConfig().data);
+  const canOnline = market && can('products.manage');
+  const { run, busy } = useAction();
+  const setOnline = async (ids: string[], online: boolean) => {
+    const n = await run(() => rpc<number>('products_set_online', { p_business: id, p_ids: ids, p_online: online }));
+    if (n !== undefined) { setPicked([]); }
+  };
   const cats = useCategories(id);
   const tree = useCategoryTree(id);
   const subs = subcategoriesOf(tree.data, cat || null);
@@ -54,6 +64,7 @@ export default function ProductsPage() {
     let query = supabase.from('products').select('*, categories(name)', { count: 'exact' }).eq('business_id', id);
     query = filter === 'archived' ? query.eq('status', 'archived') : query.eq('status', 'active');
     if (filter === 'out') query = query.lte('qty_on_hand', 0);
+    if (filter === 'online') query = query.eq('online_published', true);
     if (cat) query = query.eq('category_id', cat);
     if (cat && sub) query = query.ilike('subcategory', sub.replace(/[%_]/g, ' '));
     if (brand) query = query.eq('brand', brand);
@@ -73,7 +84,9 @@ export default function ProductsPage() {
       return { rows: unwrap(res) as Product[], count: res.count ?? 0 };
     },
   });
-  const setFilter = (f: F) => { setPage(0); setParams(f === 'all' ? {} : { filter: f }); };
+  const setFilter = (f: F) => { setPage(0); setPicked([]); setParams(f === 'all' ? {} : { filter: f }); };
+  const listable = (p: Product) => !p.variant_of && p.status === 'active';
+  const togglePick = (pid: string) => setPicked((x) => (x.includes(pid) ? x.filter((y) => y !== pid) : [...x, pid]));
   const exportAll = async () => {
     const rows = unwrap(await build().limit(5000)) as Product[];
     downloadCsv('bizpilot-products.csv', rows.map((p) => ({
@@ -120,14 +133,25 @@ export default function ProductsPage() {
           </Select>
         </div>
         <Tabs className="mb-3" value={filter} onChange={setFilter} items={[
-          { value: 'all', label: t('common.all') }, { value: 'low', label: t('products.lowStock') },
+          { value: 'all', label: t('common.all') }, { value: 'online', label: t('seller.product.onlineTab'), hidden: !market }, { value: 'low', label: t('products.lowStock') },
           { value: 'out', label: t('products.outOfStock') }, { value: 'archived', label: t('common.archived') }]} />
+        {picked.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-brand-50 px-3 py-2 text-sm dark:bg-brand-900/30" role="region" aria-label={t('seller.product.bulk')}>
+            <span className="font-semibold">{t('seller.product.selected', { n: picked.length })}</span>
+            <Button size="sm" loading={busy} icon={<Globe className="h-4 w-4" />} onClick={() => setOnline(picked, true)}>{t('seller.product.publishSelected')}</Button>
+            <Button size="sm" variant="outline" loading={busy} icon={<EyeOff className="h-4 w-4" />} onClick={() => setOnline(picked, false)}>{t('seller.product.unpublishSelected')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setPicked([])}>{t('common.cancel')}</Button>
+          </div>
+        )}
         {isLoading ? <PageLoader /> : error ? <ErrorState error={error} onRetry={() => refetch()} /> : (
           <>
             <DataTable rows={data!.rows} rowKey={(r) => r.id} onRowClick={(r) => nav(`/app/products/${r.id}`)}
               empty={<EmptyState icon={<Package className="h-6 w-6" />} title={t('products.emptyTitle')} body={t('products.emptyBody')}
                 action={can('products.manage') && <div className="flex gap-2"><LinkButton to="/app/products/new" size="sm">{t('nav.addProduct')}</LinkButton><LinkButton to="/app/import" size="sm" variant="outline">{t('setup.importInstead')}</LinkButton></div>} />}
               columns={[
+                ...(canOnline ? [{ key: 'pick', header: <span className="sr-only">{t('seller.product.bulk')}</span>, className: 'w-8', render: (p: Product) => listable(p) ? (
+                  <input type="checkbox" aria-label={t('seller.product.selectProduct', { name: p.name })} checked={picked.includes(p.id)}
+                    onClick={(e) => e.stopPropagation()} onChange={() => togglePick(p.id)} className="h-4 w-4 rounded border-gray-300 text-brand-700" />) : null }] : []),
                 { key: 'name', header: t('common.name'), render: (p) => (
                   <div className="flex items-center gap-3"><ProductThumb path={p.image_path} name={p.name} />
                     <div className="min-w-0"><Link to={`/app/products/${p.id}`} className="block truncate font-semibold hover:underline" onClick={(e) => e.stopPropagation()}>{p.name}{p.variant_label ? ` — ${p.variant_label}` : ''}</Link>
@@ -137,6 +161,15 @@ export default function ProductsPage() {
                 { key: 'qty', header: t('products.inStockQty'), align: 'right', render: (p) => <span className="font-semibold">{formatNumber(p.qty_on_hand, lang)} <span className="text-xs font-normal text-ink-muted">{p.base_unit}</span></span> },
                 { key: 'value', header: t('products.stockValue'), align: 'right', hideOnMobile: true, render: (p) => money(p.stock_value) },
                 { key: 'status', header: t('common.status'), align: 'center', render: (p) => stockBadge(p, t) },
+                ...(market ? [{ key: 'online', header: t('seller.product.onlineCol'), align: 'center' as const, render: (p: Product) => !listable(p) ? null
+                  : p.admin_hidden ? <Badge tone="red">{t('seller.product.hiddenByAdmin')}</Badge>
+                  : canOnline ? (
+                    <button type="button" role="switch" aria-checked={Boolean(p.online_published)} aria-label={t('seller.product.onlineToggle', { name: p.name })}
+                      onClick={(e) => { e.stopPropagation(); setOnline([p.id], !p.online_published); }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${p.online_published ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${p.online_published ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  ) : p.online_published ? <Badge tone="green">{t('seller.product.online')}</Badge> : null }] : []),
               ]} />
             <Pagination page={page} pageSize={PAGE} total={data!.count} onPage={setPage} />
           </>

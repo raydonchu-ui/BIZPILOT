@@ -42,7 +42,8 @@ const fetchMock: typeof fetch = async (input, init) => {
   return new Response('{}', { status: 404 });
 };
 
-const post = (body: unknown, opts: { path?: string; auth?: string; headers?: Record<string, string> } = {}) =>
+type JsonResponse = Omit<Response, 'json'> & { json(): Promise<any> };
+const post = (body: unknown, opts: { path?: string; auth?: string; headers?: Record<string, string> } = {}): Promise<JsonResponse> =>
   handle(new Request(`${SUPABASE_URL}/functions/v1/fapshi${opts.path ?? ''}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(opts.auth ? { Authorization: `Bearer ${opts.auth}` } : {}), ...(opts.headers ?? {}) },
@@ -61,6 +62,7 @@ describe('Fapshi edge function', () => {
     payment_method: 'online', customer: { name: 'Awa', phone: `69${Math.floor(1e6 + Math.random() * 8e6)}`, email: 'awa@example.com' } } });
 
   beforeAll(async () => {
+    await sql(`delete from rate_limits where key like 'order_%' or key like 'pay_begin:%' or key like 'report_ip:%'`);
     await setConfig({ online_payments_enabled: true });
     owner = await createUser('fx-owner');
     biz = await createBusiness(owner, 'Fapshi Test Shop');

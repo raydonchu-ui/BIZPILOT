@@ -4,6 +4,7 @@ Retail management, inventory and profit analytics for shop owners in Cameroon. A
 
 - **Frontend:** Vite + React 18 + TypeScript + Tailwind, TanStack Query, Recharts, `vite-plugin-pwa`
 - **Backend:** Supabase (Postgres 17, Auth, Storage, Edge Functions). Every money or stock change goes through a `SECURITY DEFINER` Postgres function. Every table has Row Level Security.
+- **BizPilot Market:** every business can open an online store at `/s/{link}` using its own BizPilot stock (reservations prevent overselling between the shop and online). It offers cash on delivery or online payment with Fapshi, verified on the server by the `fapshi` edge function, plus seller settlements, verified-purchase reviews, reports and disputes, and marketplace administration. See [docs/MARKETPLACE.md](docs/MARKETPLACE.md).
 - **AI Advisor:** Supabase Edge Function `ai-advisor`, which calls the Anthropic API on the server. The key never reaches the browser. When the function is unavailable, the app gives rule-based answers instead.
 
 ## Documentation
@@ -14,6 +15,7 @@ Retail management, inventory and profit analytics for shop owners in Cameroon. A
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deploying to your Supabase project and a static host, environment variables, auth settings, first administrator |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Payment verification, plans and pricing, backups and recovery, incident response, monitoring, maintenance |
 | [docs/FINANCIAL_RULES.md](docs/FINANCIAL_RULES.md) | How BizPilot computes cost, profit, stock value, balances and the analytics |
+| [docs/MARKETPLACE.md](docs/MARKETPLACE.md) | BizPilot Market: stores, orders, stock sync, Fapshi payments and settlements, plans, trust and safety, setup |
 | [docs/STORE_LOCK.md](docs/STORE_LOCK.md) | How the 4-digit Store Lock PIN works, what it protects and its limits |
 | [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | What is not done, not verified, or needs a third-party account or legal review |
 

@@ -163,6 +163,11 @@ function GoogleSignIn({ note, context = 'signin' }: { note?: ReactNode; context?
   );
 }
 
+// Only same-site paths are accepted as a return address (no "//host" or absolute URLs).
+export function safeNext(v: string | null) {
+  return v && /^\/(?!\/)[a-zA-Z0-9/_?=&.%-]*$/.test(v) ? v : null;
+}
+
 export function LoginPage() {
   const { t, has } = useI18n();
   const { session } = useAuth();
@@ -172,18 +177,19 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (session) return <Navigate to={params.get('next') ?? '/app'} replace />;
+  const next = safeNext(params.get('next'));
+  if (session) return <Navigate to={next ?? '/app'} replace />;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true); setError(null);
     const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setLoading(false);
     if (err) setError(errorMessage(err, t, has));
-    else nav(params.get('next') ?? '/app', { replace: true });
+    else nav(next ?? '/app', { replace: true });
   };
   return (
     <AuthShell title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}
-      footer={<>{t('auth.noAccount')} <Link to="/signup" className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.createAccount')}</Link></>}>
+      footer={<>{t('auth.noAccount')} <Link to={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'} className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.createAccount')}</Link></>}>
       {params.get('verified') && <div className="mb-4"><Alert tone="green">{t('auth.verified')}</Alert></div>}
       <GoogleSignIn />
       <form onSubmit={submit} className="space-y-4">
@@ -206,7 +212,9 @@ export function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
-  if (session) return <Navigate to="/app" replace />;
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
+  if (session) return <Navigate to={next ?? '/app'} replace />;
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -217,11 +225,11 @@ export function SignupPage() {
     setLoading(true);
     const { data, error: err } = await supabase.auth.signUp({
       email: f.email.trim(), password: f.password,
-      options: { data: { full_name: f.full_name.trim(), phone: f.phone.trim(), language: lang }, emailRedirectTo: `${window.location.origin}/login?verified=1` },
+      options: { data: { full_name: f.full_name.trim(), phone: f.phone.trim(), language: lang }, emailRedirectTo: `${window.location.origin}/login?verified=1${next ? `&next=${encodeURIComponent(next)}` : ''}` },
     });
     setLoading(false);
     if (err) return setError(errorMessage(err, t, has));
-    if (data.session) nav('/onboarding', { replace: true });
+    if (data.session) nav(next ?? '/onboarding', { replace: true });
     else setSentTo(f.email.trim());
   };
   if (sentTo) {

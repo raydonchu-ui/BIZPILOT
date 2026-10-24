@@ -17,6 +17,12 @@ You only need a web browser. Do the steps in this order. Menu names in the Supab
 
 If your database was created with an earlier `01_bizpilot_setup.sql`, run **`supabase/setup/04_upgrade_catalog_and_store_lock.sql`** once (SQL Editor → New query → paste → Run). It adds the new categories, product details, variants and Store Lock. It doesn't change existing businesses, products, sales or users. A new project only needs the current `01_bizpilot_setup.sql`, which already includes it.
 
+## Set up before 25 October 2026? Run the marketplace upgrade
+
+After the step above, run **`supabase/setup/05_upgrade_marketplace.sql`** once the same way. It adds BizPilot Market: online stores, orders, stock reservations, online payments, settlements and moderation. If the SQL Editor says the query is too large, run `05a_upgrade_marketplace_part1.sql` and then `05b_upgrade_marketplace_part2.sql` instead. Each file stops with a clear message, and changes nothing, if it is run in the wrong order or a second time.
+
+To accept online payments, also follow **Turning on online payments** in [MARKETPLACE.md](MARKETPLACE.md). Cash on delivery works without it.
+
 ## Step 2: Copy two values from Supabase
 
 Go to **Project Settings → API Keys** (or click **Connect** at the top of the dashboard). Copy:

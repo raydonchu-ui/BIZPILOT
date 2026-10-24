@@ -19,6 +19,7 @@ import { DonutChart, HBar, SalesProfitChart, ValueTrendChart, CHART_COLORS } fro
 import { Insight, InsightCard } from '../../components/Insights';
 import { useQuickActions } from '../../components/layout/AppLayout';
 import { dashboardVisitedKey } from './SetupChecklist';
+import { OnlineOrdersCard } from './store/DashboardCards';
 
 function greetingKey() {
   const h = new Date().getHours();
@@ -89,6 +90,7 @@ function OwnerDashboard() {
       {noSalesEver && (
         <div className="mb-4"><Alert tone="green" title={t('dashboard.welcomeTitle')} action={<LinkButton to="/app/setup" size="sm">{t('nav.setup')}</LinkButton>}>{t('dashboard.welcomeBody')}</Alert></div>
       )}
+      <OnlineOrdersCard />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 sm:gap-4">
         <StatCard label={t('dashboard.totalSales')} value={money(cur.net_sales)} icon={<ShoppingCart className="h-5 w-5" />} tone="green" delta={pctChange(Number(cur.net_sales), Number(prev.net_sales))} to="/app/sales" />
@@ -317,6 +319,7 @@ function CounterDashboard() {
   return (
     <div>
       <Greeting />
+      <OnlineOrdersCard />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={t('dashboard.mySalesToday')} value={data.my_sales_today} icon={<ShoppingCart className="h-5 w-5" />} />
         <StatCard label={t('dashboard.myTotalToday')} value={money(data.my_total_today)} icon={<Coins className="h-5 w-5" />} tone="amber" />

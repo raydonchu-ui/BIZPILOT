@@ -628,7 +628,7 @@ language sql stable security definer set search_path = public as $$
     'image', p.online_images[1], 'unit', p.base_unit,
     'price', o.min_price, 'max_price', o.max_price, 'compare_at_price',
       case when p.compare_at_price > o.min_price then p.compare_at_price end,
-    'available', o.available, 'options', o.n,
+    'available', least(o.available, 99), 'options', o.n,
     'category', c.name, 'subcategory', p.subcategory,
     'rating_avg', r.avg, 'rating_count', coalesce(r.n, 0),
     'store', jsonb_build_object('slug', s.slug, 'name', s.name, 'city', s.city, 'verified', s.verification = 'verified',
@@ -989,7 +989,9 @@ begin
       'payment_method', existing.payment_method, 'payment_status', existing.payment_status, 'duplicate', true);
   end if;
   if not coalesce((cfg ->> 'enabled')::boolean, true) then perform app.raise('marketplace_closed'); end if;
-  perform app.rate_limit('order_ip:' || app.client_ip(), 30, 3600);
+  -- Mobile networks share IP addresses between many customers: the IP limit is generous, the
+  -- per-phone limit (below) is what stops repeated fake orders.
+  perform app.rate_limit('order_ip:' || app.client_ip(), 120, 3600);
   if uid is not null then perform app.rate_limit('order_user:' || uid, 20, 3600); end if;
   perform app.market_expire();
 
@@ -998,6 +1000,7 @@ begin
   cemail := nullif(lower(btrim(coalesce(p #>> '{customer,email}', ''))), '');
   if length(cname) < 2 or length(cname) > 80 then perform app.raise('customer_name_required'); end if;
   if cphone is null then perform app.raise('invalid_phone'); end if;
+  perform app.rate_limit('order_phone:' || cphone, 10, 3600);
   if cemail is not null and not app.valid_email(cemail) then perform app.raise('invalid_email'); end if;
   if exists (select 1 from public.market_blocklist where (kind = 'phone' and value = cphone)
              or (kind = 'email' and value = cemail) or (kind = 'user' and value = uid::text)) then

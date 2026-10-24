@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, BarChart3, Boxes, Check, ClipboardList, Coins, Lightbulb, PackageSearch, ShoppingCart, Sparkles, Store, Truck } from 'lucide-react';
+import { ArrowRight, BarChart3, Boxes, Check, ClipboardList, Coins, Lightbulb, PackageSearch, ShoppingBag, ShoppingCart, Sparkles, Store, Truck } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { LinkButton } from '../../components/ui';
 import { DashboardPreview } from './DashboardPreview';
@@ -30,7 +30,7 @@ export function Home() {
             <p className="mt-5 max-w-xl text-lg text-ink-soft dark:text-gray-300">{t('site.home.heroBody')}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <LinkButton to={session ? '/app' : '/signup'} size="lg" icon={<ArrowRight className="h-5 w-5" />}>{t('site.home.ctaPrimary')}</LinkButton>
-              <LinkButton to="/features" size="lg" variant="outline">{t('site.home.ctaSecondary')}</LinkButton>
+              <LinkButton to="/market" size="lg" variant="outline" icon={<ShoppingBag className="h-5 w-5" />}>{t('site.home.ctaMarket')}</LinkButton>
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-soft dark:text-gray-300">
               {tv<string[]>('site.home.heroPoints').map((p) => <li key={p} className="flex items-center gap-1.5"><Check className="h-4 w-4 text-brand-600" />{p}</li>)}

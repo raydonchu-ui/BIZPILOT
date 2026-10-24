@@ -9,7 +9,7 @@ import { useI18n } from '../../i18n';
 import { useAuth } from '../../lib/auth';
 
 const links = [
-  { to: '/features', key: 'features' }, { to: '/how-it-works', key: 'how' }, { to: '/inventory-management', key: 'inventory' },
+  { to: '/market', key: 'market' }, { to: '/features', key: 'features' }, { to: '/how-it-works', key: 'how' }, { to: '/inventory-management', key: 'inventory' },
   { to: '/business-analytics', key: 'analytics' }, { to: '/ai-advisor', key: 'ai' }, { to: '/pricing', key: 'pricing' },
 ];
 

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ArrowLeft, Bot, Building2, CreditCard, FileClock, Gauge, LifeBuoy, Megaphone, Settings2, Tags } from 'lucide-react';
+import { ArrowLeft, Bot, Building2, CreditCard, FileClock, Flag, Gauge, HandCoins, LifeBuoy, Megaphone, PackageCheck, Settings2, ShoppingBasket, Store, Tags } from 'lucide-react';
+import { ListingsAdmin, MarketOverview, OrdersAdmin, ReportsAdmin, SettlementsAdmin, StoresAdmin } from './MarketAdmin';
+import { useMarketConfig } from '../../lib/market';
 import { useI18n } from '../../i18n';
 import { supabase } from '../../lib/supabase';
 import { rpc, unwrap, useRpc } from '../../lib/api';
@@ -19,11 +21,18 @@ const NAV = [
   { to: '/admin/config', key: 'config', icon: Settings2 }, { to: '/admin/announcements', key: 'announcements', icon: Megaphone },
   { to: '/admin/support', key: 'support', icon: LifeBuoy }, { to: '/admin/ai', key: 'ai', icon: Bot }, { to: '/admin/audit', key: 'audit', icon: FileClock },
 ];
-const FEATURES = ['stocktaking', 'purchases', 'suppliers', 'expenses', 'customers_credit', 'staff', 'import', 'cash_reconciliation', 'basic_analytics', 'advanced_analytics', 'restock', 'reports_export', 'batch_tracking', 'ai_advisor'];
-const LIMITS = ['max_products', 'max_sales_per_month', 'max_staff', 'history_days', 'ai_queries_per_month'];
+const MARKET_NAV: { to: string; key: string; icon: typeof Store; end?: boolean }[] = [
+  { to: '/admin/market', key: 'market', icon: ShoppingBasket }, { to: '/admin/stores', key: 'stores', icon: Store },
+  { to: '/admin/listings', key: 'listings', icon: Tags }, { to: '/admin/reports', key: 'reports', icon: Flag },
+  { to: '/admin/orders', key: 'orders', icon: PackageCheck }, { to: '/admin/settlements', key: 'settlements', icon: HandCoins },
+];
+const FEATURES = ['stocktaking', 'purchases', 'suppliers', 'expenses', 'customers_credit', 'staff', 'import', 'cash_reconciliation', 'basic_analytics', 'advanced_analytics', 'restock', 'reports_export', 'batch_tracking', 'ai_advisor', 'promotions', 'store_customization'];
+const LIMITS = ['max_products', 'max_sales_per_month', 'max_staff', 'history_days', 'ai_queries_per_month', 'max_online_products'];
 
 export default function AdminApp() {
   const { t } = useI18n();
+  const market = Boolean(useMarketConfig().data);
+  const nav = market ? [...NAV.slice(0, 1), ...MARKET_NAV, ...NAV.slice(1)] : NAV;
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -32,7 +41,7 @@ export default function AdminApp() {
           <div className="ml-auto flex items-center gap-3"><LanguageSwitch /><Link to="/app" className="flex items-center gap-1 text-sm font-semibold text-brand-700"><ArrowLeft className="h-4 w-4" />{t('admin.backToApp')}</Link></div>
         </div>
         <nav className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 pb-2">
-          {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => clsx('flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold', isActive ? 'bg-brand-700 text-white' : 'text-ink-soft hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800')}><n.icon className="h-4 w-4" />{t(`admin.nav.${n.key}`)}</NavLink>)}
+          {nav.map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => clsx('flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold', isActive ? 'bg-brand-700 text-white' : 'text-ink-soft hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800')}><n.icon className="h-4 w-4" />{t(`admin.nav.${n.key}`)}</NavLink>)}
         </nav>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">
@@ -48,6 +57,14 @@ export default function AdminApp() {
             <Route path="support" element={<Support />} />
             <Route path="ai" element={<AiUsage />} />
             <Route path="audit" element={<Audit />} />
+            {market && <>
+              <Route path="market" element={<MarketOverview />} />
+              <Route path="stores" element={<StoresAdmin />} />
+              <Route path="listings" element={<ListingsAdmin />} />
+              <Route path="reports" element={<ReportsAdmin />} />
+              <Route path="orders" element={<OrdersAdmin />} />
+              <Route path="settlements" element={<SettlementsAdmin />} />
+            </>}
           </Routes>
         </div>
       </main>
