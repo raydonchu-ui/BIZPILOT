@@ -2,10 +2,27 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Vercel system variables (available during Vercel builds). Public build facts only, shown on
+// /auth/diagnostics so a deployment can be identified. No secrets.
+const env = process.env;
+const buildInfo = {
+  env: env.VERCEL_ENV ?? 'local',
+  commit: (env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 7),
+  branch: env.VERCEL_GIT_COMMIT_REF ?? '',
+  projectDomain: env.VERCEL_PROJECT_PRODUCTION_URL ?? '',
+  deploymentUrl: env.VERCEL_URL ?? '',
+  builtAt: new Date().toISOString(),
+};
+// Preview deployments must never be served from an older cached copy: there the service
+// worker removes itself instead of caching. Production keeps the offline-capable app.
+const isPreview = env.VERCEL_ENV === 'preview';
+
 export default defineConfig({
+  define: { __BUILD_INFO__: JSON.stringify(buildInfo) },
   plugins: [
     react(),
     VitePWA({
+      selfDestroying: isPreview,
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'brand/*.png', 'brand/*.svg'],
       manifest: {

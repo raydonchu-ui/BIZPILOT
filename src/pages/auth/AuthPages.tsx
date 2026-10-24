@@ -6,7 +6,7 @@ import { useI18n } from '../../i18n';
 import { fetchAuthProviders, supabase, supabaseConfigured } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth';
-import { createNonce, googleClientId, loadGoogleIdentity, type GoogleCredentialResponse } from '../../lib/googleIdentity';
+import { createNonce, googleConfig, loadGoogleIdentity, recordGoogleMode, type GoogleCredentialResponse } from '../../lib/googleIdentity';
 import { Alert, Button, Checkbox, Field, Input, PasswordInput, Spinner } from '../../components/ui';
 import { Logo } from '../../components/Logo';
 import { LanguageSwitch } from '../../components/LanguageSwitch';
@@ -54,12 +54,13 @@ function GoogleIcon() {
 }
 
 // Google's own button (Google Identity Services). Google shows our site in its window; the ID
-// token is exchanged for a Supabase session. Calls onUnavailable if the script cannot load.
-function GoogleIdentityButton({ context, onUnavailable, onError }:
-  { context: 'signin' | 'signup'; onUnavailable: () => void; onError: (msg: string) => void }) {
+// token is exchanged for a Supabase session. Reports load failures to the parent (never redirects).
+function GoogleIdentityButton({ clientId, context, onLoadFailed, onError }:
+  { clientId: string; context: 'signin' | 'signup'; onLoadFailed: (reason: string) => void; onError: (msg: string) => void }) {
   const { t, lang, has } = useI18n();
   const box = useRef<HTMLDivElement>(null);
-  const nonce = useRef<string>('');
+  const nonce = useRef('');
+  const inFlight = useRef(false);
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -70,14 +71,15 @@ function GoogleIdentityButton({ context, onUnavailable, onError }:
         if (cancelled || !box.current) return;
         nonce.current = n.raw;
         gis.initialize({
-          client_id: googleClientId!, nonce: n.hashed, ux_mode: 'popup', auto_select: false, itp_support: true,
+          client_id: clientId, nonce: n.hashed, ux_mode: 'popup', auto_select: false, itp_support: true,
           use_fedcm_for_button: true, context,
           callback: async (res: GoogleCredentialResponse) => {
-            setBusy(true);
+            if (inFlight.current || !res?.credential) return; // ignore double callbacks
+            inFlight.current = true; setBusy(true);
             const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: res.credential, nonce: nonce.current });
-            setBusy(false);
+            inFlight.current = false; setBusy(false);
             if (error) {
-              onError(has(`errors.${error.message}`) || has(`errors.auth_${error.code}`) ? errorMessage(error, t, has) : t('errors.google_unavailable'));
+              onError(has(`errors.auth_${error.code}`) || has(`errors.${error.message}`) ? errorMessage(error, t, has) : t('errors.google_unavailable'));
               setAttempt((a) => a + 1); // fresh nonce for the next try
             }
             // On success the auth listener receives the session and the page redirects to /app.
@@ -89,13 +91,14 @@ function GoogleIdentityButton({ context, onUnavailable, onError }:
           text: context === 'signup' ? 'signup_with' : 'continue_with', width: Math.min(400, box.current.clientWidth || 400),
           locale: lang,
         });
-      } catch {
-        if (!cancelled) onUnavailable();
+        recordGoogleMode('gis', 'ok');
+      } catch (e) {
+        if (!cancelled) onLoadFailed(e instanceof Error ? e.message : 'gis_unavailable');
       }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang, context, attempt]);
+  }, [clientId, lang, context, attempt]);
   return (
     <div className="relative flex min-h-[44px] justify-center" aria-busy={busy}>
       <div ref={box} className="w-full max-w-[400px] [&>div]:mx-auto" data-testid="gis-button" />
@@ -104,16 +107,26 @@ function GoogleIdentityButton({ context, onUnavailable, onError }:
   );
 }
 
-// "Continue with Google", shown only when Google is enabled in Supabase. Uses Google's own
-// button when VITE_GOOGLE_CLIENT_ID is set, otherwise (or if it fails to load) the redirect flow.
+// "Continue with Google", shown only when Google is enabled in Supabase.
+// - Valid VITE_GOOGLE_CLIENT_ID: Google's own button (signInWithIdToken). If Google's script cannot
+//   load, the user is told why and chooses: retry, or the standard (redirect) Google sign-in.
+// - Missing/invalid client ID: the redirect flow, with the reason logged and shown on /auth/diagnostics.
 function GoogleSignIn({ note, context = 'signin' }: { note?: ReactNode; context?: 'signin' | 'signup' }) {
   const { t, has } = useI18n();
   const providers = useQuery({ queryKey: ['auth-providers'], queryFn: fetchAuthProviders, staleTime: 5 * 60_000 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useRedirect, setUseRedirect] = useState(!googleClientId);
+  const [loadFailed, setLoadFailed] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+  const gisReady = googleConfig.status === 'ok';
+  useEffect(() => {
+    if (!providers.data?.google) return;
+    if (googleConfig.status === 'missing') recordGoogleMode('redirect', 'client_id_missing');
+    else if (googleConfig.status === 'invalid') recordGoogleMode('redirect', `client_id_invalid:${googleConfig.reason}`);
+    else if (loadFailed) recordGoogleMode('redirect', `${loadFailed} (user choice required)`);
+  }, [providers.data?.google, loadFailed]);
   if (!providers.data?.google) return null;
-  const start = async () => {
+  const redirect = async () => {
     setLoading(true); setError(null);
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -121,15 +134,27 @@ function GoogleSignIn({ note, context = 'signin' }: { note?: ReactNode; context?
     });
     if (err) { setLoading(false); setError(has(`errors.${err.message}`) ? errorMessage(err, t, has) : t('errors.google_unavailable')); }
   };
+  const mode = !gisReady ? 'redirect' : loadFailed ? 'failed' : 'gis';
   return (
-    <div className="mb-6 space-y-3">
-      {useRedirect
-        ? <Button variant="outline" block size="lg" loading={loading} icon={<GoogleIcon />} onClick={start}>{t('auth.continueWithGoogle')}</Button>
-        : <GoogleIdentityButton context={context} onUnavailable={() => setUseRedirect(true)} onError={(m) => setError(m)} />}
+    <div className="mb-6 space-y-3" data-google-mode={mode} data-google-reason={googleConfig.status === 'ok' ? loadFailed ?? 'ok' : googleConfig.status}>
+      {mode === 'redirect' && <Button variant="outline" block size="lg" loading={loading} icon={<GoogleIcon />} onClick={redirect}>{t('auth.continueWithGoogle')}</Button>}
+      {mode === 'gis' && googleConfig.status === 'ok' && (
+        <GoogleIdentityButton key={retryKey} clientId={googleConfig.clientId} context={context}
+          onLoadFailed={(r) => setLoadFailed(r)} onError={(m) => setError(m)} />
+      )}
+      {mode === 'failed' && (
+        <div className="space-y-2">
+          <Alert tone="amber">{t('auth.googleLoadFailed')}</Alert>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button variant="outline" onClick={() => { setLoadFailed(null); setRetryKey((k) => k + 1); }}>{t('common.retry')}</Button>
+            <Button variant="outline" loading={loading} icon={<GoogleIcon />} onClick={redirect}>{t('auth.googleStandard')}</Button>
+          </div>
+        </div>
+      )}
       {note && <p className="text-center text-xs text-ink-muted dark:text-gray-400">{note}</p>}
       {error && <Alert tone="red">{error}</Alert>}
-      {!useRedirect && error && (
-        <p className="text-center text-xs"><button type="button" onClick={start} className="font-semibold text-brand-700 underline dark:text-brand-400">{t('auth.googleOtherWay')}</button></p>
+      {mode === 'gis' && error && (
+        <p className="text-center text-xs"><button type="button" onClick={redirect} className="font-semibold text-brand-700 underline dark:text-brand-400">{t('auth.googleOtherWay')}</button></p>
       )}
       <div className="flex items-center gap-3 text-xs text-ink-muted dark:text-gray-400">
         <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />{t('auth.orEmail')}<span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />

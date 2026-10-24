@@ -10,6 +10,7 @@ import { AboutPage, AiPage, AnalyticsPage, FaqPage, Features, HowItWorks, Invent
 import { LegalPage } from './pages/public/Legal';
 import { ContactPage } from './pages/public/Contact';
 import { AuthCallbackPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage } from './pages/auth/AuthPages';
+import { AuthDiagnosticsPage } from './pages/auth/AuthDiagnostics';
 import { OnboardingPage } from './pages/auth/Onboarding';
 import { PwaPrompt } from './components/PwaPrompt';
 
@@ -92,6 +93,7 @@ export function App() {
         <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route path="auth/callback" element={<AuthCallbackPage />} />
+        <Route path="auth/diagnostics" element={<AuthDiagnosticsPage />} />
         <Route path="onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
         <Route path="onboarding/new" element={<RequireAuth><OnboardingPage addAnother /></RequireAuth>} />
         <Route path="admin/*" element={<RequireAuth><RequireAdmin><AdminApp /></RequireAdmin></RequireAuth>} />

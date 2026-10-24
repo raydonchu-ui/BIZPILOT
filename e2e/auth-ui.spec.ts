@@ -32,8 +32,14 @@ test('Google button is hidden until Google is enabled, then starts the Google fl
   });
   let authorizeUrl = '';
   await page.route('**/auth/v1/authorize**', (route) => { authorizeUrl = route.request().url(); return route.abort(); });
+  const logs: string[] = [];
+  page.on('console', (m) => logs.push(m.text()));
   await page.goto('/signup');
   await expect(page.getByText(/by continuing with google you agree/i)).toBeVisible();
+  // This build has no VITE_GOOGLE_CLIENT_ID: the redirect flow is used, and the reason is stated.
+  await expect(page.locator('[data-google-mode]')).toHaveAttribute('data-google-mode', 'redirect');
+  await expect(page.locator('[data-google-mode]')).toHaveAttribute('data-google-reason', 'missing');
+  await expect.poll(() => logs.some((l) => l.includes('Supabase redirect flow (client_id_missing)'))).toBe(true);
   await page.getByRole('button', { name: /continue with google/i }).click();
   await expect.poll(() => authorizeUrl).toContain('provider=google');
   const u = new URL(authorizeUrl);
@@ -78,4 +84,27 @@ test('phone form fields use 16px text so iPhone Safari does not zoom in', async 
   const size = await page.getByLabel(/^password/i).evaluate((el) => getComputedStyle(el).fontSize);
   expect(size).toBe('16px');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('diagnostics page explains a build without a Google client ID', async ({ page }) => {
+  await page.goto('/auth/diagnostics');
+  await expect(page.getByTestId('diagnostics')).toContainText('MISSING');
+  await expect(page.getByTestId('diagnostics')).toContainText(/VITE_GOOGLE_CLIENT_ID was not set when this deployment was built|Google provider is off/);
+});
+
+test('an invalid Google client ID falls back to the redirect flow and says why', async ({ page }) => {
+  test.skip(!process.env.INVALID_GIS_BASE_URL, 'set INVALID_GIS_BASE_URL to a server built with an invalid VITE_GOOGLE_CLIENT_ID');
+  const base = process.env.INVALID_GIS_BASE_URL!;
+  await page.route('**/auth/v1/settings', async (route) => {
+    const res = await route.fetch(); const body = await res.json();
+    await route.fulfill({ response: res, json: { ...body, external: { ...body.external, google: true } } });
+  });
+  let gisRequested = false;
+  await page.route('https://accounts.google.com/gsi/client', (route) => { gisRequested = true; return route.abort(); });
+  await page.goto(`${base}/login`);
+  await expect(page.locator('[data-google-mode]')).toHaveAttribute('data-google-mode', 'redirect');
+  await expect(page.locator('[data-google-mode]')).toHaveAttribute('data-google-reason', 'invalid');
+  await page.goto(`${base}/auth/diagnostics`);
+  await expect(page.getByTestId('diagnostics')).toContainText('INVALID (looks_like_secret)');
+  expect(gisRequested).toBe(false);
 });
