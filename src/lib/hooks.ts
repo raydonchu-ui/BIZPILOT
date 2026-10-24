@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase, FILES_BUCKET } from './supabase';
 import { unwrap } from './api';
 import { newId } from './ids';
+import { useAuth } from './auth';
 
 export interface Product {
   id: string; business_id: string; name: string; sku: string; barcode: string | null; category_id: string | null;
@@ -23,11 +24,26 @@ export interface ProductUnit {
 }
 
 // Every category and subcategory of the business, archived ones included, in display order.
+// True once the database has the October 2026 upgrade (catalogue + Store Lock); false while it
+// does not (the app then keeps the previous behaviour); undefined while unknown.
+export function useDbUpgraded(): boolean | undefined {
+  const s = useAuth().storeLock.status;
+  return s ? !s.unavailable : undefined;
+}
+
 export function useCategoryTree(businessId: string) {
+  const upgraded = useDbUpgraded();
   return useQuery({
-    queryKey: ['categories', businessId, 'tree'],
-    queryFn: async () => unwrap(await supabase.from('categories').select('id,name,parent_id,sort_order,archived_at,attribute_set')
-      .eq('business_id', businessId).order('sort_order').order('name')) as Category[],
+    queryKey: ['categories', businessId, 'tree', upgraded],
+    enabled: upgraded !== undefined,
+    queryFn: async () => {
+      if (!upgraded) { // previous database: flat categories only
+        const rows = unwrap(await supabase.from('categories').select('id,name').eq('business_id', businessId).order('name')) as { id: string; name: string }[];
+        return rows.map((r) => ({ ...r, parent_id: null, sort_order: 0, archived_at: null, attribute_set: null })) as Category[];
+      }
+      return unwrap(await supabase.from('categories').select('id,name,parent_id,sort_order,archived_at,attribute_set')
+        .eq('business_id', businessId).order('sort_order').order('name')) as Category[];
+    },
   });
 }
 

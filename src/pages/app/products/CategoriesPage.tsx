@@ -6,10 +6,10 @@ import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { supabase } from '../../../lib/supabase';
 import { rpc, unwrap } from '../../../lib/api';
-import { Category, subcategoriesOf, useBusinessRow, useCategoryTree } from '../../../lib/hooks';
+import { Category, subcategoriesOf, useBusinessRow, useCategoryTree, useDbUpgraded } from '../../../lib/hooks';
 import { useAction } from '../../../lib/useAction';
 import { BUSINESS_TYPES, categoryTemplate, type TemplateCategory } from '../../../lib/catalogTemplates';
-import { Badge, Button, Card, CardHeader, Checkbox, EmptyState, ErrorState, Field, Input, PageHeader, PageLoader, Select } from '../../../components/ui';
+import { Alert, Badge, Button, Card, CardHeader, Checkbox, EmptyState, ErrorState, Field, Input, PageHeader, PageLoader, Select } from '../../../components/ui';
 
 export default function CategoriesPage() {
   const { t, lang } = useI18n();
@@ -35,8 +35,10 @@ export default function CategoriesPage() {
   });
   const refresh = () => { qc.invalidateQueries({ queryKey: ['categories', id] }); qc.invalidateQueries({ queryKey: ['category-counts', id] }); };
 
+  const upgraded = useDbUpgraded();
   if (!can('products.manage')) return <ErrorState error={{ message: 'permission_denied' }} />;
-  if (tree.isLoading) return <PageLoader />;
+  if (upgraded === false) return <div><PageHeader title={t('catalog.categories.title')} /><Alert tone="blue">{t('catalog.upgradeNeeded')}</Alert></div>;
+  if (tree.isLoading || upgraded === undefined) return <PageLoader />;
   if (tree.error) return <ErrorState error={tree.error} onRetry={() => tree.refetch()} />;
 
   const all = tree.data ?? [];

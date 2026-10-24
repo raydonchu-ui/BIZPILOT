@@ -8,6 +8,13 @@ export const BUSINESS_TYPES = [
 ] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];
 
+// The 8 types a database without the October 2026 upgrade accepts, and the closest one for each new type.
+export const LEGACY_TYPES = ['grocery', 'general', 'drinks', 'hardware', 'electronics', 'fashion', 'cosmetics', 'other'];
+export function legacyType(type: string): string {
+  if (LEGACY_TYPES.includes(type)) return type;
+  return ({ supermarket: 'grocery', agriculture: 'grocery', footwear: 'fashion', jewelry: 'fashion', hair_beauty: 'cosmetics', automotive: 'hardware', furniture: 'general' } as Record<string, string>)[type] ?? 'general';
+}
+
 export type AttributeSet = 'clothing' | 'footwear' | 'electronics' | 'hair' | 'beauty' | 'grocery' | 'furniture'
   | 'jewelry' | 'automotive' | 'books' | 'general';
 

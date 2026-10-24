@@ -45,6 +45,7 @@ export const en = {
     onboardingCategories: 'Product categories', onboardingCategoriesSub: 'Suggested for this type of business. Untick what you don’t sell. You can add, rename or archive categories at any time.',
     selectAll: 'Select all', selectNone: 'Select none',
     filters: { subcategory: 'All subcategories', brand: 'All brands', stock: 'Stock', clear: 'Clear filters' },
+    upgradeNeeded: 'Available once BizPilot’s database upgrade has been installed by the administrator.',
   },
   storeLock: {
     lockStore: 'Lock store', lockedTitle: 'Store locked', lockedBody: 'Enter your 4-digit PIN to continue.',
@@ -113,6 +114,7 @@ export const fr: typeof en = {
     onboardingCategories: 'Catégories de produits', onboardingCategoriesSub: 'Suggérées pour ce type de commerce. Décochez ce que vous ne vendez pas. Vous pourrez ajouter, renommer ou archiver des catégories à tout moment.',
     selectAll: 'Tout cocher', selectNone: 'Tout décocher',
     filters: { subcategory: 'Toutes les sous-catégories', brand: 'Toutes les marques', stock: 'Stock', clear: 'Effacer les filtres' },
+    upgradeNeeded: 'Disponible une fois la mise à jour de la base de données de BizPilot installée par l’administrateur.',
   },
   storeLock: {
     lockStore: 'Verrouiller', lockedTitle: 'Boutique verrouillée', lockedBody: 'Saisissez votre code PIN à 4 chiffres pour continuer.',

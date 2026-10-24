@@ -6,7 +6,8 @@ import { rpc } from '../../lib/api';
 import { errorMessage } from '../../lib/errors';
 import { localToday } from '../../lib/dates';
 import { Alert, Button, Card, Checkbox, Field, Input, Select } from '../../components/ui';
-import { BUSINESS_TYPES, categoryTemplate } from '../../lib/catalogTemplates';
+import { BUSINESS_TYPES, categoryTemplate, legacyType } from '../../lib/catalogTemplates';
+import { useDbUpgraded } from '../../lib/hooks';
 import { Logo } from '../../components/Logo';
 import { LanguageSwitch } from '../../components/LanguageSwitch';
 
@@ -22,6 +23,7 @@ export function OnboardingPage({ addAnother }: { addAnother?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState(false);
+  const upgraded = useDbUpgraded() !== false;
   // Suggested categories for the chosen business type; all ticked, the owner unticks what they don't sell.
   const template = useMemo(() => categoryTemplate(f.category, f.language === 'fr' ? 'fr' : 'en'), [f.category, f.language]);
   const [off, setOff] = useState<Record<string, boolean>>({});
@@ -34,7 +36,9 @@ export function OnboardingPage({ addAnother }: { addAnother?: boolean }) {
     e.preventDefault();
     setError(null); setLoading(true);
     try {
-      const id = await rpc<string>('create_business', { p: { ...f, country_code: 'CM', categories: chosen } });
+      // A previous database knows 8 business types and creates its own default categories.
+      const p = upgraded ? { ...f, country_code: 'CM', categories: chosen } : { ...f, country_code: 'CM', category: legacyType(f.category) };
+      const id = await rpc<string>('create_business', { p });
       try { localStorage.setItem('bizpilot.business', id); } catch { /* ignore */ }
       setCreated(true);
       await refreshContext();
@@ -71,7 +75,7 @@ export function OnboardingPage({ addAnother }: { addAnother?: boolean }) {
               <Select value={f.language} onChange={set('language')}><option value="fr">Français</option><option value="en">English</option></Select>
             </Field>
             <Field label={t('onboarding.reportingStart')} hint={t('onboarding.reportingStartHint')}><Input type="date" value={f.reporting_start_date} onChange={set('reporting_start_date')} /></Field>
-            <fieldset className="sm:col-span-2 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+            {upgraded && <fieldset className="sm:col-span-2 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
               <legend className="px-1 text-sm font-semibold">{t('catalog.onboardingCategories')} <span className="text-xs font-normal text-ink-muted">({t('catalog.optional')})</span></legend>
               <p className="mb-3 text-xs text-ink-muted dark:text-gray-400">{t('catalog.onboardingCategoriesSub')}</p>
               <div className="mb-3 flex gap-3 text-xs">
@@ -90,7 +94,7 @@ export function OnboardingPage({ addAnother }: { addAnother?: boolean }) {
                   </div>
                 ))}
               </div>
-            </fieldset>
+            </fieldset>}
             {error && <div className="sm:col-span-2"><Alert tone="red">{error}</Alert></div>}
             <div className="sm:col-span-2"><Button type="submit" size="lg" loading={loading} block>{t('onboarding.create')}</Button></div>
           </form>
