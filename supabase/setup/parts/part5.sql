@@ -1,4 +1,4 @@
--- BizPilot setup PART 5 of 10. Run parts in order.
+-- BizPilot setup PART 5 of 11. Run parts in order.
 begin;
 create or replace function public.record_customer_payment(
   p_business uuid, p_customer uuid, p_amount numeric, p_method text, p_reference text default null,

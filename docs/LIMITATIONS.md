@@ -52,3 +52,10 @@ The Terms, Privacy Policy and Billing Policy pages are **drafts written for a Ca
 - Tax obligations for selling the subscription (VAT on digital services, invoicing requirements).
 - Wording on refunds, price changes and data retention in the Billing Policy.
 - The operator's identity. The legal pages don't yet name the company running BizPilot (legal name, address, RCCM, taxpayer number, contact). Add it once the operating entity exists.
+
+## Catalogue and Store Lock (October 2026)
+
+- Variants are separate products linked to a main product (each with its own stock, price, SKU and barcode). The main product stays sellable; give it no stock if only its variants are sold.
+- Serial numbers and IMEIs are stored per product as optional details, not tracked unit by unit.
+- Subcategories are stored on products as text. Renaming a subcategory updates its products; moving a subcategory to another category doesn't.
+- Store Lock limits are described in [STORE_LOCK.md](STORE_LOCK.md): 4-digit PIN strength, offline unlocking needs a connection, and bcrypt instead of Argon2id.

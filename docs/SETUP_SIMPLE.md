@@ -13,6 +13,10 @@ You only need a web browser. Do the steps in this order. Menu names in the Supab
 3. Click **Run**. It should finish with "Success. No rows returned".
    - Run it only **once**, on an empty project. It runs as one block: if anything fails, nothing is saved, and you can fix the problem and run it again.
 
+## Already set up before 24 October 2026? Run the upgrade
+
+If your database was created with an earlier `01_bizpilot_setup.sql`, run **`supabase/setup/04_upgrade_catalog_and_store_lock.sql`** once (SQL Editor → New query → paste → Run). It adds the new categories, product details, variants and Store Lock. It doesn't change existing businesses, products, sales or users. A new project only needs the current `01_bizpilot_setup.sql`, which already includes it.
+
 ## Step 2: Copy two values from Supabase
 
 Go to **Project Settings → API Keys** (or click **Connect** at the top of the dashboard). Copy:

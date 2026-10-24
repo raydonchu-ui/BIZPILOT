@@ -14,6 +14,7 @@ Retail management, inventory and profit analytics for shop owners in Cameroon. A
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deploying to your Supabase project and a static host, environment variables, auth settings, first administrator |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Payment verification, plans and pricing, backups and recovery, incident response, monitoring, maintenance |
 | [docs/FINANCIAL_RULES.md](docs/FINANCIAL_RULES.md) | How BizPilot computes cost, profit, stock value, balances and the analytics |
+| [docs/STORE_LOCK.md](docs/STORE_LOCK.md) | How the 4-digit Store Lock PIN works, what it protects and its limits |
 | [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | What is not done, not verified, or needs a third-party account or legal review |
 
 ## Run locally

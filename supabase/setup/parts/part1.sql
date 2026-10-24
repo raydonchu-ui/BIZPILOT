@@ -1,4 +1,4 @@
--- BizPilot setup PART 1 of 10. Run parts in order.
+-- BizPilot setup PART 1 of 11. Run parts in order.
 begin;
 create schema if not exists app;
 grant usage on schema app to anon, authenticated, service_role;
