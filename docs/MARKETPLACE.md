@@ -64,7 +64,8 @@ Fapshi documents **no split payments, no automatic recurring charges and no refu
 3. The page shows "Approve the payment on your phone" and asks the server every 5 seconds. The server asks Fapshi (`payment-status`, throttled), and the webhook usually arrives first.
 4. When Fapshi reports SUCCESSFUL, `fapshi_apply` marks the order paid, or activates the plan through a verified `billing_payments` row (method `fapshi`). The page updates by itself.
 5. Declined, cancelled or insufficient balance: the page says so, and the payer can try again. Nothing is marked paid from the browser.
-6. If direct pay is not activated on the Fapshi service, the function automatically falls back to the Fapshi payment page. The payer can also choose that page themselves.
+6. If direct pay is not activated on the Fapshi service, Fapshi refuses the request, so no pop-up reaches the phone. The payer is then told this and continues on the Fapshi payment page, where they enter their number and get the approval request. They can also choose that page themselves.
+7. Fapshi's last answer to a direct-pay request (accepted, or refused with its reason) is kept privately in `app_config` (`fapshi_direct_pay`). **Admin → Mobile Money** shows it with the steps to ask Fapshi support for activation.
 
 The money is collected into BizPilot's Fapshi service: it shows in the Fapshi dashboard balance at once, and withdrawals are made from there. **Admin → Mobile Money** shows:
 - the live Fapshi balance, read on the server, so the keys never reach the browser;

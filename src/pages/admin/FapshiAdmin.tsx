@@ -46,6 +46,22 @@ export function FapshiTodayStat() {
   return <StatCard label={t('fapshiAdmin.today')} value={q.data ? formatMoney(q.data.today, lang) : '…'} hint={q.data ? t('fapshiAdmin.payments', { n: q.data.todayCount }) : undefined} tone="green" to="/admin/fapshi" />;
 }
 
+/** Whether Fapshi pushes payment requests to the payer's phone (direct pay), from its last answer. */
+function DirectPayStatus({ info }: { info: Awaited<ReturnType<typeof fapshiBalance>> }) {
+  const { t, lang } = useI18n();
+  const d = info.direct_pay;
+  const mode = info.live ? t('fapshiAdmin.modeLive') : t('fapshiAdmin.modeSandbox');
+  if (!d) return <div className="mt-4"><Alert tone="blue" title={t('fapshiAdmin.directUnknownTitle', { mode })}>{t('fapshiAdmin.directUnknown')}</Alert></div>;
+  if (d.ok) return <div className="mt-4"><Alert tone="green" title={t('fapshiAdmin.directOkTitle', { mode })}>{t('fapshiAdmin.directOk', { time: formatDateTime(d.at, lang) })}</Alert></div>;
+  return (
+    <div className="mt-4"><Alert tone="red" title={t('fapshiAdmin.directOffTitle', { mode })}>
+      <p>{t('fapshiAdmin.directOff', { time: formatDateTime(d.at, lang), message: d.message ?? `HTTP ${d.http_status ?? ''}` })}</p>
+      <p className="mt-2 font-semibold">{t('fapshiAdmin.directHowTitle')}</p>
+      <ol className="mt-1 list-decimal space-y-0.5 pl-5">{(t('fapshiAdmin.directHow') as unknown as string).split('|').map((x) => <li key={x}>{x}</li>)}</ol>
+    </Alert></div>
+  );
+}
+
 export function FapshiAdmin() {
   const { t, lang, has } = useI18n();
   const [filter, setFilter] = useState('successful');
@@ -69,6 +85,7 @@ export function FapshiAdmin() {
           hint={s ? t('fapshiAdmin.split', { subs: formatMoney(s.monthSubs, lang), orders: formatMoney(s.monthOrders, lang) }) : undefined} />
       </div>
       {balance.error && <div className="mt-4"><Alert tone="amber">{t('fapshiAdmin.balanceError')}</Alert></div>}
+      {balance.data && <DirectPayStatus info={balance.data} />}
       <Card className="mt-4">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <div className="w-56"><Select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t('common.status')}>

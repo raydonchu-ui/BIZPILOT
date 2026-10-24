@@ -208,6 +208,10 @@ describe('Fapshi edge function', () => {
       expect(out.mode).toBe('link');
       expect(out.direct_failed).toBe(true);
       expect(out.link).toMatch(/^https:\/\/checkout\.fapshi\.test\//);
+      expect(out.direct_error).toBe('Direct pay is not enabled for this service');
+      // Fapshi's refusal is kept (privately) so administrators can see why phones got no request.
+      const [row] = await sql(`select value, is_public from app_config where key = 'fapshi_direct_pay'`);
+      expect(row).toMatchObject({ is_public: false, value: { ok: false, http_status: 403, message: 'Direct pay is not enabled for this service' } });
     } finally { directDisabled = false; }
   });
 
@@ -217,6 +221,10 @@ describe('Fapshi edge function', () => {
     const adm = await createUser('fx-admin');
     await sql('insert into platform_admins (user_id) values ($1)', [adm.id]);
     const { data: ad } = await adm.client.auth.getSession();
-    expect(await (await post({ action: 'balance' }, { auth: ad.session!.access_token })).json()).toEqual({ service: 'BizPilot', balance: 123456, currency: 'XAF' });
+    expect(await (await post({ action: 'balance' }, { auth: ad.session!.access_token })).json()).toMatchObject({ service: 'BizPilot', balance: 123456, currency: 'XAF', live: false,
+      direct_pay: { ok: false, message: 'Direct pay is not enabled for this service' } });
+    // The status row is not readable by ordinary users.
+    const { data: rows } = await owner.client.from('app_config').select('key').eq('key', 'fapshi_direct_pay');
+    expect(rows ?? []).toEqual([]);
   });
 });

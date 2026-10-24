@@ -107,6 +107,27 @@ async function rpc(cfg: FapshiConfig, f: Fetch, fn: string, args: unknown, as: {
   return { data: body, error: null };
 }
 
+// The last answer Fapshi gave to a direct-pay request (accepted, or refused and why), kept in the
+// private app_config row 'fapshi_direct_pay' so administrators can see whether phone requests work.
+function serviceHeaders(cfg: FapshiConfig) {
+  const h: Record<string, string> = { apikey: cfg.serviceKey, 'Content-Type': 'application/json' };
+  if (cfg.serviceKey.startsWith('eyJ')) h.Authorization = `Bearer ${cfg.serviceKey}`;
+  return h;
+}
+const cleanMessage = (m: unknown) => String(m ?? '').replace(/[^\p{L}\p{N}\s.,:;'()\/-]/gu, '').slice(0, 200);
+async function saveDirectStatus(cfg: FapshiConfig, f: Fetch, value: Record<string, unknown>) {
+  await f(`${cfg.supabaseUrl}/rest/v1/app_config?on_conflict=key`, {
+    method: 'POST', headers: { ...serviceHeaders(cfg), Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ key: 'fapshi_direct_pay', value: { ...value, at: new Date().toISOString() }, is_public: false }),
+  }).catch(() => null);
+}
+async function loadDirectStatus(cfg: FapshiConfig, f: Fetch) {
+  const res = await f(`${cfg.supabaseUrl}/rest/v1/app_config?key=eq.fapshi_direct_pay&select=value`, { headers: serviceHeaders(cfg) }).catch(() => null);
+  if (!res?.ok) return null;
+  const rows = await res.json().catch(() => []);
+  return Array.isArray(rows) && rows[0] ? rows[0].value : null;
+}
+
 async function fapshi(cfg: FapshiConfig, f: Fetch, method: 'GET' | 'POST', path: string, body?: unknown) {
   const res = await f(`${cfg.fapshiBase}${path}`, {
     method,
@@ -139,6 +160,7 @@ async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any, direct?: { 
   }
   const amount = Number(begin.amount);
   if (!Number.isInteger(amount) || amount < 100) return json({ error: 'online_minimum_amount' }, 400);
+  let directError = '';
   const common = {
     ...(begin.email && EMAIL.test(begin.email) ? { email: begin.email } : {}),
     userId: String(begin.user_id ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 100) || undefined,
@@ -154,10 +176,14 @@ async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any, direct?: { 
     if (dp.ok && TRANS.test(String(dp.data?.transId ?? ''))) {
       const att = await rpc(cfg, f, 'fapshi_attach', { p_payment: begin.payment_id, p_trans_id: dp.data.transId, p_link: null }, { service: true });
       if (att.error) return json({ error: 'payment_record_failed' }, 500);
+      await saveDirectStatus(cfg, f, { ok: true });
       return json({ mode: 'direct', payment_id: begin.payment_id, amount });
     }
-    // Direct pay refused (e.g. not activated on the Fapshi service): fall back to the payment page.
-    console.error('fapshi direct-pay failed', dp.status, dp.data?.message ?? '');
+    // Direct pay refused (Fapshi disables it on live services until its support activates it):
+    // fall back to the payment page and keep Fapshi's reason for the administrators.
+    directError = cleanMessage(dp.data?.message) || `http_${dp.status}`;
+    console.error('fapshi direct-pay failed', dp.status, directError);
+    await saveDirectStatus(cfg, f, { ok: false, http_status: dp.status, message: directError });
   }
   const init = await fapshi(cfg, f, 'POST', '/initiate-pay', {
     amount, redirectUrl: `${cfg.siteUrl}${begin.return_path}`, ...common,
@@ -169,7 +195,7 @@ async function startPayment(cfg: FapshiConfig, f: Fetch, begin: any, direct?: { 
   const attached = await rpc(cfg, f, 'fapshi_attach', { p_payment: begin.payment_id, p_trans_id: init.data.transId, p_link: init.data.link },
     { service: true });
   if (attached.error) return json({ error: 'payment_record_failed' }, 500);
-  return json({ mode: 'link', link: init.data.link, payment_id: begin.payment_id, direct_failed: Boolean(direct) });
+  return json({ mode: 'link', link: init.data.link, payment_id: begin.payment_id, direct_failed: Boolean(direct), ...(directError ? { direct_error: directError } : {}) });
 }
 
 function directOptions(body: any) {
@@ -232,7 +258,8 @@ export async function handle(req: Request, cfg: FapshiConfig, f: Fetch = fetch):
     if (check.error) return json({ error: 'permission_denied' }, 403);
     const bal = await fapshi(cfg, f, 'GET', '/balance');
     if (!bal.ok) return json({ error: 'payment_provider_error', provider_message: bal.data?.message ?? null }, 502);
-    return json({ service: bal.data?.service ?? null, balance: Number(bal.data?.balance ?? 0), currency: bal.data?.currency ?? 'XAF' });
+    return json({ service: bal.data?.service ?? null, balance: Number(bal.data?.balance ?? 0), currency: bal.data?.currency ?? 'XAF',
+      live: cfg.fapshiBase.includes('live.'), direct_pay: await loadDirectStatus(cfg, f) });
   }
 
   if (body?.action === 'verify') {

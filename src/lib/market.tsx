@@ -164,7 +164,7 @@ async function invokeFapshi(body: Record<string, unknown>) {
 }
 export type PayStart =
   | { mode: 'direct'; payment_id: string; amount: number }
-  | { mode: 'link'; payment_id: string; link: string; direct_failed?: boolean };
+  | { mode: 'link'; payment_id: string; link: string; direct_failed?: boolean; direct_error?: string };
 export type Medium = 'mobile money' | 'orange money';
 
 /** MTN or Orange from a Cameroon number (MTN 67/650-654/680-684, Orange 69/655-659/685-689). */
@@ -190,7 +190,8 @@ export async function requestSubscriptionPayment(businessId: string, plan: strin
   return d as PayStart;
 }
 export async function fapshiBalance() {
-  return invokeFapshi({ action: 'balance' }) as Promise<{ service: string | null; balance: number; currency: string }>;
+  return invokeFapshi({ action: 'balance' }) as Promise<{ service: string | null; balance: number; currency: string; live?: boolean;
+    direct_pay?: { ok: boolean; at: string; http_status?: number; message?: string } | null }>;
 }
 
 export async function verifyPayment(paymentId: string) {

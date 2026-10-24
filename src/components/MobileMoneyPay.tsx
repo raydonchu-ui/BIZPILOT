@@ -10,7 +10,8 @@ import { formatMoney } from '../lib/format';
 import { detectMedium, Medium, PayStart, verifyPayment } from '../lib/market';
 import { Alert, Button, Field, Input } from './ui';
 
-type Phase = { k: 'form' } | { k: 'waiting'; paymentId: string; since: number } | { k: 'paid' } | { k: 'failed'; reason: string };
+type Phase = { k: 'form' } | { k: 'waiting'; paymentId: string; since: number } | { k: 'paid' } | { k: 'failed'; reason: string }
+  | { k: 'page'; link: string };
 
 const POLL_MS = 5000;
 const MAX_WAIT_MS = 5 * 60_000;
@@ -67,7 +68,10 @@ export function MobileMoneyPay({ amount, defaultPhone, request, onPaid, compact,
     try {
       const r = await request(phone, medium);
       if (r.mode === 'direct') setPhase({ k: 'waiting', paymentId: r.payment_id, since: Date.now() });
-      else window.location.assign(r.link); // direct pay not available on the Fapshi service: payment page
+      // Fapshi refused to push the request to the phone (direct pay not activated on the Fapshi
+      // account): say so plainly and continue on Fapshi's secure page, where the number is entered.
+      else if (r.direct_failed) setPhase({ k: 'page', link: r.link });
+      else window.location.assign(r.link);
     } catch (err) {
       setError(errorMessage(err, t, has));
     } finally {
@@ -82,6 +86,20 @@ export function MobileMoneyPay({ amount, defaultPhone, request, onPaid, compact,
     } catch (err) { setError(errorMessage(err, t, has)); setBusy(false); }
   };
 
+  if (phase.k === 'page') {
+    return (
+      <div className="space-y-3 rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/40" role="status">
+        <p className="font-bold">{t('pay.pageTitle')}</p>
+        <p className="text-sm">{t('pay.pageBody', { phone })}</p>
+        <ol className="list-decimal space-y-1 pl-6 text-sm text-ink-soft dark:text-gray-300">
+          <li>{t('pay.pageStep1')}</li><li>{t('pay.pageStep2', { phone })}</li><li>{t('pay.pageStep3')}</li>
+        </ol>
+        <a href={phase.link} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-3 font-semibold text-white hover:bg-brand-800">
+          <ExternalLink className="h-4 w-4" />{t('pay.pageButton', { amount: formatMoney(amount, lang) })}</a>
+        <Button size="sm" variant="ghost" onClick={() => setPhase({ k: 'form' })}>{t('pay.changeNumber')}</Button>
+      </div>
+    );
+  }
   if (phase.k === 'paid') {
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl bg-brand-50 p-5 text-center dark:bg-brand-900/30" role="status">

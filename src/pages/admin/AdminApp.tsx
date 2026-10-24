@@ -262,7 +262,7 @@ function Plans() {
 function Config() {
   const { t } = useI18n();
   const { run, busy } = useAction();
-  const q = useQuery({ queryKey: ['admin-config'], queryFn: async () => unwrap(await supabase.from('app_config').select('*').order('key')) as any[] });
+  const q = useQuery({ queryKey: ['admin-config'], queryFn: async () => unwrap(await supabase.from('app_config').select('*').neq('key', 'fapshi_direct_pay').order('key')) as any[] });
   const [vals, setVals] = useState<Record<string, string>>({});
   const [adminEmail, setAdminEmail] = useState('');
   useEffect(() => { if (q.data) setVals(Object.fromEntries(q.data.map((r) => [r.key, JSON.stringify(r.value, null, 2)]))); }, [q.data]);

@@ -248,6 +248,9 @@ test('online payment: a declined phone request can be retried; without direct pa
   // Direct pay switched off on the Fapshi service: the same button falls back to the hosted page.
   await fetch(`${MOCK}/__direct/off`, { method: 'POST' });
   await page.getByRole('button', { name: /Send payment request/ }).click();
+  // The payer is told why and continues on Fapshi's secure page.
+  await expect(page.getByText('One more step on Fapshi’s secure page')).toBeVisible();
+  await page.getByRole('link', { name: /Continue to pay/ }).click();
   await expect(page.getByRole('heading', { name: 'Pay 8000 XAF' })).toBeVisible();
   await page.getByRole('button', { name: 'Pay now' }).click();
   await expect(page).toHaveURL(/\/order\//, { timeout: 30_000 });
@@ -321,6 +324,8 @@ test('an administrator verifies the store and can hide a listing', async ({ brow
     await expect(page.getByRole('row', { name: /Order ORD-/ }).first()).toContainText('Verified');
     // Balance read on the server from the (simulated) Fapshi account.
     await expect(page.getByText('Live from your Fapshi account')).toBeVisible();
+    // The last direct-pay answer from Fapshi (accepted in the last test) is shown to the admin.
+    await expect(page.getByText(/Phone requests \(sandbox\): working/)).toBeVisible();
   }
   await ctx.close();
 });
