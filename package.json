@@ -12,6 +12,7 @@
     "test:db": "vitest run tests/db",
     "test:unit": "vitest run src",
     "test:e2e": "playwright test",
+    "check:google-origins": "node scripts/check-google-origins.mjs",
     "db:reset": "supabase db reset"
   },
   "dependencies": {
