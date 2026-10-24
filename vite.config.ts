@@ -41,6 +41,12 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // A new deployment's service worker takes over at once instead of waiting until every
+        // tab is closed or "Update" is clicked; otherwise returning visitors keep running the
+        // previous version. PwaPrompt decides when the page itself reloads.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Only the application shell and static assets are cached. Business data
         // (Supabase API responses) is never cached by the service worker.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],

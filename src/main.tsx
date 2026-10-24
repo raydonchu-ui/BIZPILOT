@@ -12,6 +12,18 @@ import './index.css';
 
 applyTheme(getTheme());
 
+// After a deployment, an open tab may ask for a code file of the previous version that no
+// longer exists. Reload once to pick up the current version (at most once every 30 seconds).
+window.addEventListener('vite:preloadError', (e) => {
+  try {
+    const last = Number(sessionStorage.getItem('bp-chunk-reload') ?? 0);
+    if (Date.now() - last < 30_000) return;
+    sessionStorage.setItem('bp-chunk-reload', String(Date.now()));
+  } catch { /* storage unavailable: still reload */ }
+  e.preventDefault();
+  window.location.reload();
+});
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
