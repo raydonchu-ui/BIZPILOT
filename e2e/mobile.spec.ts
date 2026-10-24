@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { passStoreLock } from './storeLockHelper';
 
 // Mobile layout: registration, bottom navigation, quick actions, fast sale entry,
 // and the offline queue that never reports unsynced sales as saved.
@@ -15,6 +16,7 @@ test('mobile: bottom nav, quick actions and offline-safe sale entry', async ({ p
   await page.getByRole('button', { name: 'Créer mon compte' }).click();
   await page.getByLabel(/^Nom du commerce/).fill('Dépôt Awa');
   await page.getByRole('button', { name: 'Créer mon commerce' }).click();
+  await passStoreLock(page);
   await expect(page.getByRole('heading', { name: 'Bien démarrer' })).toBeVisible();
 
   // Add a product with opening stock

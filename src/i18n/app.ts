@@ -1,6 +1,7 @@
 import * as core from './app/core';
 import * as ops from './app/ops';
 import * as intel from './app/intel';
+import * as catalog from './app/catalog';
 
-export const en = { ...core.en, ...ops.en, ...intel.en };
-export const fr: typeof en = { ...core.fr, ...ops.fr, ...intel.fr };
+export const en = { ...core.en, ...ops.en, ...intel.en, ...catalog.en };
+export const fr: typeof en = { ...core.fr, ...ops.fr, ...intel.fr, ...catalog.fr };

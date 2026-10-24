@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
+import { passStoreLock } from './storeLockHelper';
 
 // Runs only against a dev/preview server built with VITE_GOOGLE_CLIENT_ID (GIS_BASE_URL).
 // Google's script is replaced by a stand-in (a real Google login cannot run in CI). The token
@@ -83,6 +84,7 @@ test('Google button runs GIS (not the redirect flow); token + nonce reach Supaba
   await expect(page.locator('[data-google-mode]')).toHaveAttribute('data-google-mode', 'gis');
   await page.getByRole('button', { name: 'Google (stand-in)' }).click();
   await expect(page).toHaveURL(/\/app$/, { timeout: 15000 });
+  await passStoreLock(page);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
   const gis = await page.evaluate(() => ({ id: (window as any).__gis?.client_id, nonce: (window as any).__gis?.nonce, ux: (window as any).__gis?.ux_mode }));
@@ -104,6 +106,7 @@ test('Google button runs GIS (not the redirect flow); token + nonce reach Supaba
   await expect(page).toHaveURL(/\/login/);
   await page.getByRole('button', { name: 'Google (stand-in)' }).click();
   await expect(page).toHaveURL(/\/app$/, { timeout: 15000 });
+  await passStoreLock(page);
   expect(sent).toHaveLength(2);
   expect(sent[1].nonce).not.toBe(sent[0].nonce); // new nonce per page/attempt
   expect(oauth).toEqual([]);
@@ -127,6 +130,7 @@ test('a double callback sends only one sign-in request', async ({ page }) => {
   await page.goto('/login');
   await page.getByRole('button', { name: 'Google double (stand-in)' }).click();
   await expect(page).toHaveURL(/\/app$/, { timeout: 15000 });
+  await passStoreLock(page);
   expect(sent).toHaveLength(1);
 });
 

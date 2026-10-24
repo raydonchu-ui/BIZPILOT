@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { passStoreLock } from './storeLockHelper';
 
 // Full business workflow through the real UI, backend and database:
 // register -> business -> supplier -> product (carton unit) -> purchase & receive ->
@@ -31,6 +32,7 @@ test('register, create business and see the setup checklist', async ({ page }) =
   await page.getByLabel('Type of business').selectOption('grocery');
   await page.getByLabel('City').fill('Douala');
   await page.getByRole('button', { name: 'Create my business' }).click();
+  await passStoreLock(page); // first access to the dashboard: create the Store Lock PIN
   await expect(page.getByRole('heading', { name: 'Getting started' })).toBeVisible();
   await expect(page.getByText(/of \d+ steps completed/)).toBeVisible();
 });
@@ -42,6 +44,7 @@ async function login(page: Page) {
   await page.getByLabel(/^Password/).fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page).toHaveURL(/\/app/);
+  await passStoreLock(page); // a new sign-in starts locked
 }
 
 test('add supplier and product with carton unit', async ({ page }) => {
@@ -54,10 +57,12 @@ test('add supplier and product with carton unit', async ({ page }) => {
 
   await page.goto('/app/products/new');
   await page.getByLabel(/^Name/).fill('Coca Cola 50cl');
-  await page.getByLabel('Code / SKU').fill(`COKE-${id}`);
+  await page.getByRole('button', { name: /Product identifiers/ }).click();
+  await page.getByLabel('Stock Keeping Unit (SKU)').fill(`COKE-${id}`);
   await page.getByLabel('Base unit').fill('bottle');
   await page.getByLabel(/^Selling price( \*)?$/).fill('500');
   await page.getByLabel('Minimum stock (bottle)').fill('24');
+  await page.getByRole('button', { name: /More settings/ }).click();
   await page.getByRole('button', { name: 'Add unit' }).click();
   await page.getByLabel('Unit name').fill('carton');
   await page.getByLabel('Contains (in bottle)').fill('24');

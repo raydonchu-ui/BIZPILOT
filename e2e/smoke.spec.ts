@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { passStoreLock } from './storeLockHelper';
 import { addCustomer, addProduct, addSupplier, closeDb, createBusiness, createUser, rpc, sell, sql, uid } from '../tests/db/helpers';
 
 // Visits every route with realistic data and fails on any runtime or console error.
 const SHOTS = process.env.SHOT_DIR;
-const routes = ['/app', '/app/setup', '/app/products', '/app/products/new', '/app/inventory', '/app/inventory?tab=movements', '/app/inventory?tab=expiry',
+const routes = ['/app', '/app/setup', '/app/products', '/app/products/new', '/app/products/categories', '/app/inventory', '/app/inventory?tab=movements', '/app/inventory?tab=expiry',
   '/app/inventory/counts', '/app/import', '/app/purchases', '/app/purchases/new', '/app/suppliers', '/app/customers', '/app/sales', '/app/sales/new',
   '/app/expenses', '/app/cash', '/app/reports', '/app/reports?tab=sales', '/app/reports?tab=products', '/app/reports?tab=categories', '/app/reports?tab=valuation',
   '/app/reports?tab=restock', '/app/reports?tab=slow', '/app/reports?tab=aging', '/app/reports?tab=suppliers', '/app/reports?tab=customers',
@@ -38,6 +39,7 @@ test('every page renders without errors', async ({ page }) => {
   await page.getByLabel(/^Password/).fill('Test-password-123!');
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page).toHaveURL(/\/app/);
+  await passStoreLock(page);
 
   for (const r of routes) {
     const before = errors.length;

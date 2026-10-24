@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Download, ImagePlus, LifeBuoy, ShieldAlert } from 'lucide-react';
 import { useI18n } from '../../../i18n';
+import { BUSINESS_TYPES } from '../../../lib/catalogTemplates';
 import { useBiz } from '../../../lib/business';
 import { useAuth } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
@@ -59,7 +60,7 @@ function BusinessTab() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('onboarding.businessName')} required className="sm:col-span-2"><Input value={f.name ?? ''} onChange={set('name')} /></Field>
           <Field label={t('onboarding.ownerName')}><Input value={f.owner_name ?? ''} onChange={set('owner_name')} /></Field>
-          <Field label={t('onboarding.category')}><Select value={f.category} onChange={set('category')}>{['grocery', 'general', 'drinks', 'hardware', 'electronics', 'fashion', 'cosmetics', 'other'].map((c) => <option key={c} value={c}>{t(`businessCategories.${c}`)}</option>)}</Select></Field>
+          <Field label={t('onboarding.category')}><Select value={f.category} onChange={set('category')}>{BUSINESS_TYPES.map((c) => <option key={c} value={c}>{t(`businessCategories.${c}`)}</option>)}</Select></Field>
           <Field label={t('onboarding.businessPhone')}><Input value={f.phone ?? ''} onChange={set('phone')} /></Field>
           <Field label={t('onboarding.businessEmail')}><Input value={f.email ?? ''} onChange={set('email')} /></Field>
           <Field label={t('onboarding.city')}><Input value={f.city ?? ''} onChange={set('city')} /></Field>

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase, supabaseConfigured } from './supabase';
 import { queryClient, rpc } from './api';
 import { clearCachedCatalogs } from './offline';
+import { announceLockChange, isMissingFunction, lastKnownLock, LockStatus, onLockChange, rememberLock, sessionIdOf } from './storeLock';
 
 export interface BusinessCtx {
   id: string; name: string; role: 'owner' | 'manager' | 'cashier'; status: string; currency: string;
@@ -27,6 +28,10 @@ interface AuthState {
   contextLoading: boolean;
   refreshContext: () => Promise<unknown>;
   signOut: () => Promise<void>;
+  storeLock: {
+    status: LockStatus | undefined; loading: boolean; error: unknown; offline: boolean;
+    set: (s: LockStatus) => void; refresh: () => Promise<unknown>;
+  };
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -46,9 +51,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const userId = session?.user.id;
+  const sid = sessionIdOf(session);
+  // Store Lock state for this signed-in session, resolved before any business data is loaded.
+  const lockQuery = useQuery<LockStatus>({
+    queryKey: ['store-lock', userId, sid],
+    enabled: Boolean(userId),
+    staleTime: Infinity,
+    retry: (n, e) => !isMissingFunction(e) && n < 1,
+    queryFn: async () => {
+      try {
+        const s = await rpc<LockStatus>('store_lock_status');
+        rememberLock(sid, s.has_pin && s.locked);
+        return s;
+      } catch (e) {
+        if (isMissingFunction(e)) return { has_pin: false, locked: false, unavailable: true };
+        throw e;
+      }
+    },
+  });
+  useEffect(() => onLockChange(() => { lockQuery.refetch(); }), [lockQuery.refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+  const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const offlineLocked = lockQuery.isError && offline ? lastKnownLock(sid) : null;
+  const lockStatus: LockStatus | undefined = lockQuery.data ?? (offlineLocked !== null ? { has_pin: true, locked: offlineLocked } : undefined);
+  const lockedNow = Boolean(lockStatus?.has_pin && lockStatus.locked);
   const ctxQuery = useQuery({
     queryKey: ['my_context', userId],
-    enabled: Boolean(userId),
+    enabled: Boolean(userId) && Boolean(lockStatus) && !lockedNow,
     staleTime: 60_000,
     queryFn: async () => {
       // Claim any staff invitations addressed to this (verified) email first.
@@ -68,7 +96,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearCachedCatalogs();
       queryClient.clear();
     },
-  }), [session, ready, userId, ctxQuery.data, ctxQuery.isLoading, ctxQuery]);
+    storeLock: {
+      status: lockStatus, loading: Boolean(userId) && lockQuery.isLoading, error: lockQuery.error, offline,
+      set: (st: LockStatus) => {
+        rememberLock(sid, st.has_pin && st.locked);
+        queryClient.setQueryData(['store-lock', userId, sid], st);
+        announceLockChange();
+      },
+      refresh: () => lockQuery.refetch(),
+    },
+  }), [session, ready, userId, ctxQuery.data, ctxQuery.isLoading, ctxQuery, lockStatus, lockQuery, offline, sid]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

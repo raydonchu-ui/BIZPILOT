@@ -84,8 +84,10 @@ export const en = {
     expense_refund: 'Expense reversal',
   },
   businessCategories: {
-    grocery: 'Grocery / supermarket', general: 'General store', drinks: 'Drinks depot', hardware: 'Hardware & building materials',
-    electronics: 'Phones & electronics', fashion: 'Fashion & clothing', cosmetics: 'Cosmetics & beauty', other: 'Other retail',
+    grocery: 'Grocery / food store', supermarket: 'Supermarket', drinks: 'Drinks depot', fashion: 'Clothing & fashion', footwear: 'Footwear',
+    electronics: 'Phones & electronics', hair_beauty: 'Hair & beauty', cosmetics: 'Cosmetics', furniture: 'Furniture', hardware: 'Hardware & building materials',
+    automotive: 'Automotive & spare parts', sports: 'Sports', toys: 'Toys', books: 'Books', stationery: 'Stationery', jewelry: 'Jewellery & watches',
+    pets: 'Pet supplies', agriculture: 'Agriculture & farm supplies', home_goods: 'Home goods', gifts: 'Gifts', general: 'General merchandise', other: 'Other retail',
   },
   subscriptionState: {
     free: 'Free plan', trial: 'Free trial', active: 'Active', renewal_due: 'Renewal due', grace: 'Payment overdue (grace period)',
@@ -152,6 +154,9 @@ export const en = {
     auth_email_not_confirmed: 'Please confirm your email address first (check your inbox).',
     auth_invalid_credentials: 'Incorrect email or password.',
     google_unavailable: 'Google sign-in is not available right now. Please use your email and password.',
+    store_locked: 'The store is locked. Enter your PIN to continue.', pin_too_simple: 'Choose a less obvious PIN (not 1234, 0000 or similar).',
+    pin_already_set: 'A PIN already exists for this account.', pin_not_set: 'Create a Store Lock PIN first.', fresh_login_required: 'Sign in again to reset your PIN.',
+    session_required: 'Please sign in again.', duplicate_variant: 'A variant with this name already exists: {label}.', variant_label_required: 'Each variant needs a name.',
   },
 };
 
@@ -240,8 +245,10 @@ export const fr: typeof en = {
     expense_refund: 'Annulation de dépense',
   },
   businessCategories: {
-    grocery: 'Épicerie / supermarché', general: 'Boutique générale', drinks: 'Dépôt de boissons', hardware: 'Quincaillerie et matériaux',
-    electronics: 'Téléphones et électronique', fashion: 'Mode et habillement', cosmetics: 'Cosmétiques et beauté', other: 'Autre commerce',
+    grocery: 'Alimentation', supermarket: 'Supermarché', drinks: 'Dépôt de boissons', fashion: 'Vêtements & mode', footwear: 'Chaussures',
+    electronics: 'Téléphones & électronique', hair_beauty: 'Cheveux & beauté', cosmetics: 'Cosmétiques', furniture: 'Meubles', hardware: 'Quincaillerie & matériaux',
+    automotive: 'Auto & pièces détachées', sports: 'Sport', toys: 'Jouets', books: 'Librairie', stationery: 'Papeterie', jewelry: 'Bijouterie & montres',
+    pets: 'Animalerie', agriculture: 'Agriculture & intrants', home_goods: 'Articles de maison', gifts: 'Cadeaux', general: 'Commerce général', other: 'Autre commerce',
   },
   subscriptionState: {
     free: 'Plan gratuit', trial: 'Essai gratuit', active: 'Actif', renewal_due: 'Renouvellement proche', grace: 'Paiement en retard (période de grâce)',
@@ -308,5 +315,8 @@ export const fr: typeof en = {
     auth_email_not_confirmed: 'Veuillez d’abord confirmer votre adresse e-mail (vérifiez votre boîte de réception).',
     auth_invalid_credentials: 'E-mail ou mot de passe incorrect.',
     google_unavailable: 'La connexion avec Google n’est pas disponible pour le moment. Utilisez votre e-mail et votre mot de passe.',
+    store_locked: 'La boutique est verrouillée. Saisissez votre PIN pour continuer.', pin_too_simple: 'Choisissez un PIN moins évident (pas 1234, 0000 ou similaire).',
+    pin_already_set: 'Un PIN existe déjà pour ce compte.', pin_not_set: 'Créez d’abord un PIN de verrouillage.', fresh_login_required: 'Reconnectez-vous pour réinitialiser votre PIN.',
+    session_required: 'Veuillez vous reconnecter.', duplicate_variant: 'Une variante porte déjà ce nom : {label}.', variant_label_required: 'Chaque variante doit avoir un nom.',
   },
 };

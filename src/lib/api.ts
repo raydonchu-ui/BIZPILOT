@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: (n, err: any) => n < 2 && !String(err?.message ?? '').match(/permission|feature|not_found/), refetchOnWindowFocus: false },
+    queries: { staleTime: 30_000, retry: (n, err: any) => n < 2 && !String(err?.message ?? '').match(/permission|feature|not_found|store_locked/), refetchOnWindowFocus: false },
   },
 });
 
@@ -14,6 +14,8 @@ export class ApiError extends Error {
     super(e.message);
     this.details = e.details;
     this.code = e.code;
+    // The server locked this session (Store Lock): let the app show the PIN screen.
+    if (e.message === 'store_locked' && typeof window !== 'undefined') window.dispatchEvent(new Event('bizpilot:store-locked'));
   }
 }
 

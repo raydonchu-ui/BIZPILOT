@@ -113,6 +113,24 @@ begin
    where c.id = x.id and c.business_id = p_business;
 end $$;
 
+-- Renames a category; for a subcategory, products that use it are updated in the same step.
+create or replace function public.rename_category(p_business uuid, p_category uuid, p_name text)
+returns void language plpgsql security definer set search_path = public as $$
+declare c public.categories; nm text := btrim(coalesce(p_name, ''));
+begin
+  perform app.require_perm(p_business, 'products.manage');
+  select * into c from public.categories where id = p_category and business_id = p_business for update;
+  if not found then perform app.raise('not_found'); end if;
+  if nm = '' or length(nm) > 80 then perform app.raise('invalid_input'); end if;
+  if nm = c.name then return; end if;
+  update public.categories set name = nm where id = c.id;
+  if c.parent_id is not null then
+    update public.products set subcategory = nm
+     where business_id = p_business and category_id = c.parent_id and lower(subcategory) = lower(c.name);
+  end if;
+  perform app.audit(p_business, 'category.renamed', 'category', c.id::text, jsonb_build_object('from', c.name, 'to', nm));
+end $$;
+
 -- ---------------------------------------------------------------------------
 -- Products: optional attributes and server-generated SKU
 -- ---------------------------------------------------------------------------
@@ -346,6 +364,8 @@ revoke execute on function app.add_categories(uuid, jsonb) from public, anon, au
 grant execute on function app.generate_sku(uuid) to authenticated; -- called by products_guard as the user
 grant execute on function public.apply_category_template(uuid, jsonb) to authenticated;
 grant execute on function public.reorder_categories(uuid, uuid[]) to authenticated;
+grant execute on function public.rename_category(uuid, uuid, text) to authenticated;
+revoke execute on function public.rename_category(uuid, uuid, text) from anon;
 grant execute on function public.add_product_variants(uuid, uuid, jsonb) to authenticated;
 revoke execute on function public.apply_category_template(uuid, jsonb) from anon;
 revoke execute on function public.reorder_categories(uuid, uuid[]) from anon;

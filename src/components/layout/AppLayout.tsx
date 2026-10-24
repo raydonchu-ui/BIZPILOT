@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../lib/auth';
+import { useStoreLockActions } from '../StoreLock';
 import { useBiz } from '../../lib/business';
 import { rpc, unwrap } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -173,11 +174,24 @@ function Topbar({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void
         </button>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <button onClick={onSearch} className="rounded-lg p-2 md:hidden" aria-label={t('common.search')}><Search className="h-5 w-5" /></button>
+          <LockStoreButton />
           <NotificationBell />
           <UserMenu />
         </div>
       </div>
     </header>
+  );
+}
+
+function LockStoreButton() {
+  const { t } = useI18n();
+  const { lock, enabled } = useStoreLockActions();
+  if (!enabled) return null;
+  return (
+    <button onClick={lock} className="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm font-semibold text-ink-soft hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+      aria-label={t('storeLock.lockStore')} title={t('storeLock.lockStore')}>
+      <Lock className="h-5 w-5" /><span className="hidden md:inline">{t('storeLock.lockStore')}</span>
+    </button>
   );
 }
 

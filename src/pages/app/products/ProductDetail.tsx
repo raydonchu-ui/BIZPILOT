@@ -17,7 +17,7 @@ type Tab = 'movements' | 'sales' | 'purchases' | 'prices' | 'batches';
 
 export default function ProductDetail() {
   const { id: pid } = useParams();
-  const { t, lang } = useI18n();
+  const { t, lang, tv } = useI18n();
   const { can, has } = useBiz();
   const money = useMoney();
   const { run, busy } = useAction();
@@ -28,6 +28,10 @@ export default function ProductDetail() {
   const q = useQuery({
     queryKey: ['product', pid],
     queryFn: async () => unwrap(await supabase.from('products').select('*, categories(name), product_units(*), suppliers:preferred_supplier_id(id,name)').eq('id', pid!).single()) as Product & { suppliers: any },
+  });
+  const variants = useQuery({
+    queryKey: ['product-variants', pid],
+    queryFn: async () => unwrap(await supabase.from('products').select('id,variant_label,sku,selling_price,qty_on_hand,min_stock,status').eq('variant_of', pid!).order('variant_label')) as any[],
   });
   const tabData = useQuery({
     queryKey: ['product-tab', pid, tab],
@@ -48,12 +52,15 @@ export default function ProductDetail() {
     setArchiveOpen(false);
   };
   const rows = (tabData.data ?? []) as any[];
+  const attrLabels = tv<Record<string, string>>('catalog.attr');
+  const attrs = Object.entries((p.attributes ?? {}) as Record<string, string | number>);
+  const optionLabel = (v: string | number) => (typeof v === 'string' && /^[a-z_]+$/.test(v) && t(`catalog.opt.${v}`) !== `catalog.opt.${v}` ? t(`catalog.opt.${v}`) : String(v));
   return (
     <div>
       <PageHeader
         back={<Link to="/app/products" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"><ArrowLeft className="h-4 w-4" />{t('nav.products')}</Link>}
         title={<span className="flex items-center gap-3"><ProductThumb path={p.image_path} name={p.name} />{p.name}{p.variant_label ? ` — ${p.variant_label}` : ''}</span>}
-        subtitle={<span className="flex flex-wrap items-center gap-2">{p.sku}{p.barcode && ` · ${p.barcode}`}{p.categories?.name && ` · ${p.categories.name}`} {stockBadge(p, t)}</span>}
+        subtitle={<span className="flex flex-wrap items-center gap-2">{p.sku}{p.barcode && ` · ${p.barcode}`}{p.categories?.name && ` · ${p.categories.name}`}{p.subcategory && ` › ${p.subcategory}`}{p.brand && ` · ${p.brand}`} {stockBadge(p, t)}</span>}
         actions={can('products.manage') && <>
           {can('stock.adjust') && p.status === 'active' && <Button variant="outline" icon={<SlidersHorizontal className="h-4 w-4" />} onClick={() => setAdjust(true)}>{t('inventory.adjust')}</Button>}
           {p.status === 'active' && <Button variant="outline" icon={<PackagePlus className="h-4 w-4" />} onClick={() => setOpenStock(true)}>{t('products.openingStock')}</Button>}
@@ -87,8 +94,28 @@ export default function ProductDetail() {
           </ul>
           {p.location && <p className="mt-4 text-sm text-ink-muted">{t('products.location')}: {p.location}</p>}
           {p.description && <p className="mt-2 text-sm text-ink-muted">{p.description}</p>}
+          {attrs.length > 0 && (
+            <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-gray-100 pt-3 text-sm dark:border-gray-800" data-testid="product-attributes">
+              {attrs.map(([k, v]) => <div key={k} className="contents"><dt className="text-ink-muted">{attrLabels[k] ?? k}</dt><dd className="font-medium">{optionLabel(v)}</dd></div>)}
+            </dl>
+          )}
         </Card>
       </div>
+      {(variants.data ?? []).length > 0 && (
+        <Card className="mt-4">
+          <CardHeader title={t('catalog.existingVariants')} subtitle={t('catalog.variantParentNote')} />
+          <DataTable rows={variants.data!} rowKey={(r: any) => r.id} columns={[
+            { key: 'l', header: t('catalog.variantLabel'), render: (r: any) => <Link to={`/app/products/${r.id}`} className="font-semibold hover:underline">{r.variant_label}</Link> },
+            { key: 's', header: 'SKU', hideOnMobile: true, render: (r: any) => r.sku },
+            { key: 'p', header: t('products.sellingPrice'), align: 'right', render: (r: any) => money(r.selling_price) },
+            { key: 'q', header: t('products.inStockQty'), align: 'right', render: (r: any) => `${formatNumber(r.qty_on_hand, lang)} ${p.base_unit}` },
+            { key: 'b', header: t('common.status'), align: 'center', render: (r: any) => stockBadge(r, t) },
+          ]} />
+        </Card>
+      )}
+      {p.variant_of && (
+        <p className="mt-3 text-sm"><Link to={`/app/products/${p.variant_of}`} className="font-semibold text-brand-700 hover:underline">{t('catalog.openParent')}</Link></p>
+      )}
 
       <Card className="mt-4">
         <Tabs value={tab} onChange={setTab} className="mb-4" items={[

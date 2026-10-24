@@ -56,8 +56,9 @@ export function LinkButton({ to, variant = 'primary', size = 'md', icon, classNa
 // ---------------------------------------------------------------------------
 const inputBase = 'block w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-ink placeholder:text-gray-400 shadow-sm transition focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:bg-gray-50 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-gray-800';
 
-export function Field({ label, hint, error, children, required, className, htmlFor }:
-  { label?: ReactNode; hint?: ReactNode; error?: ReactNode; children: ReactNode; required?: boolean; className?: string; htmlFor?: string }) {
+export function Field({ label, hint, error, children, required, optional, className, htmlFor }:
+  { label?: ReactNode; hint?: ReactNode; error?: ReactNode; children: ReactNode; required?: boolean; optional?: boolean; className?: string; htmlFor?: string }) {
+  const { t } = useI18n();
   // Associate the label with its control automatically (accessibility) when the
   // child is one of our form controls and no explicit id was given.
   const autoId = useId();
@@ -75,6 +76,7 @@ export function Field({ label, hint, error, children, required, className, htmlF
       {label && (
         <label htmlFor={forId} className="block text-sm font-medium text-ink-soft dark:text-gray-300">
           {label}{required && <span className="text-red-600" aria-hidden="true"> *</span>}
+          {optional && !required && <span className="ml-1.5 text-xs font-normal text-ink-muted dark:text-gray-400">({t('catalog.optional')})</span>}
         </label>
       )}
       {control}

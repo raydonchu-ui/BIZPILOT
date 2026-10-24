@@ -105,7 +105,7 @@ export function ProductPicker({ businessId, onPick, showCost, placeholder, offli
   );
 }
 
-function CameraScanner({ onClose, onCode }: { onClose: () => void; onCode: (c: string) => void }) {
+export function CameraScanner({ onClose, onCode }: { onClose: () => void; onCode: (c: string) => void }) {
   const { t } = useI18n();
   const video = useRef<HTMLVideoElement>(null);
   const [err, setErr] = useState<string | null>(null);

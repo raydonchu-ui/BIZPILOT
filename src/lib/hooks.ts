@@ -9,7 +9,12 @@ export interface Product {
   allow_fraction: boolean; purchase_cost: number; selling_price: number; qty_on_hand: number; stock_value: number; avg_cost: number;
   min_stock: number; lead_time_days: number | null; min_order_qty: number | null; preferred_supplier_id: string | null;
   location: string | null; track_expiry: boolean; variant_of: string | null; variant_label: string | null; status: 'active' | 'archived';
+  attributes?: Record<string, string | number> | null;
   created_at: string; updated_at: string; categories?: { name: string } | null; product_units?: ProductUnit[];
+}
+
+export interface Category {
+  id: string; name: string; parent_id: string | null; sort_order: number; archived_at: string | null; attribute_set: string | null;
 }
 
 export interface ProductUnit {
@@ -17,11 +22,24 @@ export interface ProductUnit {
   is_default_purchase: boolean; is_default_sale: boolean; active: boolean;
 }
 
-export function useCategories(businessId: string) {
+// Every category and subcategory of the business, archived ones included, in display order.
+export function useCategoryTree(businessId: string) {
   return useQuery({
-    queryKey: ['categories', businessId],
-    queryFn: async () => unwrap(await supabase.from('categories').select('id,name').eq('business_id', businessId).order('name')) as { id: string; name: string }[],
+    queryKey: ['categories', businessId, 'tree'],
+    queryFn: async () => unwrap(await supabase.from('categories').select('id,name,parent_id,sort_order,archived_at,attribute_set')
+      .eq('business_id', businessId).order('sort_order').order('name')) as Category[],
   });
+}
+
+// Active top-level categories (for selectors and filters).
+export function useCategories(businessId: string) {
+  const tree = useCategoryTree(businessId);
+  return { ...tree, data: tree.data?.filter((c) => !c.parent_id && !c.archived_at) };
+}
+
+export function subcategoriesOf(tree: Category[] | undefined, parentId: string | null | undefined, includeArchived = false) {
+  if (!parentId) return [];
+  return (tree ?? []).filter((c) => c.parent_id === parentId && (includeArchived || !c.archived_at));
 }
 
 export function useSuppliers(businessId: string, enabled = true) {

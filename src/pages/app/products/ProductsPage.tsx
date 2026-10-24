@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Filter, Package, Plus, Upload } from 'lucide-react';
+import { Download, Filter, FolderTree, Package, Plus, Upload } from 'lucide-react';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { supabase } from '../../../lib/supabase';
 import { unwrap } from '../../../lib/api';
-import { Product, useCategories, useSignedUrl } from '../../../lib/hooks';
+import { Product, subcategoriesOf, useCategories, useCategoryTree, useSignedUrl } from '../../../lib/hooks';
 import { formatNumber } from '../../../lib/format';
 import { downloadCsv } from '../../../lib/csv';
 import { Badge, Button, Card, DataTable, EmptyState, ErrorState, Input, LinkButton, PageHeader, PageLoader, Pagination, Select, Tabs, useMoney } from '../../../components/ui';
@@ -37,21 +37,32 @@ export default function ProductsPage() {
   const filter = (params.get('filter') as F) || 'all';
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('');
+  const [sub, setSub] = useState('');
+  const [brand, setBrand] = useState('');
   const [sort, setSort] = useState('name');
   const [page, setPage] = useState(0);
   const cats = useCategories(id);
+  const tree = useCategoryTree(id);
+  const subs = subcategoriesOf(tree.data, cat || null);
+  const brands = useQuery({
+    queryKey: ['product-brands', id],
+    queryFn: async () => [...new Set((unwrap(await supabase.from('products').select('brand').eq('business_id', id).not('brand', 'is', null).limit(5000)) as { brand: string }[])
+      .map((r) => r.brand.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+  });
 
   const build = () => {
     let query = supabase.from('products').select('*, categories(name)', { count: 'exact' }).eq('business_id', id);
     query = filter === 'archived' ? query.eq('status', 'archived') : query.eq('status', 'active');
     if (filter === 'out') query = query.lte('qty_on_hand', 0);
     if (cat) query = query.eq('category_id', cat);
+    if (cat && sub) query = query.ilike('subcategory', sub.replace(/[%_]/g, ' '));
+    if (brand) query = query.eq('brand', brand);
     if (q.trim()) { const like = `%${q.trim().replace(/[%_,()]/g, ' ')}%`; query = query.or(`name.ilike.${like},sku.ilike.${like},barcode.ilike.${like},brand.ilike.${like}`); }
     const [col, dir] = sort.split(':');
     return query.order(col, { ascending: dir !== 'desc' });
   };
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['products', id, filter, q, cat, sort, page],
+    queryKey: ['products', id, filter, q, cat, sub, brand, sort, page],
     queryFn: async () => {
       if (filter === 'low') {
         // Low stock compares two columns, so it is filtered after fetching active products.
@@ -66,9 +77,10 @@ export default function ProductsPage() {
   const exportAll = async () => {
     const rows = unwrap(await build().limit(5000)) as Product[];
     downloadCsv('bizpilot-products.csv', rows.map((p) => ({
-      name: p.name, sku: p.sku, barcode: p.barcode, category: p.categories?.name, brand: p.brand, base_unit: p.base_unit,
+      name: p.name, variant: p.variant_label, sku: p.sku, barcode: p.barcode, category: p.categories?.name, subcategory: p.subcategory, brand: p.brand, base_unit: p.base_unit,
       purchase_cost: p.purchase_cost, selling_price: p.selling_price, qty_on_hand: p.qty_on_hand, avg_cost: p.avg_cost,
       stock_value: Math.round(Number(p.stock_value)), min_stock: p.min_stock, status: p.status,
+      details: Object.entries(p.attributes ?? {}).map(([k, v]) => `${k}: ${v}`).join('; '),
     })));
   };
 
@@ -76,16 +88,29 @@ export default function ProductsPage() {
     <div>
       <PageHeader title={t('products.title')} subtitle={t('products.subtitle')} actions={<>
         <Button variant="outline" icon={<Download className="h-4 w-4" />} onClick={exportAll}>{t('common.exportCsv')}</Button>
+        {can('products.manage') && <LinkButton to="/app/products/categories" variant="outline" icon={<FolderTree className="h-4 w-4" />}>{t('catalog.categories.title')}</LinkButton>}
         {can('imports.manage') && <LinkButton to="/app/import" variant="outline" icon={<Upload className="h-4 w-4" />}>{t('common.import')}</LinkButton>}
         {can('products.manage') && <LinkButton to="/app/products/new" icon={<Plus className="h-4 w-4" />}>{t('nav.addProduct')}</LinkButton>}
       </>} />
       <Card>
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="flex-1"><Input placeholder={t('products.searchPlaceholder')} value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} prefixIcon={<Filter className="h-4 w-4" />} /></div>
-          <Select className="lg:w-52" value={cat} onChange={(e) => { setCat(e.target.value); setPage(0); }} aria-label={t('common.category')}>
+          <Select className="lg:w-48" value={cat} onChange={(e) => { setCat(e.target.value); setSub(''); setPage(0); }} aria-label={t('common.category')}>
             <option value="">{t('products.allCategories')}</option>
             {(cats.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
+          {subs.length > 0 && (
+            <Select className="lg:w-48" value={sub} onChange={(e) => { setSub(e.target.value); setPage(0); }} aria-label={t('products.subcategory')}>
+              <option value="">{t('catalog.filters.subcategory')}</option>
+              {subs.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </Select>
+          )}
+          {(brands.data ?? []).length > 0 && (
+            <Select className="lg:w-44" value={brand} onChange={(e) => { setBrand(e.target.value); setPage(0); }} aria-label={t('products.brand')}>
+              <option value="">{t('catalog.filters.brand')}</option>
+              {brands.data!.map((b) => <option key={b} value={b}>{b}</option>)}
+            </Select>
+          )}
           <Select className="lg:w-52" value={sort} onChange={(e) => setSort(e.target.value)} aria-label={t('products.sort')}>
             <option value="name">{t('products.sortName')}</option>
             <option value="qty_on_hand">{t('products.sortStockLow')}</option>

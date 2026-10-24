@@ -6,6 +6,7 @@ import * as site from './site';
 import * as auth from './auth';
 import * as app from './app';
 import * as admin from './admin';
+import { ATTRIBUTE_FIELDS, BUSINESS_TYPES } from '../lib/catalogTemplates';
 
 const dict = (l: 'en' | 'fr') => ({ ...common[l], ...site[l], ...auth[l], ...app[l], ...admin[l] }) as Record<string, any>;
 const get = (d: any, k: string) => k.split('.').reduce((o, p) => (o && typeof o === 'object' ? o[p] : undefined), d);
@@ -57,6 +58,9 @@ const dyn: Record<string, string[]> = {
 };
 const INSIGHTS = ['insufficient_data', 'estimated_costs', 'profit_decreased', 'profit_increased', 'restock_needed', 'price_below_cost', 'weak_margin',
   'top_profit_product', 'category_leader', 'slow_moving_capital', 'expiring_stock', 'high_stock_losses', 'supplier_payments_due', 'customer_overdue'];
+dyn['businessCategories'] = [...BUSINESS_TYPES];
+dyn['catalog.attr'] = [...new Set(Object.values(ATTRIBUTE_FIELDS).flat().map((f) => f.key))];
+dyn['catalog.opt'] = [...new Set(Object.values(ATTRIBUTE_FIELDS).flat().flatMap((f) => f.options ?? []))];
 for (const [ns, vals] of Object.entries(dyn)) for (const v of vals) used.add(`${ns}.${v}`);
 for (const c of INSIGHTS) for (const part of ['title', 'finding', 'why', 'action']) used.add(`insights.${c}.${part}`);
 for (const n of dyn['notifications.types']) { used.delete(`notifications.types.${n}`); used.add(`notifications.types.${n}.title`); used.add(`notifications.types.${n}.body`); }

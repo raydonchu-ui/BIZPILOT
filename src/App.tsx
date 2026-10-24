@@ -13,11 +13,13 @@ import { AuthCallbackPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, Sig
 import { AuthDiagnosticsPage } from './pages/auth/AuthDiagnostics';
 import { OnboardingPage } from './pages/auth/Onboarding';
 import { PwaPrompt } from './components/PwaPrompt';
+import { StoreLockGate } from './components/StoreLock';
 
 const Dashboard = lazy(() => import('./pages/app/Dashboard'));
 const SetupChecklist = lazy(() => import('./pages/app/SetupChecklist'));
 const ProductsPage = lazy(() => import('./pages/app/products/ProductsPage'));
 const ProductForm = lazy(() => import('./pages/app/products/ProductForm'));
+const CategoriesPage = lazy(() => import('./pages/app/products/CategoriesPage'));
 const ProductDetail = lazy(() => import('./pages/app/products/ProductDetail'));
 const InventoryPage2 = lazy(() => import('./pages/app/inventory/InventoryPage'));
 const StockCountPage = lazy(() => import('./pages/app/inventory/StockCountPage'));
@@ -45,11 +47,18 @@ const HelpPage = lazy(() => import('./pages/app/HelpPage'));
 const MorePage = lazy(() => import('./pages/app/MorePage'));
 const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
 
-function RequireAuth({ children }: { children: ReactNode }) {
-  const { session, ready, contextLoading, context } = useAuth();
+// Signed-in area. Store Lock is checked first (the server refuses business data while locked);
+// requirePin asks for a PIN to be created before the dashboard is shown for the first time.
+function RequireAuth({ children, requirePin = true }: { children: ReactNode; requirePin?: boolean }) {
+  const { session, ready } = useAuth();
   const loc = useLocation();
   if (!ready) return <PageLoader />;
   if (!session) return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
+  return <StoreLockGate requirePin={requirePin}><WithContext>{children}</WithContext></StoreLockGate>;
+}
+
+function WithContext({ children }: { children: ReactNode }) {
+  const { contextLoading, context } = useAuth();
   if (contextLoading || context === undefined) return <PageLoader />;
   return <>{children}</>;
 }
@@ -94,14 +103,15 @@ export function App() {
         <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route path="auth/callback" element={<AuthCallbackPage />} />
         <Route path="auth/diagnostics" element={<AuthDiagnosticsPage />} />
-        <Route path="onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
-        <Route path="onboarding/new" element={<RequireAuth><OnboardingPage addAnother /></RequireAuth>} />
+        <Route path="onboarding" element={<RequireAuth requirePin={false}><OnboardingPage /></RequireAuth>} />
+        <Route path="onboarding/new" element={<RequireAuth requirePin={false}><OnboardingPage addAnother /></RequireAuth>} />
         <Route path="admin/*" element={<RequireAuth><RequireAdmin><AdminApp /></RequireAdmin></RequireAuth>} />
         <Route path="app" element={<RequireAuth><AppShell /></RequireAuth>}>
           <Route index element={<Dashboard />} />
           <Route path="setup" element={<SetupChecklist />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/new" element={<ProductForm />} />
+          <Route path="products/categories" element={<CategoriesPage />} />
           <Route path="products/:id" element={<ProductDetail />} />
           <Route path="products/:id/edit" element={<ProductForm />} />
           <Route path="inventory" element={<InventoryPage2 />} />

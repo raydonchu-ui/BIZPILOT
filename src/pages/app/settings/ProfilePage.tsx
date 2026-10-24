@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '../../../i18n';
 import { useAuth } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
-import { unwrap } from '../../../lib/api';
+import { rpc, unwrap } from '../../../lib/api';
+import { errorMessage } from '../../../lib/errors';
+import { LockStatus, pinProblem, UnlockResult } from '../../../lib/storeLock';
+import { useStoreLockActions } from '../../../components/StoreLock';
+import { Lock } from 'lucide-react';
 import { useAction } from '../../../lib/useAction';
 import { applyTheme, getTheme, Theme } from '../../../lib/theme';
-import { Button, Card, CardHeader, Field, Input, PageHeader, Select } from '../../../components/ui';
+import { Alert, Button, Card, CardHeader, Field, Input, PageHeader, Select } from '../../../components/ui';
 
 export default function ProfilePage() {
   const { t, setLang, lang } = useI18n();
@@ -50,7 +54,56 @@ export default function ProfilePage() {
             <div className="flex justify-end"><Button variant="outline" loading={busy} disabled={pw.a.length < 8 || pw.a !== pw.b} onClick={changePw}>{t('auth.updatePassword')}</Button></div>
           </div>
         </Card>
+        <StoreLockSettings />
       </div>
     </div>
+  );
+}
+
+const TIMEOUTS = [1, 5, 10, 15, 30, 60, 120, 240];
+
+function StoreLockSettings() {
+  const { t, has } = useI18n();
+  const { storeLock } = useAuth();
+  const { lock, enabled } = useStoreLockActions();
+  const [cur, setCur] = useState('');
+  const [next, setNext] = useState('');
+  const [msg, setMsg] = useState<{ tone: 'green' | 'red'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!enabled) return null;
+  const status = storeLock.status!;
+  const setTimeoutMinutes = async (m: number) => {
+    try { storeLock.set(await rpc<LockStatus>('set_store_lock_timeout', { p_minutes: m })); setMsg({ tone: 'green', text: t('common.saved') }); }
+    catch (e) { setMsg({ tone: 'red', text: errorMessage(e, t, has) }); }
+  };
+  const change = async () => {
+    const p = pinProblem(next);
+    if (p) { setMsg({ tone: 'red', text: t(p === 'too_simple' ? 'storeLock.tooSimple' : 'storeLock.fourDigits') }); return; }
+    setBusy(true);
+    try {
+      const r = await rpc<UnlockResult>('change_store_pin', { p_current: cur, p_new: next });
+      if (r.ok) { setCur(''); setNext(''); setMsg({ tone: 'green', text: t('storeLock.changed') }); }
+      else setMsg({ tone: 'red', text: r.error === 'pin_temporarily_locked' ? t('storeLock.waitSeconds', { s: r.retry_after ?? 30 }) : t('storeLock.wrongPinNoCount') });
+    } catch (e) { setMsg({ tone: 'red', text: errorMessage(e, t, has) }); } finally { setBusy(false); }
+  };
+  const label = (m: number) => (m < 60 ? t('storeLock.minutes', { n: m }) : m === 60 ? t('storeLock.hour') : t('storeLock.hours', { n: m / 60 }));
+  return (
+    <Card>
+      <CardHeader title={t('storeLock.settingsTitle')} subtitle={t('storeLock.settingsSub')} action={<Button size="sm" variant="outline" icon={<Lock className="h-4 w-4" />} onClick={lock}>{t('storeLock.lockStore')}</Button>} />
+      <div className="space-y-4">
+        <Field label={t('storeLock.autoLock')}>
+          <Select value={String(status.idle_minutes ?? 15)} onChange={(e) => setTimeoutMinutes(Number(e.target.value))}>
+            {TIMEOUTS.map((m) => <option key={m} value={m}>{label(m)}</option>)}
+          </Select>
+        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={t('storeLock.currentPin')}><Input type="password" inputMode="numeric" pattern="[0-9]*" maxLength={4} autoComplete="off" value={cur} onChange={(e) => setCur(e.target.value.replace(/\D/g, ''))} /></Field>
+          <Field label={t('storeLock.newPin')}><Input type="password" inputMode="numeric" pattern="[0-9]*" maxLength={4} autoComplete="off" value={next} onChange={(e) => setNext(e.target.value.replace(/\D/g, ''))} /></Field>
+        </div>
+        {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
+        <div className="flex justify-end"><Button variant="outline" loading={busy} disabled={cur.length !== 4 || next.length !== 4} onClick={change}>{t('storeLock.change')}</Button></div>
+        <p className="text-xs text-ink-muted">{t('storeLock.note')}</p>
+      </div>
+    </Card>
   );
 }
