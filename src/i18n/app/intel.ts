@@ -1,7 +1,11 @@
 export const en = {
   reports: {
     subtitle: 'Reports calculated from your recorded transactions.', exportLocked: 'CSV export: Business plan', share: 'Share', inventoryInvestment: 'Stock value',
-    tabs: { pl: 'Profit & loss', sales: 'Sales', products: 'Products', categories: 'Categories', valuation: 'Stock valuation', slow: 'Slow movers', aging: 'Stock age',
+    channels: { sub: 'Where your sales happen: shop, WhatsApp, Facebook, phone, BizPilot Market… Revenue is net of returns; cancelled sales count as returned.',
+      sales: 'Sales', revenue: 'Revenue', cancelled: '{n} cancelled', estimatedShort: 'estimated',
+      estimated: '{n} sale(s) include products without a recorded purchase cost, so gross profit is estimated (too high). Add the cost on those products for exact profit.',
+      note: 'Payments to sellers are recorded by the seller (seller-confirmed). Only BizPilot subscription payments are verified with Fapshi.' },
+    tabs: { pl: 'Profit & loss', sales: 'Sales', channels: 'Channels', products: 'Products', categories: 'Categories', valuation: 'Stock valuation', slow: 'Slow movers', aging: 'Stock age',
       restock: 'Restocking', suppliers: 'Suppliers', customers: 'Customer balances', discrepancies: 'Losses & discrepancies', efficiency: 'Purchasing', payments: 'Payments' },
     dq: { title: 'About these figures', clamped: 'Your plan’s history limit shortened the period.', estimated: '{n} stock entries use estimated costs (opening stock without a known cost).',
       zeroCost: '{n} product(s) were sold with a zero cost: their profit is overstated until real costs are recorded.' },
@@ -89,7 +93,11 @@ export const en = {
 export const fr: typeof en = {
   reports: {
     subtitle: 'Rapports calculés à partir de vos transactions enregistrées.', exportLocked: 'Export CSV : plan Business', share: 'Part', inventoryInvestment: 'Valeur du stock',
-    tabs: { pl: 'Compte de résultat', sales: 'Ventes', products: 'Produits', categories: 'Catégories', valuation: 'Valorisation du stock', slow: 'Produits lents', aging: 'Ancienneté du stock',
+    channels: { sub: 'Où se font vos ventes : boutique, WhatsApp, Facebook, téléphone, BizPilot Market… Le chiffre d’affaires est net des retours ; les ventes annulées comptent comme retournées.',
+      sales: 'Ventes', revenue: 'Chiffre d’affaires', cancelled: '{n} annulée(s)', estimatedShort: 'estimé',
+      estimated: '{n} vente(s) contiennent des produits sans coût d’achat enregistré : la marge brute est estimée (trop haute). Ajoutez le coût de ces produits pour un profit exact.',
+      note: 'Les paiements aux vendeurs sont enregistrés par le vendeur (confirmés par le vendeur). Seuls les paiements d’abonnement BizPilot sont vérifiés avec Fapshi.' },
+    tabs: { pl: 'Compte de résultat', sales: 'Ventes', channels: 'Canaux', products: 'Produits', categories: 'Catégories', valuation: 'Valorisation du stock', slow: 'Produits lents', aging: 'Ancienneté du stock',
       restock: 'Réapprovisionnement', suppliers: 'Fournisseurs', customers: 'Soldes clients', discrepancies: 'Pertes et écarts', efficiency: 'Achats', payments: 'Paiements' },
     dq: { title: 'À propos de ces chiffres', clamped: 'La limite d’historique de votre plan a raccourci la période.', estimated: '{n} entrée(s) de stock utilisent des coûts estimés (stock initial sans coût connu).',
       zeroCost: '{n} produit(s) ont été vendus avec un coût nul : leur bénéfice est surévalué tant que les vrais coûts ne sont pas enregistrés.' },

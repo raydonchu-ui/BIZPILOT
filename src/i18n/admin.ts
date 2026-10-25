@@ -22,7 +22,7 @@ export const en = {
     auditSub: 'Administrative, billing and support-access actions.',
   },
   fapshiAdmin: {
-    sub: 'Payments customers approved on their phone (MTN MoMo or Orange Money). Each one is confirmed by the server with Fapshi before it counts, and the money lands in your Fapshi account.',
+    sub: 'BizPilot subscription payments by MTN MoMo or Orange Money. Each one is confirmed by the server with Fapshi before the plan is activated, and the money lands in your Fapshi account. Marketplace orders are paid to sellers directly and never pass through Fapshi.',
     openDashboard: 'Open Fapshi dashboard', balance: 'Fapshi balance', balanceHint: 'Live from your Fapshi account',
     testModeTitle: 'Fapshi is connected in TEST mode (sandbox keys): customers cannot pay yet',
     testModeBody: 'The balance above is sandbox money. With test keys Fapshi approves payments without taking real money, so BizPilot only lets administrators pay (to test with 670000000). Customers see “Mobile Money payment is not available yet”.',
@@ -66,7 +66,7 @@ export const fr: typeof en = {
     auditSub: 'Actions d’administration, de facturation et d’accès support.',
   },
   fapshiAdmin: {
-    sub: 'Paiements que les clients ont approuvés sur leur téléphone (MTN MoMo ou Orange Money). Chacun est confirmé par le serveur auprès de Fapshi avant d’être compté, et l’argent arrive sur votre compte Fapshi.',
+    sub: 'Paiements des abonnements BizPilot par MTN MoMo ou Orange Money. Chacun est confirmé par le serveur auprès de Fapshi avant l’activation du plan, et l’argent arrive sur votre compte Fapshi. Les commandes du marché sont payées directement aux vendeurs et ne passent jamais par Fapshi.',
     openDashboard: 'Ouvrir le tableau de bord Fapshi', balance: 'Solde Fapshi', balanceHint: 'En direct depuis votre compte Fapshi',
     testModeTitle: 'Fapshi est connecté en mode TEST (clés sandbox) : les clients ne peuvent pas encore payer',
     testModeBody: 'Le solde ci-dessus est de l’argent de test. Avec des clés de test, Fapshi valide les paiements sans débiter d’argent réel ; BizPilot ne laisse donc payer que les administrateurs (pour tester avec 670000000). Les clients voient « Le paiement Mobile Money n’est pas encore disponible ».',

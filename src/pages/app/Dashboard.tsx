@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
   AlertTriangle, ArrowRight, Bot, Box, ChevronRight, Coins, Hourglass, MessageSquareText, Package, PackageX, Receipt,
-  ShoppingBag, ShoppingCart, Sparkles, TrendingUp, UserPlus,
+  Plus, ShoppingBag, ShoppingCart, Sparkles, TrendingUp, UserPlus,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useBiz } from '../../lib/business';
@@ -49,7 +49,7 @@ function Greeting({ right }: { right?: React.ReactNode }) {
 
 function OwnerDashboard() {
   const { t, lang } = useI18n();
-  const { id, has, biz } = useBiz();
+  const { id, has, biz, can } = useBiz();
   const money = useMoney();
   const [period, setPeriod] = usePeriod('this_month');
   const [grainSel, setGrainSel] = useState<'auto' | 'day' | 'week' | 'month'>('auto');
@@ -78,7 +78,9 @@ function OwnerDashboard() {
 
   return (
     <div>
-      <Greeting right={<PeriodPicker value={period} onChange={setPeriod} />} />
+      <Greeting right={<div className="flex flex-wrap items-center gap-2"><PeriodPicker value={period} onChange={setPeriod} />
+        {can('sales.create') && <LinkButton to="/app/sales/new" icon={<Plus className="h-4 w-4" />}>{t('dashboard.recordSale')}</LinkButton>}
+        {can('expenses.manage') && has('expenses') && <LinkButton to="/app/expenses?new=1" variant="outline">{t('nav.recordExpense')}</LinkButton>}</div>} />
 
       {growing && (
         <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand-700 to-brand-600 px-4 py-3 text-white">

@@ -73,6 +73,16 @@ test('a seller opens an online store, lists a product and publishes', async ({ p
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Saved').first()).toBeVisible();
 
+  // Buyers pay the seller directly: cash on delivery and the seller's own MTN MoMo number.
+  await page.getByRole('tab', { name: 'Payments & policies' }).click();
+  await expect(page.getByText('Buyers pay you directly')).toBeVisible();
+  await page.getByText('Mobile Money to the seller').click();
+  await page.getByLabel(/^Mobile Money number/).first().fill('677 99 88 77');
+  await page.getByLabel(/^Name on the account/).first().fill('Awa Mode');
+  await page.getByLabel(/^Returns and exchanges policy/).fill('Exchange within 3 days.');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Saved').first()).toBeVisible();
+
   await page.getByRole('tab', { name: 'Delivery' }).click();
   await page.getByRole('button', { name: 'Add area' }).click();
   await page.getByLabel(/^Area/).fill('Akwa');
@@ -119,7 +129,7 @@ test('a guest finds the product, checks out with cash on delivery and can follow
   await expect(page.getByRole('heading', { name: `Results for “${product}”` })).toBeVisible();
   await page.getByRole('link', { name: new RegExp(product) }).first().click();
   await expect(page.getByRole('heading', { name: product })).toBeVisible();
-  await expect(page.getByText('In stock')).toBeVisible();
+  await expect(page.getByText('In stock').first()).toBeVisible();
   await expect(page.getByText(/10.000 FCFA/)).toBeVisible(); // "was" price shown
   await page.getByRole('button', { name: 'Increase' }).click();
   await page.getByRole('button', { name: 'Buy now' }).click();
@@ -198,64 +208,102 @@ async function lastPhoneRequest(phone: string) {
   return ids.length ? { id: ids[ids.length - 1], ...all[ids[ids.length - 1]] } : null;
 }
 
-async function checkoutOnline(page: Page, name: string, phone: string) {
+test('a buyer pays the seller directly by Mobile Money; only the seller confirms it; the sale is recorded once', async ({ browser }) => {
+  const { ctx, page } = await guest(browser);
+  const errors = watchErrors(page);
   await page.goto(`/s/${slug}`);
+  await page.getByRole('tab', { name: 'About' }).click();
+  await expect(page.getByText('Mobile Money to the seller (MTN MoMo)').first()).toBeVisible();
+  await expect(page.getByText('Exchange within 3 days.')).toBeVisible();
+  await page.getByRole('tab', { name: 'Products' }).click();
   await page.getByRole('link', { name: new RegExp(product) }).first().click();
+  // WhatsApp order message carries the product, quantity, price and link.
+  const wa = await page.getByRole('link', { name: 'Order on WhatsApp' }).getAttribute('href');
+  expect(decodeURIComponent(wa ?? '')).toContain(`1 × ${product}`);
+  expect(decodeURIComponent(wa ?? '')).toContain(`/s/${slug}/p/`);
   await page.getByRole('button', { name: 'Add to cart' }).click();
   await page.getByRole('link', { name: /Cart/ }).click();
   await page.getByRole('button', { name: 'Checkout' }).click();
-  await page.getByLabel(/^Full name/).fill(name);
-  await page.getByLabel(/^Phone number/).fill(phone);
+  await page.getByLabel(/^Full name/).fill('Olive Momo');
+  await page.getByLabel(/^Phone number/).fill('670000001');
   await page.getByRole('radio', { name: /Pick up at the store/ }).click();
-  await page.getByRole('radio', { name: /Pay online/ }).click();
-  await page.getByRole('button', { name: /Order and pay/ }).click();
-}
+  await expect(page.getByRole('radio', { name: /Pay online/ })).toHaveCount(0);
+  await page.getByRole('radio', { name: /Mobile Money to the seller/ }).click();
+  await expect(page.getByText(/BizPilot never receives or holds the money/)).toBeVisible();
+  await page.getByRole('button', { name: 'Place order' }).click();
+  await expect(page).toHaveURL(/\/order\//);
+  await expect(page.getByText(/Pay 8,000 FCFA to Awa Mode/)).toBeVisible();
+  await expect(page.getByText('677998877')).toBeVisible();
+  await expect(page.getByText('Name on the account: Awa Mode')).toBeVisible();
+  await page.getByLabel(/^Transaction ID/).fill('MP251026.1111');
+  await page.getByRole('button', { name: 'I have paid' }).click();
+  await expect(page.getByText('Payment reported: waiting for the seller')).toBeVisible();
+  await expect(page.getByText('Not paid yet').first()).toBeVisible();
+  const orderPath = new URL(page.url()).pathname + new URL(page.url()).search;
+  const [ord] = await sql<{ id: string; number: string; payment_status: string }>(`select id, number, payment_status from market_orders where customer_name = 'Olive Momo' order by created_at desc limit 1`);
+  expect(ord.payment_status).toBe('cod_pending');
 
-test('online payment: request sent to the customer phone → approved → verified on the server → order paid', async ({ browser }) => {
-  test.skip(!(await mockRunning()), 'Fapshi mock / edge function not running');
-  await fetch(`${MOCK}/__direct/on`, { method: 'POST' });
-  await sql(`update app_config set value = value || '{"online_payments_enabled": true}' where key = 'marketplace'`);
-  await sql(`update stores set online_payment_enabled = true where slug = $1`, [slug]);
-  const { ctx, page } = await guest(browser);
-  const errors = watchErrors(page);
-  await checkoutOnline(page, 'Olive Online', '670000001');
-  // No redirect: the request goes to the phone and the order page waits for the approval.
-  await expect(page).toHaveURL(/\/order\/.*waiting=/);
-  await expect(page.getByText('Approve the payment on your phone')).toBeVisible();
-  const req = await lastPhoneRequest('670000001');
-  expect(req).toMatchObject({ amount: 8000, status: 'PENDING', medium: 'mobile money' });
-  // The customer enters their PIN on the phone (simulated); Fapshi notifies the server.
-  await fetch(`${MOCK}/__phone/${req!.id}/pay`, { method: 'POST' });
-  await expect(page.getByText('Payment received')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Paid online')).toBeVisible({ timeout: 30_000 });
-  const [o] = await sql<{ payment_status: string; verified: boolean }>(`select o.payment_status, p.verified_at is not null verified from market_orders o join online_payments p on p.order_id = o.id where o.customer_name = 'Olive Online' order by o.created_at desc limit 1`);
-  expect(o).toEqual({ payment_status: 'paid', verified: true });
+  // The seller checks their own account and confirms, then hands over the goods.
+  const sctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const sp = await sctx.newPage();
+  const serrors = watchErrors(sp);
+  await sellerLogin(sp);
+  await sp.goto(`/app/orders/${ord.id}`);
+  await expect(sp.getByText('The buyer says they paid (reference MP251026.1111)')).toBeVisible();
+  await sp.getByRole('button', { name: 'Payment received' }).click();
+  await expect(sp.getByRole('dialog').getByLabel(/^How did the customer pay/)).toHaveValue('mtn_momo');
+  await sp.getByRole('button', { name: 'I received the money' }).click();
+  await expect(sp.getByText('Payment confirmed').first()).toBeVisible();
+  await sp.getByRole('button', { name: 'Accept order' }).click();
+  await sp.getByRole('button', { name: 'Collected by customer' }).click();
+  await expect(sp.getByText(/You confirmed the payment/).first()).toBeVisible();
+  await sp.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(sp.getByText(/Delivered on/)).toBeVisible();
+  const sales = await sql<{ channel: string; paid_total: string; method: string }>(
+    `select s.channel, s.paid_total, p.method from sales s join payments p on p.sale_id = s.id where s.client_ref = $1`, [ord.id]);
+  expect(sales).toEqual([{ channel: 'marketplace', paid_total: '8000.00', method: 'mtn_momo' }]);
+  expect(serrors).toEqual([]);
+  await sctx.close();
+
+  await page.goto(orderPath);
+  await expect(page.getByText('Payment confirmed by the seller')).toBeVisible();
   expect(errors).toEqual([]);
   await ctx.close();
 });
 
-test('online payment: a declined phone request can be retried; without direct pay the Fapshi page is used', async ({ browser }) => {
-  test.skip(!(await mockRunning()), 'Fapshi mock / edge function not running');
-  await fetch(`${MOCK}/__direct/on`, { method: 'POST' });
-  const { ctx, page } = await guest(browser);
+test('the seller records a WhatsApp sale with a delivery cost, then cancels it', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
   const errors = watchErrors(page);
-  await checkoutOnline(page, 'Dora Declined', '690000002');
-  await expect(page.getByText('Approve the payment on your phone')).toBeVisible();
-  const req = await lastPhoneRequest('690000002');
-  expect(req?.medium).toBe('orange money');
-  await fetch(`${MOCK}/__phone/${req!.id}/fail`, { method: 'POST' });
-  await expect(page.getByText(/The payment was not completed/)).toBeVisible({ timeout: 30_000 });
-  // Direct pay switched off on the Fapshi service: the same button falls back to the hosted page.
-  await fetch(`${MOCK}/__direct/off`, { method: 'POST' });
-  await page.getByRole('button', { name: /Send payment request/ }).click();
-  // The payer is told why and continues on Fapshi's secure page.
-  await expect(page.getByText('One more step on Fapshi’s secure page')).toBeVisible();
-  await page.getByRole('link', { name: /Continue to pay/ }).click();
-  await expect(page.getByRole('heading', { name: 'Pay 8000 XAF' })).toBeVisible();
-  await page.getByRole('button', { name: 'Pay now' }).click();
-  await expect(page).toHaveURL(/\/order\//, { timeout: 30_000 });
-  await expect(page.getByText('Paid online')).toBeVisible({ timeout: 30_000 });
-  await fetch(`${MOCK}/__direct/on`, { method: 'POST' });
+  await sellerLogin(page);
+  const [{ qty: before }] = await sql<{ qty: string }>(`select qty_on_hand qty from products where name = $1`, [product]);
+  await page.goto('/app');
+  await page.getByRole('link', { name: 'Record a sale' }).first().click();
+  await page.getByPlaceholder('Search or scan product…').fill(product.slice(0, 12));
+  await page.getByRole('button', { name: new RegExp(product) }).first().click();
+  await page.getByRole('radio', { name: 'WhatsApp' }).click();
+  await page.getByRole('button', { name: 'MTN Mobile Money' }).click();
+  await page.getByText('I paid for delivery (courier, moto-taxi…)').click();
+  await page.getByLabel(/^Delivery cost/).fill('1000');
+  await page.getByRole('button', { name: /Complete sale/ }).click();
+  await expect(page.getByRole('heading', { name: 'Sale completed' })).toBeVisible();
+  const [sale] = await sql<{ id: string; channel: string }>(`select s.id, s.channel from sales s join sale_lines l on l.sale_id = s.id join products p on p.id = l.product_id
+    where p.name = $1 and s.channel = 'whatsapp' order by s.created_at desc limit 1`, [product]);
+  expect(sale.channel).toBe('whatsapp');
+  expect(await sql(`select category, amount from expenses where sale_id = $1`, [sale.id])).toEqual([{ category: 'delivery', amount: '1000.00' }]);
+  expect(Number((await sql<{ qty: string }>(`select qty_on_hand qty from products where name = $1`, [product]))[0].qty)).toBe(Number(before) - 1);
+
+  await page.goto(`/app/sales/${sale.id}`);
+  await expect(page.getByText('WhatsApp').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel sale' }).click();
+  await page.getByRole('dialog').getByLabel(/^Reason/).fill('Customer cancelled on WhatsApp');
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel sale' }).click();
+  await expect(page.getByText('Sale cancelled').first()).toBeVisible();
+  expect(Number((await sql<{ qty: string }>(`select qty_on_hand qty from products where name = $1`, [product]))[0].qty)).toBe(Number(before));
+  const [c] = await sql<{ cancelled: boolean }>(`select cancelled_at is not null cancelled from sales where id = $1`, [sale.id]);
+  expect(c.cancelled).toBe(true);
+  await page.goto('/app/reports?tab=channels');
+  await expect(page.getByRole('row', { name: /WhatsApp/ })).toBeVisible();
   expect(errors).toEqual([]);
   await ctx.close();
 });
@@ -263,6 +311,8 @@ test('online payment: a declined phone request can be retried; without direct pa
 test('subscription: the owner pays by phone and the plan activates; the admin sees the money', async ({ browser }) => {
   test.skip(!(await mockRunning()), 'Fapshi mock / edge function not running');
   await fetch(`${MOCK}/__direct/on`, { method: 'POST' });
+  // Fapshi is for BizPilot subscriptions only.
+  await sql(`update app_config set value = value || '{"online_payments_enabled": true}' where key = 'marketplace'`);
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   const errors = watchErrors(page);
@@ -321,7 +371,7 @@ test('an administrator verifies the store and can hide a listing', async ({ brow
     await page.goto('/admin/fapshi');
     await expect(page.getByRole('heading', { name: 'Mobile Money' })).toBeVisible();
     await expect(page.getByRole('row', { name: /Subscription business/ }).first()).toContainText(`Awa Mode ${id}`);
-    await expect(page.getByRole('row', { name: /Order ORD-/ }).first()).toContainText('Verified');
+    // Marketplace orders are paid to sellers directly, so only subscription payments appear here.
     // Balance read on the server from the (simulated) Fapshi account.
     await expect(page.getByText('Live from your Fapshi account')).toBeVisible();
     // The last direct-pay answer from Fapshi (accepted in the last test) is shown to the admin.

@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { Banknote, CreditCard, Info, Lock, ShoppingBag, Store, Trash2, Truck } from 'lucide-react';
+import { Banknote, Info, Lock, MessageCircle, ShoppingBag, Smartphone, Store, Trash2, Truck } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { rpc, unwrap } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -10,7 +10,7 @@ import { useAuth } from '../../lib/auth';
 import { errorKey, errorMessage } from '../../lib/errors';
 import { formatMoney } from '../../lib/format';
 import { newId } from '../../lib/ids';
-import { newAccessToken, rememberGuestOrder, detectMedium, requestOrderPayment, useCart, useMarketConfig } from '../../lib/market';
+import { newAccessToken, rememberGuestOrder, storeUrl, useCart, useMarketConfig, waLink } from '../../lib/market';
 import { MarketImage, QtyStepper } from '../../components/market';
 import { Alert, Button, Card, Checkbox, EmptyState, Field, Input, LinkButton, PageLoader, Select, Textarea } from '../../components/ui';
 import { useStore } from './StorePages';
@@ -111,13 +111,14 @@ export function CheckoutPage() {
   const [f, setF] = useState({
     name: context?.profile?.full_name ?? '', phone: context?.profile?.phone ?? '', email: context?.email ?? '',
     method: 'delivery' as 'delivery' | 'pickup', zone_id: '', city: '', area: '', line: '', landmark: '', notes: '',
-    payment: 'cod' as 'cod' | 'online', promo: '', save_address: true,
+    payment: 'cod' as 'cod' | 'momo_direct', promo: '', save_address: true,
   });
   const [promoApplied, setPromoApplied] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const s = st.data;
-  const onlineOk = Boolean(s?.online_payment_enabled && cfg.data?.online_payments_enabled);
+  // Buyers pay the seller directly: cash on delivery or the seller's own Mobile Money number.
+  const momoOk = Boolean(s?.momo_direct_enabled);
   // Sensible defaults from the store's options and the saved address.
   useEffect(() => {
     if (!s) return;
@@ -125,7 +126,7 @@ export function CheckoutPage() {
       ...x,
       method: s.zones.length ? x.method : s.pickup_enabled ? 'pickup' : x.method,
       zone_id: x.zone_id || (s.zones.length === 1 ? s.zones[0].id : ''),
-      payment: s.cod_enabled ? x.payment : 'online',
+      payment: s.cod_enabled ? x.payment : 'momo_direct',
     }));
   }, [s]);
   useEffect(() => {
@@ -162,20 +163,6 @@ export function CheckoutPage() {
       } });
       rememberGuestOrder({ id: res.order_id, token: tokenRef.current, number: res.number, store_name: s.name, created_at: new Date().toISOString() });
       clear();
-      if (res.payment_method === 'online' && res.payment_status !== 'paid') {
-        try {
-          // Send the payment request straight to the phone given at checkout; the order page then
-          // waits for the customer to approve it. Without direct pay, Fapshi's payment page opens.
-          const medium = detectMedium(f.phone);
-          const p = await requestOrderPayment(res.order_id, tokenRef.current, medium ? f.phone : undefined, medium ?? undefined);
-          if (p.mode === 'direct') nav(`/order/${res.order_id}?placed=1&waiting=${p.payment_id}`, { replace: true });
-          else window.location.assign(p.link);
-          return;
-        } catch {
-          nav(`/order/${res.order_id}?placed=1&pay=failed`, { replace: true });
-          return;
-        }
-      }
       nav(`/order/${res.order_id}?placed=1`, { replace: true });
     } catch (err) {
       const { raw, params } = errorKey(err);
@@ -243,10 +230,15 @@ export function CheckoutPage() {
             <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={t('market.payment')}>
               <Choice active={f.payment === 'cod'} disabled={!s.cod_enabled} onClick={() => setF({ ...f, payment: 'cod' })} icon={<Banknote className="h-5 w-5" />}
                 title={t('market.cod')} sub={t('market.codHelp')} />
-              <Choice active={f.payment === 'online'} disabled={!onlineOk} onClick={() => setF({ ...f, payment: 'online' })} icon={<CreditCard className="h-5 w-5" />}
-                title={t('market.payOnline')} sub={onlineOk ? t('market.payOnlineHelp') : t('market.payOnlineUnavailable')} />
+              <Choice active={f.payment === 'momo_direct'} disabled={!momoOk} onClick={() => setF({ ...f, payment: 'momo_direct' })} icon={<Smartphone className="h-5 w-5" />}
+                title={t('market.momoDirect')} sub={momoOk ? t('market.momoDirectHelp', { networks: (s.momo_networks ?? []).map((n: string) => t(`market.network.${n}`)).join(' / ') }) : t('market.momoDirectUnavailable')} />
             </div>
-            {f.payment === 'online' && <p className="mt-3 flex gap-2 text-xs text-ink-muted"><Lock className="h-4 w-4 shrink-0" />{t('market.payOnlineSecure', { minutes: cfg.data?.unpaid_order_minutes ?? 30 })}</p>}
+            <p className="mt-3 flex gap-2 text-xs text-ink-muted"><Lock className="h-4 w-4 shrink-0" />{t('market.payDirectNote', { store: s.name })}</p>
+            {s.whatsapp && (
+              <a href={waLink(s.whatsapp, t('market.waCart', { store: s.name, items: (q.data?.lines ?? []).map((l) => `${l.quantity} × ${l.name}${l.variant_label ? ` (${l.variant_label})` : ''}`).join(', '), url: storeUrl(s.slug) }))}
+                target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#128C7E] hover:underline">
+                <MessageCircle className="h-4 w-4" />{t('market.orderOnWhatsapp')}</a>
+            )}
           </Card>
 
           <Card>
@@ -277,12 +269,12 @@ export function CheckoutPage() {
               {Number(q.data?.discount) > 0 && <Row label={t('market.discount')} value={`− ${formatMoney(q.data?.discount, lang)}`} />}
               <Row label={f.method === 'pickup' ? t('market.pickupInStore') : t('market.deliveryFee')} value={f.method === 'delivery' && !f.zone_id ? t('market.selectZoneShort') : Number(q.data?.delivery_fee) ? formatMoney(q.data?.delivery_fee, lang) : t('market.free')} />
               <div className="flex justify-between border-t border-gray-100 pt-2 text-base dark:border-gray-800"><dt className="font-bold">{t('market.total')}</dt><dd className="font-extrabold">{formatMoney(q.data?.total, lang)}</dd></div>
-              <Row label={t('market.paymentMethod')} value={f.payment === 'cod' ? t('market.cod') : t('market.payOnline')} />
+              <Row label={t('market.paymentMethod')} value={f.payment === 'cod' ? t('market.cod') : t('market.momoDirect')} />
             </dl>
             {blocking.length > 0 && <div className="mt-3"><Alert tone="red">{blocking.map((e, i) => <p key={i}>{problemText(e, t, lang)}</p>)}</Alert></div>}
             {error && <div className="mt-3"><Alert tone="red">{error}</Alert></div>}
             <Button type="submit" block size="lg" className="mt-4" loading={busy} disabled={q.isFetching && !q.data}>
-              {f.payment === 'online' ? t('market.placeAndPay', { amount: formatMoney(q.data?.total, lang) }) : t('market.placeOrder')}
+              {t('market.placeOrder')}
             </Button>
             <p className="mt-2 text-center text-xs text-ink-muted">{t('market.agreeTerms')} <Link to="/terms" className="underline">{t('site.footer.terms')}</Link></p>
           </Card>

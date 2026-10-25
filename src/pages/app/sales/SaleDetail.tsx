@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CreditCard, Printer, Undo2 } from 'lucide-react';
+import { ArrowLeft, Ban, CreditCard, Printer, Undo2 } from 'lucide-react';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { supabase } from '../../../lib/supabase';
@@ -24,17 +24,19 @@ export default function SaleDetail() {
   const money = useMoney();
   const business = useBusinessRow(id);
   const settings = useSettings(id);
-  const [dialog, setDialog] = useState<null | 'return' | 'pay'>(null);
+  const [dialog, setDialog] = useState<null | 'return' | 'pay' | 'cancel'>(null);
   const q = useQuery({
     queryKey: ['sale', sid],
     queryFn: async () => {
       const s = unwrap(await supabase.from('sales').select('*, customers(id,name,phone), sale_lines(*, products(name,base_unit))').eq('id', sid!).single()) as any;
       s.sale_lines.sort((a: any, b: any) => a.sort - b.sort);
-      const [payments, returns] = await Promise.all([
+      const [payments, returns, costs] = await Promise.all([
         supabase.from('payments').select('*').eq('sale_id', sid!).order('paid_at'),
         supabase.from('sale_returns').select('*, sale_return_lines(*, products(name))').eq('sale_id', sid!).order('returned_at'),
+        // Costs the seller paid for this sale (delivery). Absent on databases without the upgrade.
+        supabase.from('expenses').select('id,number,category,amount,status').eq('sale_id', sid!),
       ]);
-      return { s, payments: unwrap(payments) as any[], returns: unwrap(returns) as any[] };
+      return { s, payments: unwrap(payments) as any[], returns: unwrap(returns) as any[], costs: (costs.error ? [] : costs.data) as any[] };
     },
   });
   useEffect(() => {
@@ -42,7 +44,9 @@ export default function SaleDetail() {
   }, [params, q.data, business.data]);
   if (q.isLoading || business.isLoading) return <PageLoader />;
   if (q.error) return <ErrorState error={q.error} />;
-  const { s, payments, returns } = q.data!;
+  const { s, payments, returns, costs } = q.data!;
+  const cancelled = Boolean(s.cancelled_at);
+  const marketplace = s.channel === 'marketplace';
   const st = saleStatus(s);
   const gp = Number(s.total) - Number(s.tax_total) - Number(s.cost_total);
   const returnable = s.sale_lines.some((l: any) => Number(l.returned_base_qty) < Number(l.base_quantity));
@@ -50,11 +54,12 @@ export default function SaleDetail() {
     <div>
       <div className="no-print">
         <PageHeader back={<Link to="/app/sales" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"><ArrowLeft className="h-4 w-4" />{t('nav.sales')}</Link>}
-          title={<span className="flex items-center gap-3">{s.number}<Badge tone={st.tone}>{t(`sales.status.${st.key}`)}</Badge>{s.offline && <Badge tone="gray">{t('offline.badge')}</Badge>}</span>}
+          title={<span className="flex flex-wrap items-center gap-3">{s.number}{cancelled ? <Badge tone="red">{t('sales.cancelled')}</Badge> : <Badge tone={st.tone}>{t(`sales.status.${st.key}`)}</Badge>}{s.offline && <Badge tone="gray">{t('offline.badge')}</Badge>}</span>}
           subtitle={formatDateTime(s.sold_at, lang)}
           actions={<>
             <Button variant="outline" icon={<Printer className="h-4 w-4" />} onClick={() => window.print()}>{t('pos.printReceipt')}</Button>
-            {can('sales.refund') && returnable && <Button variant="outline" icon={<Undo2 className="h-4 w-4" />} onClick={() => setDialog('return')}>{t('sales.returnRefund')}</Button>}
+            {can('sales.refund') && returnable && !cancelled && <Button variant="outline" icon={<Undo2 className="h-4 w-4" />} onClick={() => setDialog('return')}>{t('sales.returnRefund')}</Button>}
+            {can('sales.refund') && returnable && !cancelled && !marketplace && s.channel !== undefined && <Button variant="outline" icon={<Ban className="h-4 w-4" />} onClick={() => setDialog('cancel')}>{t('sales.cancelSale')}</Button>}
             {st.owed > 0 && s.customer_id && <Button icon={<CreditCard className="h-4 w-4" />} onClick={() => setDialog('pay')}>{t('parties.receivePayment')}</Button>}
           </>} />
         <div className="grid gap-4 lg:grid-cols-3">
@@ -80,7 +85,9 @@ export default function SaleDetail() {
           </Card>
           <Card>
             <CardHeader title={t('purchases.summary')} />
+            {cancelled && <div className="mb-3"><Alert tone="red" title={t('sales.cancelledOn', { date: formatDateTime(s.cancelled_at, lang) })}>{s.cancel_reason}</Alert></div>}
             <KeyValue items={[
+              ...(s.channel ? [{ label: t('sales.channel'), value: t(`channels.${s.channel}`) }] : []),
               { label: t('common.total'), value: money(s.total) }, { label: t('common.paid'), value: money(s.paid_total) },
               { label: t('sales.returned'), value: money(s.returned_total) }, { label: t('sales.refunded'), value: money(s.refunded_total) },
               { label: t('sales.outstanding'), value: <span className={st.owed > 0 ? 'text-amber-700' : ''}>{money(st.owed)}</span> },
@@ -90,6 +97,12 @@ export default function SaleDetail() {
             ]} />
             {s.due_date && st.owed > 0 && <p className="mt-3 text-sm">{t('common.dueDate')}: <b>{s.due_date}</b></p>}
             {s.notes && <p className="mt-3 text-sm text-ink-muted">{s.notes}</p>}
+            {costs.length > 0 && (
+              <div className="mt-3 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800/60">
+                <p className="font-semibold">{t('sales.saleCosts')}</p>
+                {costs.map((c) => <p key={c.id} className="flex justify-between"><span>{c.number} · {t(`expenseCategories.${c.category}`)}</span><span>{money(c.amount)}</span></p>)}
+              </div>
+            )}
           </Card>
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -114,6 +127,7 @@ export default function SaleDetail() {
       <div className="no-print mt-6 hidden lg:block"><CardHeader title={t('receipt.preview')} />{business.data && <div className="rounded-2xl border border-gray-200 bg-white p-2 shadow-card"><Receipt sale={s} business={business.data} settings={settings.data} payments={payments} /></div>}</div>
       {dialog === 'return' && <ReturnModal sale={s} onClose={() => setDialog(null)} />}
       {dialog === 'pay' && <SalePayModal sale={s} owed={st.owed} onClose={() => setDialog(null)} />}
+      {dialog === 'cancel' && <CancelSaleModal sale={s} onClose={() => setDialog(null)} />}
     </div>
   );
 }
@@ -161,6 +175,30 @@ function ReturnModal({ sale, onClose }: { sale: any; onClose: () => void }) {
           <Field label={t('sales.refundMethod')}><Select value={method} onChange={(e) => setMethod(e.target.value)}>{METHODS.map((m) => <option key={m} value={m}>{t(`methods.${m}`)}</option>)}</Select></Field>
         </div>
         {!walkIn && toNumber(refund) > maxRefund && <Alert tone="red">{t('errors.invalid_refund_amount', { max: money(maxRefund) })}</Alert>}
+      </div>
+    </Modal>
+  );
+}
+
+/** Cancels the whole sale: what is left comes back (to stock if restockable) and the money paid is refunded. */
+function CancelSaleModal({ sale, onClose }: { sale: any; onClose: () => void }) {
+  const { t } = useI18n();
+  const money = useMoney();
+  const { run, busy } = useAction();
+  const [ref] = useState(newId);
+  const [reason, setReason] = useState('');
+  const [restock, setRestock] = useState(true);
+  const refund = Math.max(0, Math.min(Number(sale.paid_total) - Number(sale.refunded_total), Number(sale.total) - Number(sale.returned_total)));
+  const submit = async () => {
+    const ok = await run(() => rpc('cancel_sale', { p_sale: sale.id, p_reason: reason, p_restock: restock, p_client_ref: ref }), t('sales.cancelDone'));
+    if (ok !== undefined) onClose();
+  };
+  return (
+    <Modal open onClose={onClose} title={t('sales.cancelTitle', { number: sale.number })} footer={<><Button variant="outline" onClick={onClose}>{t('common.back')}</Button><Button variant="danger" loading={busy} disabled={!reason.trim()} onClick={submit}>{t('sales.cancelSale')}</Button></>}>
+      <div className="space-y-3 text-sm">
+        <Alert tone="amber">{t('sales.cancelExplain', { refund: money(refund) })}</Alert>
+        <Checkbox checked={restock} onChange={setRestock} label={t('sales.restock')} hint={t('sales.restockHint')} />
+        <Field label={t('common.reason')} required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       </div>
     </Modal>
   );

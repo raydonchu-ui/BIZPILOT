@@ -61,7 +61,8 @@ export function ProductTile({ p }: { p: ProductCard }) {
       <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-gray-800">
         <MarketImage path={p.image} alt={p.name} rounded="" className="h-full w-full transition group-hover:scale-[1.02]" />
         {p.compare_at_price && <span className="absolute left-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">{t('market.sale')}</span>}
-        {out && <span className="absolute inset-x-0 bottom-0 bg-gray-900/70 py-1 text-center text-xs font-semibold text-white">{t('market.outOfStock')}</span>}
+        {out && <span className="absolute inset-x-0 bottom-0 bg-gray-900/70 py-1 text-center text-xs font-semibold text-white">{p.sold ? t('market.sold') : t('market.outOfStock')}</span>}
+        {p.condition && p.condition !== 'new' && <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-ink dark:bg-gray-900/90 dark:text-gray-100">{t(`market.condition.${p.condition}`)}</span>}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
         <p className="line-clamp-2 text-sm font-semibold leading-snug text-ink dark:text-gray-100">{p.name}</p>
@@ -181,7 +182,7 @@ export function OrderStatusBadge({ status }: { status: string }) {
 
 export function PaymentStatusBadge({ status }: { status: string }) {
   const { t } = useI18n();
-  const tone = ['paid', 'cod_collected', 'refunded'].includes(status) ? 'bg-brand-50 text-brand-800 ring-brand-600/20'
+  const tone = ['paid', 'cod_collected', 'seller_confirmed', 'refunded'].includes(status) ? 'bg-brand-50 text-brand-800 ring-brand-600/20'
     : ['failed', 'refund_pending'].includes(status) ? 'bg-red-50 text-red-700 ring-red-600/20'
     : status === 'void' ? 'bg-gray-100 text-gray-700 ring-gray-500/20' : 'bg-amber-50 text-amber-800 ring-amber-600/20';
   return <span className={clsx('inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset', tone)}>{t(`orders.payment.${status}`)}</span>;

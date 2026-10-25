@@ -17,7 +17,7 @@ import { Alert, Badge, Button, Card, CardHeader, DataTable, EmptyState, ErrorSta
 import { PeriodPicker, usePeriod } from '../../../components/PeriodPicker';
 import { HBar } from '../../../components/charts';
 
-export const EXPENSE_CATEGORIES = ['rent', 'salaries', 'utilities', 'transport', 'communication', 'packaging', 'repairs', 'marketing', 'bank_fees', 'taxes_licences', 'security', 'cleaning', 'other'];
+export const EXPENSE_CATEGORIES = ['rent', 'salaries', 'utilities', 'transport', 'delivery', 'communication', 'packaging', 'repairs', 'marketing', 'bank_fees', 'taxes_licences', 'security', 'cleaning', 'other'];
 const METHODS = ['cash', 'mtn_momo', 'orange_money', 'bank_transfer', 'card', 'other'];
 const statusTone: Record<string, Tone> = { paid: 'green', partially_paid: 'amber', unpaid: 'red', voided: 'gray' };
 

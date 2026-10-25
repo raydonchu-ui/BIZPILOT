@@ -2,17 +2,16 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { CheckCircle2, Copy, CreditCard, Loader2, MapPin, MessageCircle, Phone, Send, ShieldCheck, Star, Store, XCircle } from 'lucide-react';
+import { CheckCircle2, Copy, Loader2, MapPin, MessageCircle, Phone, Send, ShieldCheck, Smartphone, Star, Store, XCircle } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { rpc } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { formatDateTime, formatMoney } from '../../lib/format';
-import { guestOrders, guestToken, rememberGuestOrder, requestOrderPayment, siteOrigin, verifyPayment, waLink } from '../../lib/market';
+import { guestOrders, guestToken, rememberGuestOrder, siteOrigin, verifyPayment, waLink } from '../../lib/market';
 import { useAction } from '../../lib/useAction';
 import { useToast } from '../../lib/toast';
 import { MarketImage, OrderStatusBadge, OrderTimeline, PaymentStatusBadge, ReportButton } from '../../components/market';
-import { MobileMoneyPay } from '../../components/MobileMoneyPay';
-import { Alert, Button, Card, ConfirmDialog, EmptyState, Field, LinkButton, PageLoader, Textarea } from '../../components/ui';
+import { Alert, Button, Card, ConfirmDialog, EmptyState, Field, Input, LinkButton, PageLoader, Textarea } from '../../components/ui';
 
 export function OrderPage() {
   const { id } = useParams();
@@ -34,7 +33,6 @@ export function OrderPage() {
   const { run, busy } = useAction();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [msg, setMsg] = useState('');
-  const [paidNow, setPaidNow] = useState(false);
   if (q.isLoading) return <PageLoader />;
   if (q.error || !q.data) {
     return <div className="mx-auto max-w-xl px-4 py-16"><h1 className="sr-only">{t('market.orderNotFound')}</h1><EmptyState icon={<Store className="h-6 w-6" />} title={t('market.orderNotFound')} body={session ? t('market.orderNotFoundBody') : t('market.orderNotFoundGuest')}
@@ -52,10 +50,9 @@ export function OrderPage() {
   const waText = t('market.waOrder', { number: o.number, store: o.store.name });
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-      {params.get('placed') && o.payment_method === 'cod' && (
-        <div className="mb-4"><Alert tone="green" title={t('market.orderPlacedTitle', { number: o.number })}>{t('market.orderPlacedCod')}</Alert></div>
+      {params.get('placed') && (
+        <div className="mb-4"><Alert tone="green" title={t('market.orderPlacedTitle', { number: o.number })}>{o.payment_method === 'momo_direct' ? t('market.orderPlacedMomo') : t('market.orderPlacedCod')}</Alert></div>
       )}
-      {params.get('pay') === 'failed' && o.payment_status !== 'paid' && <div className="mb-4"><Alert tone="amber">{t('market.payStartFailed')}</Alert></div>}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm text-ink-muted">{t('market.orderAt', { store: o.store.name })}</p>
@@ -66,23 +63,11 @@ export function OrderPage() {
         {!o.signed_in_owner && <Button variant="outline" size="sm" icon={<Copy className="h-4 w-4" />} onClick={copy}>{t('market.copyOrderLink')}</Button>}
       </div>
 
-      {paidNow && o.payment_status === 'paid' && (
-        <div className="mt-4"><Alert tone="green" title={t('pay.paidTitle')}>{t('pay.orderPaidBody', { amount: formatMoney(o.total, lang) })}</Alert></div>
+      {o.payment_method === 'momo_direct' && o.store.momo && !['cancelled', 'refunded'].includes(o.status) && (
+        <DirectMomoCard order={o} token={token} onDone={() => q.refetch()} />
       )}
-      {o.can_pay && (
-        <Card className="mt-4 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40">
-          <div className="flex items-start gap-3">
-            <CreditCard className="h-6 w-6 shrink-0 text-amber-700" />
-            <div className="flex-1">
-              <p className="font-bold">{o.payment_status === 'failed' ? t('market.paymentFailedTitle') : t('market.awaitingPaymentTitle')}</p>
-              <p className="text-sm">{t('market.awaitingPaymentBody', { time: o.expires_at ? formatDateTime(o.expires_at, lang) : '' })}</p>
-            </div>
-          </div>
-          <div className="mt-3">
-            <MobileMoneyPay compact amount={Number(o.total)} defaultPhone={o.customer_phone} waitingFor={params.get('waiting')}
-              request={(phone, medium) => requestOrderPayment(o.id, token, phone, medium)} onPaid={() => { setPaidNow(true); q.refetch(); }} />
-          </div>
-        </Card>
+      {o.payment_method === 'cod' && o.payment_status === 'seller_confirmed' && (
+        <div className="mt-4"><Alert tone="green">{t('market.sellerConfirmed')}</Alert></div>
       )}
       {o.status === 'cancelled' && (
         <div className="mt-4"><Alert tone="amber" title={t('market.orderCancelled')}>
@@ -162,7 +147,7 @@ export function OrderPage() {
             </div>
           </Card>
           <Card>
-            <p className="flex gap-2 text-xs text-ink-muted"><ShieldCheck className="h-4 w-4 shrink-0 text-brand-600" />{o.payment_method === 'online' ? t('market.protectionOnline') : t('market.protectionCod')}</p>
+            <p className="flex gap-2 text-xs text-ink-muted"><ShieldCheck className="h-4 w-4 shrink-0 text-brand-600" />{o.payment_method === 'online' ? t('market.protectionOnline') : o.payment_method === 'momo_direct' ? t('market.directPayDisclaimer') : t('market.protectionCod')}</p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               {o.can_cancel && <Button size="sm" variant="outline" icon={<XCircle className="h-4 w-4" />} onClick={() => setCancelOpen(true)}>{t('market.cancelOrder')}</Button>}
               <ReportButton targetType="order" targetId={o.id} token={token} signedIn={Boolean(session)} label={t('market.reportProblem')} />
@@ -251,5 +236,62 @@ export function PayReturnPage() {
         </>
       )}
     </div>
+  );
+}
+
+/** Pay the seller directly with Mobile Money. The buyer's report is evidence only: the seller confirms. */
+function DirectMomoCard({ order: o, token, onDone }: { order: any; token: string | null; onDone: () => void }) {
+  const { t, lang } = useI18n();
+  const toast = useToast();
+  const { run, busy } = useAction();
+  const [ref, setRef] = useState('');
+  const m = o.store.momo;
+  const confirmed = ['seller_confirmed', 'cod_collected'].includes(o.payment_status);
+  const copy = async (v: string) => { try { await navigator.clipboard.writeText(v); toast(t('market.copied'), 'success'); } catch { window.prompt('', v); } };
+  const report = async (e: FormEvent) => {
+    e.preventDefault();
+    const ok = await run(() => rpc('market_order_report_payment', { p_order: o.id, p_token: token, p_reference: ref }), t('market.paymentReported'));
+    if (ok !== undefined) { setRef(''); onDone(); }
+  };
+  if (confirmed) {
+    return <div className="mt-4"><Alert tone="green" title={t('market.sellerConfirmedTitle')}>{t('market.sellerConfirmedMomo', { method: t(`methods.${o.paid_with ?? 'mtn_momo'}`) })}</Alert></div>;
+  }
+  const accounts = [
+    m.mtn_number && { key: 'mtn', label: 'MTN Mobile Money', number: m.mtn_number, name: m.mtn_name, tone: 'bg-yellow-400 text-gray-900' },
+    m.orange_number && { key: 'orange', label: 'Orange Money', number: m.orange_number, name: m.orange_name, tone: 'bg-orange-500 text-white' },
+  ].filter(Boolean) as { key: string; label: string; number: string; name?: string; tone: string }[];
+  return (
+    <Card className="mt-4 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40">
+      <div className="flex items-start gap-3">
+        <Smartphone className="h-6 w-6 shrink-0 text-amber-700" />
+        <div className="flex-1">
+          <p className="font-bold">{t('market.payTheSeller', { amount: formatMoney(o.total, lang), store: o.store.name })}</p>
+          <p className="text-sm">{t('market.payTheSellerBody')}</p>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {accounts.map((a) => (
+          <div key={a.key} className="rounded-xl bg-white p-3 dark:bg-gray-900">
+            <span className={clsx('rounded-full px-2 py-0.5 text-xs font-bold', a.tone)}>{a.label}</span>
+            <p className="mt-2 flex items-center gap-2 text-lg font-extrabold tracking-wide">{a.number}
+              <button type="button" onClick={() => copy(a.number)} aria-label={t('market.copyNumber')} className="text-ink-muted hover:text-ink"><Copy className="h-4 w-4" /></button></p>
+            {a.name && <p className="text-sm text-ink-muted">{t('market.accountName', { name: a.name })}</p>}
+            <p className="mt-1 text-xs text-ink-muted">{a.key === 'mtn' ? t('market.ussdMtn') : t('market.ussdOrange')}</p>
+          </div>
+        ))}
+      </div>
+      {m.note && <p className="mt-2 text-sm">{m.note}</p>}
+      <p className="mt-3 flex gap-2 text-xs text-ink-muted"><ShieldCheck className="h-4 w-4 shrink-0" />{t('market.directPayDisclaimer')}</p>
+      {o.buyer_payment_reported_at ? (
+        <div className="mt-3"><Alert tone="blue" title={t('market.reportedTitle')}>{t('market.reportedBody', { ref: o.buyer_payment_ref })}</Alert></div>
+      ) : o.can_report_payment && (
+        <form onSubmit={report} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <Field className="flex-1" label={t('market.paymentRef')} hint={t('market.paymentRefHint')}>
+            <Input value={ref} onChange={(e) => setRef(e.target.value)} minLength={4} maxLength={120} required />
+          </Field>
+          <Button type="submit" loading={busy} disabled={ref.trim().length < 4}>{t('market.iHavePaid')}</Button>
+        </form>
+      )}
+    </Card>
   );
 }

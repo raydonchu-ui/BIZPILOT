@@ -1,20 +1,20 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
-  BadgeCheck, Banknote, Clock, CreditCard, Facebook, Heart, Instagram, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Store, Truck,
+  BadgeCheck, Banknote, Clock, CreditCard, Facebook, Heart, Instagram, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Store, Truck, Undo2,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { rpc, unwrap } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { formatDate, formatMoney } from '../../lib/format';
-import { ProductCard, productUrl, publicUrl, storeUrl, useCart, waLink } from '../../lib/market';
+import { ProductCard, productUrl, publicUrl, rememberViewed, storeUrl, useCart, waLink } from '../../lib/market';
 import { useAction } from '../../lib/useAction';
 import { useToast } from '../../lib/toast';
 import { MarketImage, Price, ProductGrid, QtyStepper, ReportButton, ShareBar, StockBadge, Stars } from '../../components/market';
-import { Button, Card, EmptyState, ErrorState, LinkButton, Modal, PageLoader, Tabs } from '../../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, LinkButton, Modal, PageLoader, Tabs } from '../../components/ui';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
@@ -152,7 +152,8 @@ function StoreAbout({ s }: { s: any }) {
         <h2 className="mb-2 font-bold">{t('market.aboutStore')}</h2>
         <p className="whitespace-pre-line text-sm text-ink-soft dark:text-gray-300">{s.description || t('market.noDescription')}</p>
         <ul className="mt-4 space-y-2 text-sm">
-          {s.address && <li className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />{s.address}{s.city ? `, ${s.city}` : ''}</li>}
+          {(s.address || s.neighborhood) && <li className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />{[s.address, s.neighborhood, s.city].filter(Boolean).join(', ')}</li>}
+          {s.service_area && <li className="flex gap-2"><Truck className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />{t('market.serves', { area: s.service_area })}</li>}
           {s.phone && <li className="flex gap-2"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" /><a href={`tel:${s.phone}`} className="hover:underline">{s.phone}</a></li>}
           {s.whatsapp && <li className="flex gap-2"><MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" /><a href={waLink(s.whatsapp)} target="_blank" rel="noopener noreferrer" className="hover:underline">{s.whatsapp}</a></li>}
           {s.email && <li className="flex gap-2"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" /><a href={`mailto:${s.email}`} className="hover:underline">{s.email}</a></li>}
@@ -178,6 +179,10 @@ function StoreAbout({ s }: { s: any }) {
         <h2 className="mb-2 mt-5 flex items-center gap-2 font-bold"><CreditCard className="h-4 w-4" />{t('market.paymentMethods')}</h2>
         <PaymentSummary s={s} />
         {s.min_order_amount > 0 && <p className="mt-3 text-xs text-ink-muted">{t('market.minOrder', { amount: formatMoney(s.min_order_amount, lang) })}</p>}
+        {s.return_policy && <>
+          <h2 className="mb-2 mt-5 flex items-center gap-2 font-bold"><Undo2 className="h-4 w-4" />{t('market.returnPolicy')}</h2>
+          <p className="whitespace-pre-line text-sm text-ink-soft dark:text-gray-300">{s.return_policy}</p>
+        </>}
       </Card>
     </div>
   );
@@ -200,7 +205,9 @@ function PaymentSummary({ s }: { s: any }) {
   return (
     <ul className="space-y-1 text-sm">
       {s.cod_enabled && <li className="flex items-center gap-2"><Banknote className="h-4 w-4 text-brand-600" />{t('market.cod')}</li>}
-      {s.online_payment_enabled && <li className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-brand-600" />{t('market.payOnline')}</li>}
+      {s.momo_direct_enabled && <li className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-brand-600" />{t('market.momoDirect')}{s.momo_networks?.length ? ` (${s.momo_networks.map((n: string) => t(`market.network.${n}`)).join(', ')})` : ''}</li>}
+      {(s.cod_enabled || s.momo_direct_enabled) && <li className="text-xs text-ink-muted">{t('market.paidToSeller')}</li>}
+      {s.payment_note && <li className="text-xs text-ink-muted">{s.payment_note}</li>}
     </ul>
   );
 }
@@ -255,6 +262,7 @@ function ProductView({ p, store }: { p: any; store: any }) {
   });
   const sel: Option | undefined = pick.selected;
   const available = sel ? sel.available : 0;
+  useEffect(() => { rememberViewed(p.id); }, [p.id]);
   const images: string[] = p.images?.length ? p.images : [null];
   const labels = tv('catalog.attr') as Record<string, string>;
   const attrs = Object.entries(p.attributes ?? {}).filter(([, v]) => v !== null && v !== '');
@@ -302,10 +310,12 @@ function ProductView({ p, store }: { p: any; store: any }) {
           {p.brand && <p className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{p.brand}</p>}
           <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{p.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-3">
+            {p.condition && <Badge tone={p.condition === 'new' ? 'green' : 'blue'}>{t(`market.condition.${p.condition}`)}</Badge>}
+            {p.single_item && !p.sold && <Badge tone="amber">{t('market.oneOfAKind')}</Badge>}
             {p.rating_count > 0 ? <Stars value={p.rating_avg} count={p.rating_count} size="md" /> : <span className="text-xs text-ink-muted">{t('market.noReviewsYet')}</span>}
           </div>
           <div className="mt-4 text-2xl">{sel ? <Price value={sel.price} compareAt={sel.compare_at_price} /> : <Price value={Number(p.price)} from />}</div>
-          <div className="mt-1">{sel && <StockBadge available={available} />}</div>
+          <div className="mt-1">{p.sold ? <Badge tone="gray">{t('market.sold')}</Badge> : sel && <StockBadge available={available} />}</div>
 
           {options.length > 1 && (
             <div className="mt-5 space-y-4">
@@ -340,8 +350,8 @@ function ProductView({ p, store }: { p: any; store: any }) {
                 icon={<Heart className={clsx('h-5 w-5', fav.data && 'fill-red-500 text-red-500')} />} />
             </div>
             <div className="grid grid-cols-2 gap-3 sm:flex">
-              <Button size="lg" icon={<ShoppingBag className="h-5 w-5" />} disabled={!sel || available <= 0} onClick={() => add(false)}>{t('market.addToCart')}</Button>
-              <Button size="lg" variant="secondary" disabled={!sel || available <= 0} onClick={() => add(true)}>{t('market.buyNow')}</Button>
+              <Button size="lg" icon={<ShoppingBag className="h-5 w-5" />} disabled={!sel || available <= 0 || p.sold} onClick={() => add(false)}>{t('market.addToCart')}</Button>
+              <Button size="lg" variant="secondary" disabled={!sel || available <= 0 || p.sold} onClick={() => add(true)}>{t('market.buyNow')}</Button>
             </div>
           </div>
 
@@ -359,8 +369,9 @@ function ProductView({ p, store }: { p: any; store: any }) {
                 <div><p className="mb-1 flex items-center gap-1.5 font-semibold"><CreditCard className="h-4 w-4" />{t('market.paymentMethods')}</p><PaymentSummary s={store} /></div>
               </div>
             )}
-            {store?.whatsapp && <a href={waLink(store.whatsapp, t('market.waProduct', { product: p.name, url: productUrl(p.store.slug, p.id) }))} target="_blank" rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#128C7E] hover:underline"><MessageCircle className="h-4 w-4" />{t('market.askSeller')}</a>}
+            {store?.whatsapp && <a href={waLink(store.whatsapp, t('market.waProductFull', { product: p.name, variant: sel?.label ? ` (${sel.label})` : '', qty, price: sel ? formatMoney(sel.price, lang) : '', url: productUrl(p.store.slug, p.id) }))} target="_blank" rel="noopener noreferrer"
+              className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-white hover:bg-[#1ebe5b]"><MessageCircle className="h-4 w-4" />{t('market.orderOnWhatsappShort')}</a>}
+            {store?.phone && <a href={`tel:${store.phone}`} className="ml-2 mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold ring-1 ring-gray-300 dark:ring-gray-700"><Phone className="h-4 w-4" />{t('market.callSeller')}</a>}
           </Card>
 
           {(p.description || attrs.length > 0) && (
@@ -396,6 +407,27 @@ function ProductView({ p, store }: { p: any; store: any }) {
           </ul>
         )}
       </section>
+
+      {p.other_sellers?.length > 0 && (
+        <section className="mt-10" aria-labelledby="compare">
+          <h2 id="compare" className="mb-1 text-lg font-bold">{t('market.otherSellers')}</h2>
+          <p className="mb-3 text-sm text-ink-muted">{t('market.otherSellersSub')}</p>
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+            <table className="min-w-full text-sm">
+              <thead><tr className="text-left text-xs uppercase text-ink-muted"><th className="px-3 py-2">{t('market.productCol')}</th><th className="px-3 py-2">{t('market.sellerCol')}</th><th className="px-3 py-2 text-right">{t('market.priceCol')}</th><th className="px-3 py-2">{t('market.availability')}</th></tr></thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                <tr className="bg-brand-50/50 dark:bg-brand-950/30"><td className="px-3 py-2 font-semibold">{p.name}</td><td className="px-3 py-2">{p.store.name}{p.store.city ? ` · ${p.store.city}` : ''}</td><td className="px-3 py-2 text-right font-bold">{formatMoney(p.price, lang)}</td><td className="px-3 py-2">{p.sold ? t('market.sold') : Number(p.available) > 0 ? t('market.inStock') : t('market.outOfStock')}</td></tr>
+                {p.other_sellers.map((x: any) => (
+                  <tr key={x.id}><td className="px-3 py-2"><Link to={`/s/${x.store.slug}/p/${x.id}`} className="font-semibold text-brand-700 hover:underline">{x.name}</Link></td>
+                    <td className="px-3 py-2">{x.store.name}{x.store.verified && <BadgeCheck className="ml-1 inline h-3.5 w-3.5 text-brand-600" />}{x.store.city ? ` · ${x.store.city}` : ''}{x.rating_count > 0 ? ` · ★ ${x.rating_avg}` : ''}</td>
+                    <td className="px-3 py-2 text-right font-bold">{formatMoney(x.price, lang)}</td>
+                    <td className="px-3 py-2">{x.sold ? t('market.sold') : Number(x.available) > 0 ? t('market.inStock') : t('market.outOfStock')}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {p.related.length > 0 && (
         <section className="mt-10" aria-labelledby="related">

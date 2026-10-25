@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
@@ -9,7 +9,7 @@ import {
 import { useI18n } from '../../i18n';
 import { rpc } from '../../lib/api';
 import { BUSINESS_TYPES } from '../../lib/catalogTemplates';
-import { ProductCard, StoreCard } from '../../lib/market';
+import { ProductCard, recentlyViewed, StoreCard } from '../../lib/market';
 import { useAuth } from '../../lib/auth';
 import { ProductGrid, StoreTile } from '../../components/market';
 import { Button, Checkbox, EmptyState, ErrorState, Field, Input, LinkButton, PageLoader, Select } from '../../components/ui';
@@ -23,7 +23,13 @@ export const TYPE_ICONS: Record<string, typeof Store> = {
 export default function MarketHome() {
   const { t } = useI18n();
   const { session } = useAuth();
-  const [city, setCity] = useState<string>('');
+  const [city, setCityState] = useState<string>(() => { try { return localStorage.getItem('bizpilot.city') ?? ''; } catch { return ''; } });
+  const setCity = (c: string) => { setCityState(c); try { localStorage.setItem('bizpilot.city', c); } catch { /* private mode */ } };
+  const viewedIds = useMemo(() => recentlyViewed(), []);
+  const viewed = useQuery({
+    queryKey: ['market-viewed', viewedIds], enabled: viewedIds.length > 0,
+    queryFn: () => rpc<ProductCard[]>('market_products_by_ids', { p_ids: viewedIds }),
+  });
   const q = useQuery({
     queryKey: ['market-home', city],
     queryFn: () => rpc<{ types: { type: string; products: number }[]; stores: StoreCard[]; cities: string[]; latest: ProductCard[] }>('market_home', { p_city: city || null }),
@@ -76,6 +82,12 @@ export default function MarketHome() {
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{q.data!.stores.map((s) => <StoreTile key={s.business_id} s={s} />)}</div>
               </section>
             )}
+            {(viewed.data?.length ?? 0) > 0 && (
+              <section aria-labelledby="viewed">
+                <h2 id="viewed" className="mb-3 text-lg font-bold">{t('market.recentlyViewed')}</h2>
+                <ProductGrid items={[...viewed.data!].sort((a, b) => viewedIds.indexOf(a.id) - viewedIds.indexOf(b.id)).slice(0, 8)} />
+              </section>
+            )}
             <section aria-labelledby="latest">
               <div className="mb-3 flex items-end justify-between gap-3">
                 <h2 id="latest" className="text-lg font-bold">{t('market.newArrivals')}</h2>
@@ -106,7 +118,8 @@ export function SearchPage() {
   const get = (k: string) => params.get(k) ?? '';
   const page = Math.max(1, Number(params.get('page') ?? 1));
   const filters = { q: get('q'), type: get('type'), category: get('category'), city: get('city'), min_price: get('min'), max_price: get('max'),
-    in_stock: params.get('stock') === '1', sort: get('sort') || (get('q') ? 'relevance' : 'newest'), page, page_size: 24 };
+    in_stock: params.get('stock') === '1', sort: get('sort') || (get('q') ? 'relevance' : 'newest'), page, page_size: 24,
+    min_rating: get('rating'), delivery: params.get('delivery') === '1', condition: get('condition') };
   const res = useQuery({
     queryKey: ['market-search', filters],
     queryFn: () => rpc<{ total: number; items: ProductCard[] }>('market_search', { p: filters }),
@@ -125,7 +138,8 @@ export function SearchPage() {
   const title = filters.q ? t('market.resultsFor', { q: filters.q }) : filters.type ? t(`businessCategories.${filters.type}`) : t('market.allProducts');
   const active = [filters.type && { k: 'type', label: t(`businessCategories.${filters.type}`) }, filters.category && { k: 'category', label: filters.category },
     filters.city && { k: 'city', label: filters.city }, (filters.min_price || filters.max_price) && { k: 'price', label: `${filters.min_price || 0} – ${filters.max_price || '∞'} FCFA` },
-    filters.in_stock && { k: 'stock', label: t('market.inStockOnly') }].filter(Boolean) as { k: string; label: string }[];
+    filters.in_stock && { k: 'stock', label: t('market.inStockOnly') }, filters.min_rating && { k: 'rating', label: `★ ${filters.min_rating}+` },
+    filters.delivery && { k: 'delivery', label: t('market.deliversOnly') }, filters.condition && { k: 'condition', label: t(`market.condition.${filters.condition}`) }].filter(Boolean) as { k: string; label: string }[];
 
   const filterPanel = (
     <div className="space-y-4">
@@ -147,7 +161,20 @@ export function SearchPage() {
         </div>
         <Button type="submit" size="sm" variant="secondary" className="mt-2">{t('market.apply')}</Button>
       </form>
+      <Field label={t('market.minRating')}>
+        <Select value={filters.min_rating} onChange={(e) => set({ rating: e.target.value || null })}>
+          <option value="">{t('market.anyRating')}</option>
+          {['4', '3'].map((r) => <option key={r} value={r}>★ {r}+</option>)}
+        </Select>
+      </Field>
+      <Field label={t('market.conditionLabel')}>
+        <Select value={filters.condition} onChange={(e) => set({ condition: e.target.value || null })}>
+          <option value="">{t('market.anyCondition')}</option>
+          {['new', 'like_new', 'used_good', 'used_fair', 'refurbished', 'for_parts'].map((c) => <option key={c} value={c}>{t(`market.condition.${c}`)}</option>)}
+        </Select>
+      </Field>
       <Checkbox label={t('market.inStockOnly')} checked={filters.in_stock} onChange={(v) => set({ stock: v ? '1' : null })} />
+      <Checkbox label={t('market.deliversOnly')} checked={filters.delivery} onChange={(v) => set({ delivery: v ? '1' : null })} />
     </div>
   );
 

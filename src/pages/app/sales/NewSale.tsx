@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ArrowLeft, Banknote, CheckCircle2, CloudOff, Landmark, Minus, MoreHorizontal, Plus, Printer, Smartphone, Trash2, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Banknote, CheckCircle2, CloudOff, Facebook, Instagram, Landmark, MessageCircle, Minus, MoreHorizontal, Phone, Plus, Printer, Smartphone, Store, Trash2, Truck, UserPlus, X } from 'lucide-react';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { supabase } from '../../../lib/supabase';
-import { rpc, unwrap, queryClient } from '../../../lib/api';
+import { recordSale, unwrap, queryClient } from '../../../lib/api';
 import { Product, useCustomers, useSettings } from '../../../lib/hooks';
 import { cacheCatalog, cachedCatalog, enqueueSale, isNetworkError } from '../../../lib/offline';
 import { errorMessage } from '../../../lib/errors';
@@ -24,6 +24,14 @@ const METHODS: { key: string; icon: typeof Banknote; tone: string }[] = [
   { key: 'orange_money', icon: Smartphone, tone: 'text-orange-500' }, { key: 'bank_transfer', icon: Landmark, tone: 'text-blue-600' },
   { key: 'card', icon: Landmark, tone: 'text-violet-600' }, { key: 'other', icon: MoreHorizontal, tone: 'text-gray-500' },
 ];
+
+/** Where the sale was made. Marketplace sales come from delivered orders, never typed in. */
+export const CHANNELS: { key: string; icon: typeof Store }[] = [
+  { key: 'in_person', icon: Store }, { key: 'whatsapp', icon: MessageCircle }, { key: 'facebook', icon: Facebook },
+  { key: 'phone', icon: Phone }, { key: 'instagram', icon: Instagram }, { key: 'other', icon: MoreHorizontal },
+];
+const CHANNEL_KEY = 'bizpilot.lastChannel';
+const nowLocal = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 
 function unitOf(l: Line) {
   return (l.product.product_units ?? []).find((u) => u.id === l.unit_id) ?? null;
@@ -52,6 +60,12 @@ export default function NewSale() {
   const [reference, setReference] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [channel, setChannel] = useState(() => { try { return localStorage.getItem(CHANNEL_KEY) || 'in_person'; } catch { return 'in_person'; } });
+  const [earlier, setEarlier] = useState(false);
+  const [soldAt, setSoldAt] = useState(nowLocal);
+  const [delivery, setDelivery] = useState(false);
+  const [deliveryCost, setDeliveryCost] = useState('');
+  const [deliveryMethod, setDeliveryMethod] = useState('cash');
   const [clientRef, setClientRef] = useState(newId);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +120,7 @@ export default function NewSale() {
   const reset = () => {
     setLines([]); setCustomer(''); setSaleDisc(''); setMethod('cash'); setSplit(false); setPays([]); setTendered('');
     setPartial(false); setPaidNow(''); setReference(''); setDueDate(''); setNotes(''); setError(null); setDone(null); setClientRef(newId());
+    setEarlier(false); setSoldAt(nowLocal()); setDelivery(false); setDeliveryCost(''); setDeliveryMethod('cash');
   };
 
   const submit = async () => {
@@ -114,13 +129,15 @@ export default function NewSale() {
       : paid > 0 ? [{ method, amount: paid, reference: reference || null }] : [];
     const payload = {
       client_ref: clientRef, customer_id: customer || null, discount_amount: toNumber(saleDisc), notes: notes || null, due_date: credit > 0 ? dueDate || null : null,
-      sold_at: new Date().toISOString(),
+      sold_at: earlier && soldAt ? new Date(soldAt).toISOString() : new Date().toISOString(),
+      channel, delivery_cost: delivery ? toNumber(deliveryCost) : 0, delivery_cost_method: deliveryMethod,
       lines: lines.map((l) => ({ product_id: l.product.id, unit_id: l.unit_id || null, quantity: toNumber(l.qty), unit_price: toNumber(l.price), discount_amount: toNumber(l.discount) })),
       payments,
     };
     setSubmitting(true);
     try {
-      const r = await rpc<any>('create_sale', { p_business: id, p: payload });
+      try { localStorage.setItem(CHANNEL_KEY, channel); } catch { /* private mode */ }
+      const r = await recordSale<any>(id, payload);
       setDone({ id: r.id, number: r.number, total: Number(r.total), change });
       queryClient.invalidateQueries();
     } catch (e) {
@@ -201,6 +218,20 @@ export default function NewSale() {
 
         <div className="space-y-3 lg:col-span-2">
           <Card>
+            <p className="mb-2 font-bold">{t('pos.channelTitle')}</p>
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('pos.channelTitle')}>
+              {CHANNELS.map((c) => (
+                <button key={c.key} type="button" role="radio" aria-checked={channel === c.key} onClick={() => setChannel(c.key)}
+                  className={clsx('flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition',
+                    channel === c.key ? 'border-brand-700 bg-brand-700 text-white' : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800')}>
+                  <c.icon className="h-4 w-4" />{t(`channels.${c.key}`)}
+                </button>
+              ))}
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={earlier} onChange={(e) => setEarlier(e.target.checked)} />{t('pos.soldEarlier')}</label>
+            {earlier && <Field className="mt-2" label={t('pos.soldAt')} hint={t('pos.soldAtHint')}><Input type="datetime-local" value={soldAt} max={nowLocal()} onChange={(e) => setSoldAt(e.target.value)} /></Field>}
+          </Card>
+          <Card>
             <Field label={t('pos.customer')} htmlFor="sale-customer">
               <div className="flex gap-2">
                 <Select id="sale-customer" value={customer} onChange={(e) => setCustomer(e.target.value)} className="flex-1" disabled={!can('customers.manage')}>
@@ -260,7 +291,16 @@ export default function NewSale() {
             {paid > totals.total && <div className="mt-3"><Alert tone="red">{t('errors.overpayment')}</Alert></div>}
           </Card>
 
-          <Card className="!p-3"><Textarea rows={2} placeholder={t('common.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} /></Card>
+          <Card className="!p-3">
+            <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={delivery} onChange={(e) => setDelivery(e.target.checked)} /><Truck className="h-4 w-4 text-ink-muted" />{t('pos.deliveryCost')}</label>
+            {delivery && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Field label={t('pos.deliveryAmount')} hint={t('pos.deliveryHint')}><Input type="number" min="0" step="any" value={deliveryCost} onChange={(e) => setDeliveryCost(e.target.value)} suffix="FCFA" /></Field>
+                <Field label={t('pos.deliveryPaidWith')}><Select value={deliveryMethod} onChange={(e) => setDeliveryMethod(e.target.value)}>{['cash', 'mtn_momo', 'orange_money', 'other'].map((m) => <option key={m} value={m}>{t(`methods.${m}`)}</option>)}</Select></Field>
+              </div>
+            )}
+            <Textarea className="mt-3" rows={2} placeholder={t('common.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </Card>
           {error && <Alert tone="red">{error}</Alert>}
           <Button size="lg" block loading={submitting} disabled={!valid || paid > totals.total} onClick={submit}>{t('pos.completeSale')} · {money(totals.total)}</Button>
           <p className="text-center text-xs text-ink-muted">{t('pos.serverNote')} <Link to="/app/sales" className="underline">{t('nav.sales')}</Link></p>

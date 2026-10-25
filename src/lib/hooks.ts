@@ -6,7 +6,7 @@ import { useAuth } from './auth';
 
 export interface Product {
   id: string; business_id: string; name: string; sku: string; barcode: string | null; category_id: string | null;
-  subcategory: string | null; brand: string | null; description: string | null; image_path: string | null; base_unit: string;
+  subcategory: string | null; condition?: string | null; single_item?: boolean; brand: string | null; description: string | null; image_path: string | null; base_unit: string;
   allow_fraction: boolean; purchase_cost: number; selling_price: number; qty_on_hand: number; stock_value: number; avg_cost: number;
   min_stock: number; lead_time_days: number | null; min_order_qty: number | null; preferred_supplier_id: string | null;
   location: string | null; track_expiry: boolean; variant_of: string | null; variant_label: string | null; status: 'active' | 'archived';

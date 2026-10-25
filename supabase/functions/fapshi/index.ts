@@ -1,6 +1,9 @@
-// BizPilot online payments with Fapshi — Supabase Edge Function (Deno). No dependencies.
+// BizPilot subscription payments with Fapshi — Supabase Edge Function (Deno). No dependencies.
 //
-// POST {action: "order", order_id, token?, phone?, medium?}                  buyer pays an online order
+// Fapshi is used ONLY for BizPilot subscription fees. Marketplace buyers pay sellers directly (cash on
+// delivery or the seller's own Mobile Money number); BizPilot never collects order payments, so the
+// "order" action is refused.
+//
 // POST {action: "subscription", business_id, plan_code, period, phone?, medium?}   owner pays a plan period
 //   With a phone number, Fapshi sends the payment request straight to that phone (direct pay): the
 //   payer only approves the withdrawal on their MTN / Orange Money account. Without one (or when
@@ -11,7 +14,7 @@
 //
 // Security:
 //   * Fapshi credentials and the webhook secret are edge-function secrets; they never reach the browser.
-//   * Amounts come from the database (market_payment_begin / billing_fapshi_begin run with the caller's
+//   * Amounts come from the database (billing_fapshi_begin runs with the caller's
 //     own credentials, so ownership and permissions are checked there), never from the request.
 //   * A payment changes only through public.fapshi_apply (service role) with a status this function
 //     fetched from Fapshi's API itself. Webhook bodies and browser redirects are never trusted:
@@ -260,19 +263,11 @@ export async function handle(req: Request, cfg: FapshiConfig, f: Fetch = fetch):
 
   // With sandbox keys Fapshi approves payments without taking any money, so only platform
   // administrators may start one (to test); customers are told online payment is not available.
-  if (cfg.sandbox && (body?.action === 'order' || body?.action === 'subscription')) {
+  if (body?.action === 'order') return json({ error: 'order_payments_direct' }, 410);
+
+  if (cfg.sandbox && body?.action === 'subscription') {
     const admin = user ? await rpc(cfg, f, 'admin_market_overview', {}, { user }) : null;
     if (!admin || admin.error) return json({ error: 'online_payments_test_mode' }, 503);
-  }
-
-  if (body?.action === 'order') {
-    if (!UUID.test(String(body.order_id ?? ''))) return json({ error: 'invalid_request' }, 400);
-    const token = typeof body.token === 'string' && body.token.length <= 128 ? body.token : null;
-    const d = directOptions(body);
-    if (!d.ok) return json({ error: 'invalid_phone' }, 400);
-    const begin = await rpc(cfg, f, 'market_payment_begin', { p_order: body.order_id, p_token: token }, { user });
-    if (begin.error) return json({ error: begin.error.message, details: begin.error.details }, 400);
-    return startPayment(cfg, f, begin.data, d.direct);
   }
 
   if (body?.action === 'subscription') {

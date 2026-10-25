@@ -209,72 +209,79 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
     expect(ord).toEqual({ status: 'cancelled', cancel_reason: 'not_confirmed_in_time' });
   });
 
-  it('online payment: only a verified Fapshi status marks it paid; duplicates and mismatches are safe', async () => {
-    await expectError(rpc(guest, 'market_place_order', { p: order([{ product_id: tee.id, quantity: 1 }], { payment_method: 'online' }) }), 'payment_method_not_available');
-    await setConfig({ online_payments_enabled: true, commission_pct: 10, online_fee_pct: 2 });
-    await rpc(owner.client, 'store_save', { p_business: biz, p: { online_payment_enabled: true } });
+  it('buyers pay the seller directly: no BizPilot online payment; Mobile Money to the seller is seller-confirmed', async () => {
+    // Fapshi is for subscriptions only: an order can never be paid through BizPilot.
+    await expectError(rpc(guest, 'market_place_order', { p: order([{ product_id: tee.id, quantity: 1 }], { payment_method: 'online' }) }), 'invalid_payment_method');
+    await sql('update stores set online_payment_enabled = true where business_id = $1', [biz]);
+    expect((await sql('select online_payment_enabled from stores where business_id = $1', [biz]))[0].online_payment_enabled).toBe(false);
+    // Mobile Money to the seller needs the seller's own number.
+    await expectError(rpc(guest, 'market_place_order', { p: order([{ product_id: tee.id, quantity: 1 }], { payment_method: 'momo_direct' }) }), 'payment_method_not_available');
+    await expectError(rpc(owner.client, 'store_save_payments', { p_business: biz, p: { momo_direct_enabled: true } }), 'momo_number_required');
+    await expectError(rpc(owner.client, 'store_save_payments', { p_business: biz, p: { momo_direct_enabled: true, momo_mtn_number: '12345' } }), 'invalid_phone');
+    const staffCashier = await addStaff(owner, biz, 'cashier');
+    await expectError(rpc(staffCashier.client, 'store_save_payments', { p_business: biz, p: { momo_direct_enabled: false } }), 'permission_denied');
+    await rpc(owner.client, 'store_save_payments', { p_business: biz, p: { momo_direct_enabled: true, momo_mtn_number: '+237 677 12 34 56',
+      momo_mtn_name: 'Awa Mode', return_policy: 'Exchange within 3 days with receipt.', neighborhood: 'Akwa' } });
+    const store = await rpc(guest, 'market_store', { p_slug: (await sql('select slug from stores where business_id = $1', [biz]))[0].slug });
+    expect(store).toMatchObject({ momo_direct_enabled: true, momo_networks: ['mtn'], online_payment_enabled: false,
+      return_policy: 'Exchange within 3 days with receipt.', neighborhood: 'Akwa' });
+    expect(JSON.stringify(store)).not.toContain('677123456'); // the number is shown to buyers on their order
+
+    const p = await listedProduct(owner, biz, { name: 'Wax dress', selling_price: 12000 }, 2);
     const tk = token();
-    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: tee.id, quantity: 1 }], { payment_method: 'online' }), access_token: tk } });
-    expect(o.payment_status).toBe('awaiting_payment');
-    await expectError(rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'confirm' }), 'order_not_paid');
-
-    const pay = await rpc(guest, 'market_payment_begin', { p_order: o.order_id, p_token: tk });
-    expect(n(pay.amount)).toBe(5000);
-    // Browsers (signed in or not) can never apply a payment status.
-    await expectError(rpc(guest, 'fapshi_apply', { p_trans_id: 'x', p_tx: {} }), /permission denied|not find/);
-    await expectError(rpc(owner.client, 'fapshi_apply', { p_trans_id: 'x', p_tx: {} }), /permission denied|not find/);
-    const trans = `T${uid().slice(0, 8)}`;
-    await rpc(admin, 'fapshi_attach', { p_payment: pay.payment_id, p_trans_id: trans, p_link: 'https://checkout.fapshi.com/x' });
-    expect((await rpc(admin, 'fapshi_apply', { p_trans_id: trans, p_tx: { status: 'PENDING' } })).status).toBe('pending');
-    const ok = await rpc(admin, 'fapshi_apply', { p_trans_id: trans, p_tx: { status: 'SUCCESSFUL', amount: 5000, externalId: pay.payment_id, medium: 'mobile money' } });
-    expect(ok.order_payment_status).toBe('paid');
-    const dup = await rpc(admin, 'fapshi_apply', { p_trans_id: trans, p_tx: { status: 'SUCCESSFUL', amount: 5000 } });
-    expect(dup.duplicate).toBe(true);
-    expect((await rpc(admin, 'fapshi_apply', { p_trans_id: trans, p_tx: { status: 'FAILED' } })).status).toBe('successful');
-    const status = await rpc(guest, 'online_payment_status', { p_payment: pay.payment_id });
-    expect(status.order_payment_status).toBe('paid');
-
+    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 1 }], { payment_method: 'momo_direct' }), access_token: tk } });
+    expect(o.payment_status).toBe('cod_pending');
+    let view = await rpc(guest, 'market_order_view', { p_order: o.order_id, p_token: tk });
+    expect(view.store.momo).toMatchObject({ mtn_number: '677123456', mtn_name: 'Awa Mode', orange_number: null });
+    expect(view).toMatchObject({ can_pay: false, can_report_payment: true });
+    // The buyer reports the transfer: evidence only, the order stays unpaid.
+    await expectError(rpc(guest, 'market_order_report_payment', { p_order: o.order_id, p_token: token(), p_reference: 'MP2410.1234' }), 'not_found');
+    await rpc(guest, 'market_order_report_payment', { p_order: o.order_id, p_token: tk, p_reference: 'MP2410.1234' });
+    let [row] = await sql('select payment_status, buyer_payment_ref from market_orders where id = $1', [o.order_id]);
+    expect(row).toEqual({ payment_status: 'cod_pending', buyer_payment_ref: 'MP2410.1234' });
+    // Only the seller can confirm the money arrived.
+    await expectError(rpc(guest, 'market_order_action', { p_order: o.order_id, p_action: 'payment_received', p: { method: 'mtn_momo' } }), /not_found|permission.denied/);
+    await expectError(rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'payment_received', p: {} }), 'payment_method_required');
+    await rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'payment_received', p: { method: 'mtn_momo' } });
+    [row] = await sql('select payment_status, payment_reference, payment_confirmed_by from market_orders where id = $1', [o.order_id]);
+    expect(row).toEqual({ payment_status: 'seller_confirmed', payment_reference: 'MP2410.1234', payment_confirmed_by: owner.id });
+    // Once the seller has the money, the buyer cannot cancel on their own.
+    await expectError(rpc(guest, 'market_order_customer_action', { p_order: o.order_id, p_token: tk, p_action: 'cancel' }), 'order_not_cancellable');
+    view = await rpc(guest, 'market_order_view', { p_order: o.order_id, p_token: tk });
+    expect(view).toMatchObject({ payment_status: 'seller_confirmed', paid_with: 'mtn_momo', can_report_payment: false, can_cancel: false });
+    // Delivery records exactly one sale (channel: marketplace) paid by MTN MoMo, and moves stock once.
     await rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'confirm' });
-    await rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'deliver' });
-    const ledger = await sql('select kind, amount from market_ledger where order_id = $1 order by id', [o.order_id]);
-    expect(ledger.map((l: any) => [l.kind, n(l.amount)])).toEqual([['order_payment', 5000], ['commission', -500], ['processing_fee', -100]]);
-    const summary = await rpc(owner.client, 'seller_payments_summary', { p_business: biz });
-    expect(n(summary.balance)).toBe(4400);
+    const done = await rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'deliver', p: {} });
+    expect(done.payment_status).toBe('cod_collected');
+    const sales = await sql('select id, channel, total, paid_total from sales where client_ref = $1', [o.order_id]);
+    expect(sales).toHaveLength(1);
+    expect(sales[0]).toMatchObject({ channel: 'marketplace' });
+    expect(n(sales[0].paid_total)).toBe(12000);
+    const pays = await sql(`select method, amount from payments where sale_id = $1`, [sales[0].id]);
+    expect(pays.map((x: any) => [x.method, n(x.amount)])).toEqual([['mtn_momo', 12000]]);
+    expect(n((await product(owner, p.id)).qty_on_hand)).toBe(1);
+    await expectError(rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'deliver', p: {} }), 'invalid_order_status');
+    expect(await sql('select 1 from sales where client_ref = $1', [o.order_id])).toHaveLength(1);
+    // No BizPilot balance is created for the seller.
+    expect(await sql(`select 1 from market_ledger where order_id = $1 and kind = 'order_payment'`, [o.order_id])).toEqual([]);
+    // A marketplace sale is refunded from its order, not cancelled as a shop sale.
+    await expectError(rpc(owner.client, 'cancel_sale', { p_sale: sales[0].id, p_reason: 'x' }), 'use_order_refund');
 
-    // Amount mismatch: not paid, flagged for an administrator.
-    const o2 = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: tee.id, quantity: 1 }], { payment_method: 'online' }), access_token: tk } });
-    const pay2 = await rpc(guest, 'market_payment_begin', { p_order: o2.order_id, p_token: tk });
-    const t2 = `T${uid().slice(0, 8)}`;
-    await rpc(admin, 'fapshi_attach', { p_payment: pay2.payment_id, p_trans_id: t2, p_link: 'https://x' });
-    const mm = await rpc(admin, 'fapshi_apply', { p_trans_id: t2, p_tx: { status: 'SUCCESSFUL', amount: 100, externalId: pay2.payment_id } });
-    expect(mm.mismatch).toBe(true);
-    const [o2row] = await sql('select payment_status, flagged, flag_reason from market_orders where id = $1', [o2.order_id]);
-    expect(o2row).toEqual({ payment_status: 'awaiting_payment', flagged: true, flag_reason: 'payment_amount_mismatch' });
-  });
-
-  it('a payment that arrives after the order timed out reopens it when stock allows, otherwise it is refunded', async () => {
-    const p = await listedProduct(owner, biz, { name: 'Cap', selling_price: 2000 }, 1);
-    const tk = token();
-    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 1 }], { payment_method: 'online', customer: { name: 'Slow Payer', phone: '699555444' } }), access_token: tk } });
-    const pay = await rpc(guest, 'market_payment_begin', { p_order: o.order_id, p_token: tk });
-    const t = `T${uid().slice(0, 8)}`;
-    await rpc(admin, 'fapshi_attach', { p_payment: pay.payment_id, p_trans_id: t, p_link: 'https://x' });
-    await sql(`update market_orders set expires_at = now() - interval '1 minute' where id = $1`, [o.order_id]);
-    await rpc(owner.client, 'seller_market_summary', { p_business: biz }); // runs the expiry
-    // Someone buys the cap at the counter in the meantime.
-    await sell(owner, biz, [{ product_id: p.id, quantity: 1 }], { payments: [{ method: 'cash', amount: 2000 }] });
-    const r = await rpc(admin, 'fapshi_apply', { p_trans_id: t, p_tx: { status: 'SUCCESSFUL', amount: 2000, externalId: pay.payment_id } });
-    expect(r.order_payment_status).toBe('refund_pending');
-    // An administrator records the refund sent to the buyer.
-    const adm = await createUser('mk-admin');
-    await sql('insert into platform_admins (user_id) values ($1)', [adm.id]);
-    await expectError(rpc(owner.client, 'admin_market_order_action', { p_order: o.order_id, p_action: 'refund_done', p: { reference: 'MOMO-1' } }), 'permission_denied');
-    await rpc(adm.client, 'admin_market_order_action', { p_order: o.order_id, p_action: 'refund_done', p: { reference: 'MOMO-123' } });
-    const [row] = await sql('select payment_status, refund_reference from market_orders where id = $1', [o.order_id]);
-    expect(row).toEqual({ payment_status: 'refunded', refund_reference: 'MOMO-123' });
+    // Cancelling after the seller confirmed a payment: the seller records the refund they sent.
+    const tk2 = token();
+    const o2 = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 1 }], { payment_method: 'momo_direct' }), access_token: tk2 } });
+    await rpc(owner.client, 'market_order_action', { p_order: o2.order_id, p_action: 'payment_received', p: { method: 'mtn_momo', reference: 'MP-77' } });
+    await rpc(owner.client, 'market_order_action', { p_order: o2.order_id, p_action: 'reject', p: { reason: 'Out of this colour' } });
+    [row] = await sql('select status, payment_status from market_orders where id = $1', [o2.order_id]);
+    expect(row).toEqual({ status: 'cancelled', payment_status: 'refund_pending' });
+    await rpc(owner.client, 'market_order_action', { p_order: o2.order_id, p_action: 'refunded', p: { reference: 'MP-REFUND-1' } });
+    [row] = await sql('select payment_status, refund_reference from market_orders where id = $1', [o2.order_id]);
+    expect(row).toEqual({ payment_status: 'refunded', refund_reference: 'MP-REFUND-1' });
+    expect(n((await product(owner, p.id)).qty_on_hand)).toBe(1); // the reservation was released, stock untouched
   });
 
   it('subscriptions can be paid with Fapshi and activate only after verification', async () => {
+    await setConfig({ online_payments_enabled: true });
     const pay = await rpc(owner.client, 'billing_fapshi_begin', { p_business: biz, p_plan: 'starter', p_period: 'monthly' });
     expect(n(pay.amount)).toBe(1500);
     const t = `T${uid().slice(0, 8)}`;

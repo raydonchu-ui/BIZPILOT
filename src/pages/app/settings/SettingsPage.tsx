@@ -135,7 +135,39 @@ function OperationsTab() {
         </div>
       </Card>
       <div className="lg:col-span-2 flex justify-end"><Button loading={busy} onClick={save}>{t('common.save')}</Button></div>
+      {f.alert_settings !== undefined && <AlertSettingsCard initial={f.alert_settings ?? {}} />}
     </div>
+  );
+}
+
+const ALERT_TYPES = ['out_of_stock', 'low_stock', 'fast_selling', 'expiring_soon', 'customer_overdue', 'orders_waiting', 'payment_to_confirm', 'large_adjustment', 'possible_duplicate_sale'];
+
+/** Which business alerts to raise, with their thresholds. Alerts are built from recorded data only. */
+function AlertSettingsCard({ initial }: { initial: any }) {
+  const { t } = useI18n();
+  const { id } = useBiz();
+  const { run, busy } = useAction();
+  const [a, setA] = useState({
+    fast_selling_days: String(initial.fast_selling_days ?? 7), large_adjustment_value: String(initial.large_adjustment_value ?? 50000),
+    order_wait_hours: String(initial.order_wait_hours ?? 2), disabled: (initial.disabled ?? []) as string[],
+  });
+  const toggle = (k: string, on: boolean) => setA((x) => ({ ...x, disabled: on ? x.disabled.filter((d) => d !== k) : [...x.disabled, k] }));
+  const save = () => run(() => rpc('save_alert_settings', { p_business: id, p: { fast_selling_days: toNumber(a.fast_selling_days),
+    large_adjustment_value: toNumber(a.large_adjustment_value), order_wait_hours: toNumber(a.order_wait_hours), disabled: a.disabled } }), t('common.saved'));
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader title={t('settings.alerts.title')} subtitle={t('settings.alerts.sub')} />
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {ALERT_TYPES.map((k) => <Checkbox key={k} checked={!a.disabled.includes(k)} onChange={(v) => toggle(k, v)} label={t(`settings.alerts.types.${k}`)} />)}
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <Field label={t('settings.alerts.fastDays')} hint={t('settings.alerts.fastDaysHint')}><Input type="number" min="3" max="60" value={a.fast_selling_days} onChange={(e) => setA({ ...a, fast_selling_days: e.target.value })} suffix={t('common.days')} /></Field>
+        <Field label={t('settings.alerts.bigAdjustment')} hint={t('settings.alerts.bigAdjustmentHint')}><Input type="number" min="0" value={a.large_adjustment_value} onChange={(e) => setA({ ...a, large_adjustment_value: e.target.value })} suffix="FCFA" /></Field>
+        <Field label={t('settings.alerts.orderWait')} hint={t('settings.alerts.orderWaitHint')}><Input type="number" min="1" max="72" value={a.order_wait_hours} onChange={(e) => setA({ ...a, order_wait_hours: e.target.value })} suffix="h" /></Field>
+      </div>
+      <p className="mt-3 text-xs text-ink-muted">{t('settings.alerts.lowStockNote')}</p>
+      <div className="mt-4 flex justify-end"><Button loading={busy} onClick={save}>{t('common.save')}</Button></div>
+    </Card>
   );
 }
 

@@ -14,8 +14,8 @@ import { PeriodPicker, usePeriod } from '../../../components/PeriodPicker';
 import { HBar, SalesProfitChart } from '../../../components/charts';
 import { Period } from '../../../lib/dates';
 
-type Tab = 'pl' | 'sales' | 'products' | 'categories' | 'valuation' | 'slow' | 'aging' | 'restock' | 'suppliers' | 'customers' | 'discrepancies' | 'efficiency' | 'payments';
-const FEATURE: Partial<Record<Tab, string>> = { pl: 'basic_analytics', products: 'basic_analytics', categories: 'basic_analytics', slow: 'advanced_analytics', aging: 'advanced_analytics', restock: 'restock', suppliers: 'advanced_analytics', discrepancies: 'advanced_analytics', efficiency: 'advanced_analytics' };
+type Tab = 'pl' | 'sales' | 'channels' | 'products' | 'categories' | 'valuation' | 'slow' | 'aging' | 'restock' | 'suppliers' | 'customers' | 'discrepancies' | 'efficiency' | 'payments';
+const FEATURE: Partial<Record<Tab, string>> = { pl: 'basic_analytics', channels: 'basic_analytics', products: 'basic_analytics', categories: 'basic_analytics', slow: 'advanced_analytics', aging: 'advanced_analytics', restock: 'restock', suppliers: 'advanced_analytics', discrepancies: 'advanced_analytics', efficiency: 'advanced_analytics' };
 
 export default function ReportsPage() {
   const { t } = useI18n();
@@ -24,7 +24,7 @@ export default function ReportsPage() {
   const tab = (params.get('tab') as Tab) || 'pl';
   const [period, setPeriod] = usePeriod('this_month');
   if (!can('reports.view')) return <ErrorState error={{ message: 'permission_denied' }} />;
-  const tabs: Tab[] = ['pl', 'sales', 'products', 'categories', 'valuation', 'restock', 'slow', 'aging', 'suppliers', 'customers', 'discrepancies', 'efficiency', 'payments'];
+  const tabs: Tab[] = ['pl', 'sales', 'channels', 'products', 'categories', 'valuation', 'restock', 'slow', 'aging', 'suppliers', 'customers', 'discrepancies', 'efficiency', 'payments'];
   const feature = FEATURE[tab];
   const periodless = ['valuation', 'restock', 'slow', 'aging', 'customers'].includes(tab);
   return (
@@ -38,6 +38,7 @@ export default function ReportsPage() {
         <>
           {tab === 'pl' && <ProfitLoss period={period} />}
           {tab === 'sales' && <SalesReport period={period} />}
+          {tab === 'channels' && <ChannelsReport period={period} />}
           {tab === 'products' && <ProductsReport period={period} />}
           {tab === 'categories' && <CategoriesReport period={period} />}
           {tab === 'valuation' && <ValuationReport />}
@@ -489,6 +490,47 @@ function EfficiencyReport({ period }: { period: Period }) {
         ]} />
       </Card>
     )}</Q>
+  );
+}
+
+/** Where sales happen (shop, WhatsApp, Facebook, phone, marketplace…): revenue net of returns, cost, profit and balances. */
+function ChannelsReport({ period }: { period: Period }) {
+  const { t } = useI18n();
+  const { id } = useBiz();
+  const money = useMoney();
+  const q = useRpc<any[]>('sales_by_channel', { p_business: id, p_from: period.from, p_to: period.to });
+  return (
+    <Card>
+      <CardHeader title={t('reports.tabs.channels')} subtitle={t('reports.channels.sub')}
+        action={<ExportButton name={`sales-by-channel-${period.from}-to-${period.to}`} rows={() => (q.data ?? []).map((r) => ({ channel: t(`channels.${r.channel}`), sales: r.sales, cancelled: r.cancelled,
+          revenue_net_of_returns: r.revenue, cost_of_goods: r.cost, gross_profit: r.gross_profit, paid: r.paid, outstanding: r.outstanding, sales_missing_cost: r.missing_cost }))} />} />
+      <Q q={q}>{(rows) => {
+        const total = rows.reduce((a, r) => a + Number(r.revenue), 0);
+        const missing = rows.reduce((a, r) => a + Number(r.missing_cost), 0);
+        return rows.length === 0 ? <p className="py-8 text-center text-sm text-ink-muted">{t('common.noData')}</p> : (
+          <>
+            {missing > 0 && <div className="mb-3"><Alert tone="amber">{t('reports.channels.estimated', { n: missing })}</Alert></div>}
+            <div className="mb-4 space-y-2">
+              {rows.map((r) => (
+                <div key={r.channel}>
+                  <div className="flex justify-between text-sm"><span className="font-semibold">{t(`channels.${r.channel}`)}</span><span>{money(r.revenue)} · {total > 0 ? Math.round((Number(r.revenue) / total) * 100) : 0}%</span></div>
+                  <div className="mt-1 h-2 rounded-full bg-gray-100 dark:bg-gray-800"><div className="h-2 rounded-full bg-brand-600" style={{ width: `${total > 0 ? Math.max(2, (Number(r.revenue) / total) * 100) : 0}%` }} /></div>
+                </div>
+              ))}
+            </div>
+            <DataTable rows={rows} rowKey={(r) => r.channel} columns={[
+              { key: 'c', header: t('sales.channel'), render: (r) => <span className="font-semibold">{t(`channels.${r.channel}`)}</span> },
+              { key: 'n', header: t('reports.channels.sales'), align: 'right', render: (r) => <span>{r.sales}{Number(r.cancelled) > 0 && <span className="block text-xs text-ink-muted">{t('reports.channels.cancelled', { n: r.cancelled })}</span>}</span> },
+              { key: 'r', header: t('reports.channels.revenue'), align: 'right', render: (r) => money(r.revenue) },
+              { key: 'g', header: t('dashboard.grossProfit'), align: 'right', hideOnMobile: true, render: (r) => <span>{money(r.gross_profit)}{Number(r.missing_cost) > 0 && <span className="block text-xs text-amber-700">{t('reports.channels.estimatedShort')}</span>}</span> },
+              { key: 'p', header: t('common.paid'), align: 'right', hideOnMobile: true, render: (r) => money(r.paid) },
+              { key: 'o', header: t('sales.outstanding'), align: 'right', render: (r) => Number(r.outstanding) > 0 ? <span className="text-amber-700">{money(r.outstanding)}</span> : '—' },
+            ]} />
+            <p className="mt-3 text-xs text-ink-muted">{t('reports.channels.note')}</p>
+          </>
+        );
+      }}</Q>
+    </Card>
   );
 }
 

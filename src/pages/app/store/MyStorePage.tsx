@@ -337,33 +337,57 @@ function DeliveryTab({ s }: { s: any }) {
   );
 }
 
+/** How buyers pay: cash on delivery and/or Mobile Money sent straight to the seller's own number.
+ *  BizPilot never collects marketplace payments. Also the store's policies and service area. */
 function PaymentsTab({ s }: { s: any }) {
   const { t } = useI18n();
   const { id } = useBiz();
-  const cfg = useMarketConfig().data;
-  const { save, busy } = useSave(id);
-  const [f, setF] = useState({ cod_enabled: s.cod_enabled, online_payment_enabled: s.online_payment_enabled });
-  const platformOnline = Boolean(cfg?.online_payments_enabled);
+  const { run, busy } = useAction();
+  const qc = useQueryClient();
+  const [f, setF] = useState({
+    cod_enabled: Boolean(s.cod_enabled), momo_direct_enabled: Boolean(s.momo_direct_enabled),
+    momo_mtn_number: s.momo_mtn_number ?? '', momo_mtn_name: s.momo_mtn_name ?? '',
+    momo_orange_number: s.momo_orange_number ?? '', momo_orange_name: s.momo_orange_name ?? '',
+    payment_note: s.payment_note ?? '', return_policy: s.return_policy ?? '', neighborhood: s.neighborhood ?? '', service_area: s.service_area ?? '',
+  });
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    await run(() => rpc('store_save_payments', { p_business: id, p: f }), t('common.saved'));
+    qc.invalidateQueries({ queryKey: ['store-row', id] });
+  };
+  const noNumber = f.momo_direct_enabled && !f.momo_mtn_number.trim() && !f.momo_orange_number.trim();
   return (
     <Card>
-      <form onSubmit={(e) => { e.preventDefault(); save(f); }} className="space-y-5">
+      <form onSubmit={save} className="space-y-6">
+        <Alert tone="blue" title={t('seller.store.directTitle')}>{t('seller.store.directBody')}</Alert>
         <Checkbox label={t('market.cod')} hint={t('seller.store.codHint')} checked={f.cod_enabled} onChange={(v) => setF({ ...f, cod_enabled: v })} />
         <div>
-          <Checkbox label={t('market.payOnline')} hint={platformOnline ? t('seller.store.onlineHint') : t('seller.store.onlineNotAvailable')} disabled={!platformOnline && !f.online_payment_enabled}
-            checked={f.online_payment_enabled} onChange={(v) => setF({ ...f, online_payment_enabled: v })} />
-          {platformOnline && (
-            <div className="mt-3 rounded-xl bg-gray-50 p-4 text-sm dark:bg-gray-800/60">
-              <p className="font-semibold">{t('seller.store.howOnlineWorks')}</p>
-              <ul className="mt-1 list-disc space-y-1 pl-5 text-ink-soft dark:text-gray-300">
-                <li>{t('seller.store.online1')}</li><li>{t('seller.store.online2')}</li><li>{t('seller.store.online3')}</li>
-              </ul>
-              <p className="mt-2 font-semibold">{t('seller.store.fees', { commission: cfg?.commission_pct ?? 0, fee: cfg?.online_fee_pct ?? 0 })}</p>
+          <Checkbox label={t('market.momoDirect')} hint={t('seller.store.momoHint')} checked={f.momo_direct_enabled} onChange={(v) => setF({ ...f, momo_direct_enabled: v })} />
+          {f.momo_direct_enabled && (
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 rounded-xl border border-yellow-300 p-3">
+                <p className="text-sm font-bold">MTN Mobile Money</p>
+                <Field label={t('seller.store.momoNumber')} optional><Input type="tel" inputMode="tel" placeholder="67X XX XX XX" value={f.momo_mtn_number} onChange={set('momo_mtn_number')} /></Field>
+                <Field label={t('seller.store.momoName')} optional hint={t('seller.store.momoNameHint')}><Input maxLength={80} value={f.momo_mtn_name} onChange={set('momo_mtn_name')} /></Field>
+              </div>
+              <div className="space-y-2 rounded-xl border border-orange-300 p-3">
+                <p className="text-sm font-bold">Orange Money</p>
+                <Field label={t('seller.store.momoNumber')} optional><Input type="tel" inputMode="tel" placeholder="69X XX XX XX" value={f.momo_orange_number} onChange={set('momo_orange_number')} /></Field>
+                <Field label={t('seller.store.momoName')} optional hint={t('seller.store.momoNameHint')}><Input maxLength={80} value={f.momo_orange_name} onChange={set('momo_orange_name')} /></Field>
+              </div>
+              <Field className="sm:col-span-2" label={t('seller.store.paymentNote')} optional hint={t('seller.store.paymentNoteHint')}><Input maxLength={300} value={f.payment_note} onChange={set('payment_note')} /></Field>
+              {noNumber && <div className="sm:col-span-2"><Alert tone="amber">{t('errors.momo_number_required')}</Alert></div>}
             </div>
           )}
         </div>
-        {!f.cod_enabled && !f.online_payment_enabled && <Alert tone="amber">{t('seller.store.needPayment')}</Alert>}
-        {Number(cfg?.commission_pct) > 0 && <p className="text-xs text-ink-muted">{t('seller.store.commissionCod', { pct: cfg?.commission_pct ?? 0 })}</p>}
-        <div className="flex justify-end"><Button type="submit" loading={busy}>{t('common.save')}</Button></div>
+        {!f.cod_enabled && !f.momo_direct_enabled && <Alert tone="amber">{t('seller.store.needPayment')}</Alert>}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('seller.store.neighborhood')} optional><Input maxLength={80} value={f.neighborhood} onChange={set('neighborhood')} /></Field>
+          <Field label={t('seller.store.serviceArea')} optional hint={t('seller.store.serviceAreaHint')}><Input maxLength={200} value={f.service_area} onChange={set('service_area')} /></Field>
+          <Field className="sm:col-span-2" label={t('seller.store.returnPolicy')} optional hint={t('seller.store.returnPolicyHint')}><Textarea rows={3} maxLength={1500} value={f.return_policy} onChange={set('return_policy')} /></Field>
+        </div>
+        <div className="flex justify-end"><Button type="submit" loading={busy} disabled={noNumber}>{t('common.save')}</Button></div>
       </form>
     </Card>
   );

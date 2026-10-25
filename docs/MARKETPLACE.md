@@ -1,6 +1,18 @@
 # BizPilot Market
 
-Every BizPilot business can open an online store connected to its own stock. Customers browse all stores at `/market`, buy from one store per order, and pay cash on delivery or online (MTN MoMo / Orange Money through Fapshi).
+Every BizPilot business can open an online store connected to its own stock. Customers browse all stores at `/market`, buy from one store per order, and **pay the seller directly**: cash on delivery, or Mobile Money sent to the seller's own MTN / Orange number. They can also contact the seller on WhatsApp or by phone. **BizPilot never collects, holds or shares out buyer-seller money.** Fapshi is used only for BizPilot subscription fees.
+
+## Payments between buyers and sellers (since 26 October 2026)
+
+- **Cash on delivery:** the seller records the method (cash, MTN, Orange) when the order is delivered.
+- **Mobile Money to the seller:** the seller adds their MTN and/or Orange number and account name under **My Store → Payments & policies**.
+  - The buyer sees the numbers on their own order page and sends the money from their phone.
+  - The buyer can enter the transaction ID ("I have paid"). This is evidence only: the order stays **Not paid yet**.
+  - Only the seller can mark it **Payment received** (`seller_confirmed`), after checking their own account. A message or screenshot never marks an order paid.
+  - Once the seller has confirmed, the buyer cannot cancel on their own. If the seller then cancels, the order shows `refund_pending` until the seller records the refund they sent ("I have sent the refund").
+- **WhatsApp / phone:** product pages, carts and checkout have a WhatsApp link with the product, option, quantity, price and link. A sale agreed on WhatsApp is recorded by the seller with **Record a sale** (channel WhatsApp).
+- **One sale per order:** delivering an order records exactly one shop sale (channel `marketplace`, client_ref = order id) with the confirmed method. Stock moves once, and the order cannot be delivered twice.
+- **BizPilot online payment for orders is switched off:** `market_place_order` refuses `online`, stores can never switch it back on (trigger), and the Fapshi function answers `order_payments_direct`. Orders paid online before this date still work: delivery, refunds and settlements.
 
 ## Where things are
 
@@ -133,12 +145,19 @@ New projects: `01_bizpilot_setup.sql` already includes everything. Existing proj
 
 1. `04_upgrade_catalog_and_store_lock.sql`, if not run yet.
 2. `05_upgrade_marketplace.sql`, in one transaction. If the editor refuses a query this large, run `05a_upgrade_marketplace_part1.sql`, then `05b_upgrade_marketplace_part2.sql`.
+3. `06_upgrade_direct_trade.sql` adds:
+   - direct payments to sellers;
+   - sales channels, delivery costs and cancelling a sale;
+   - product condition and one-of-a-kind items;
+   - comparing sellers, the channel report and the new alerts.
+
+   It checks that 05 is installed. It can be run again safely: verified on a copy with data, where sales, stock, totals and payments were unchanged, and on a second run.
 
 Each file checks that it is run in the right order and only once. They add tables and functions and do not change existing businesses, products, stock, sales, payments or customers (verified on a copy with data). Until they are run, the app keeps working: the market says "opening soon" and seller pages explain the update.
 
 ## Testing
 
-- **DB tests:** `tests/db/marketplace.test.ts` (16 tests) and `tests/db/fapshi_function.test.ts` (9 tests, including phone payment, fallback to the payment page and the admin-only balance: the edge function against the real local database with a simulated Fapshi API).
+- **DB tests:** `tests/db/marketplace.test.ts` (15 tests, including direct Mobile Money to the seller), `tests/db/records.test.ts` (8 tests: channels, delivery cost, duplicates, credit, cancellation, partial returns, incomplete profit, one-of-a-kind items, alerts) and `tests/db/fapshi_function.test.ts` (12 tests, subscriptions only: the edge function against the real local database with a simulated Fapshi API).
 - **Browser tests:** `e2e/marketplace.spec.ts` covers seller setup, guest checkout, fulfilment, review, online payment and admin moderation. For the online payment test, run:
   ```
   node e2e/fapshiMock.mjs &

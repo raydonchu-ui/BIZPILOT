@@ -53,6 +53,10 @@ Draft and cancelled purchases create no debt. Payments are allocated to purchase
 - **Atomic:** stock check, stock movement, sale, payments and customer balance are written in one transaction. If stock is insufficient, nothing is saved.
 - **Prices and tax:** prices include any configured sales tax. Tax is extracted from the price (`tax = amount × rate ÷ (100 + rate)`).
 - **Discounts:** line discounts first, then a sale-level discount spread over the lines in proportion to their value. Cashiers are limited to the business's maximum cashier discount %.
+- **Channel:** every sale records where it was made: in person, WhatsApp, Facebook, Instagram, TikTok, phone, other, or `marketplace`. The marketplace channel is set only for sales created by delivering a marketplace order, so an online order is never recorded twice. Reports → Channels shows revenue (net of returns), cost, gross profit, paid and outstanding per channel.
+- **Sale date:** a sale can be dated earlier (e.g. recorded after a WhatsApp delivery), never in the future.
+- **Sale costs:** a delivery the seller paid for is entered with the sale and recorded once as a paid `delivery` expense linked to it. It is an operating expense, not cost of goods.
+- **Payments are seller-confirmed:** every sale payment is recorded by the business (cash, MTN, Orange, bank, other). Only BizPilot subscription payments are verified with a provider (Fapshi).
 - **Credit / partial payment:** needs a named customer, the `customers_credit` feature, the `customers.credit` permission, and must stay within the customer's credit limit. Walk-in customers must pay in full.
 
 ## Returns and refunds
@@ -60,6 +64,7 @@ Draft and cancelled purchases create no debt. Payments are allocated to purchase
 - A customer return references the original sale lines and can't exceed what was sold minus earlier returns.
 - **Restocked** returns put the goods back at the **cost captured on the original sale line**, which reverses the original COGS. Returns that aren't restocked (damaged) do not reduce COGS.
 - A walk-in sale return must be refunded in full. For a named customer, any amount not refunded reduces what they owe.
+- **Cancelling a sale** is a full return of what is left (to stock if restockable), with a refund of what was paid. The sale keeps its number, lines and history, and gets `cancelled_at` and a reason. Marketplace sales are refunded from their order instead.
 - Nothing is deleted or edited in place. Corrections are new counter-entries (returns, reversals, voided expenses with a counter-entry), and each one is audited.
 
 ## Customer balance (what a customer owes you)

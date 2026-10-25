@@ -1,7 +1,8 @@
 import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { MailCheck } from 'lucide-react';
+import { MailCheck, ShoppingBag, Store } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { fetchAuthProviders, supabase, supabaseConfigured } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
@@ -212,9 +213,13 @@ export function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
-  const [params] = useSearchParams();
-  const next = safeNext(params.get('next'));
-  if (session) return <Navigate to={next ?? '/app'} replace />;
+  const [params, setParams] = useSearchParams();
+  const rawNext = safeNext(params.get('next'));
+  // Buyer: browse, save favourites, follow orders. Seller: set up a business (and can still buy).
+  const role: 'buyer' | 'seller' = params.get('role') === 'buyer' ? 'buyer' : 'seller';
+  const next = rawNext ?? (role === 'buyer' ? '/account' : '/onboarding');
+  if (session) return <Navigate to={next} replace />;
+  const choose = (r: 'buyer' | 'seller') => { const p = new URLSearchParams(params); p.set('role', r); setParams(p, { replace: true }); };
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -225,11 +230,11 @@ export function SignupPage() {
     setLoading(true);
     const { data, error: err } = await supabase.auth.signUp({
       email: f.email.trim(), password: f.password,
-      options: { data: { full_name: f.full_name.trim(), phone: f.phone.trim(), language: lang }, emailRedirectTo: `${window.location.origin}/login?verified=1${next ? `&next=${encodeURIComponent(next)}` : ''}` },
+      options: { data: { full_name: f.full_name.trim(), phone: f.phone.trim(), language: lang, account_type: role }, emailRedirectTo: `${window.location.origin}/login?verified=1&next=${encodeURIComponent(next)}` },
     });
     setLoading(false);
     if (err) return setError(errorMessage(err, t, has));
-    if (data.session) nav(next ?? '/onboarding', { replace: true });
+    if (data.session) nav(next, { replace: true });
     else setSentTo(f.email.trim());
   };
   if (sentTo) {
@@ -250,8 +255,20 @@ export function SignupPage() {
   const [gBefore, gRest] = t('auth.googleTerms').split('{terms}');
   const [gMiddle, gAfter] = (gRest ?? '').split('{privacy}');
   return (
-    <AuthShell title={t('auth.signupTitle')} subtitle={t('auth.signupSubtitle')}
+    <AuthShell title={role === 'buyer' ? t('auth.signupBuyerTitle') : t('auth.signupTitle')} subtitle={role === 'buyer' ? t('auth.signupBuyerSubtitle') : t('auth.signupSubtitle')}
       footer={<>{t('auth.haveAccount')} <Link to="/login" className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.login')}</Link></>}>
+      {/* Two ways in: buyer (browse, favourites, orders) or seller (business tools). One account can do both later. */}
+      <div className="mb-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('auth.roleTitle')}>
+        {(['seller', 'buyer'] as const).map((r) => (
+          <button key={r} type="button" role="radio" aria-checked={role === r} onClick={() => choose(r)}
+            className={clsx('flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition',
+              role === r ? 'border-brand-600 bg-brand-50 ring-2 ring-brand-600/20 dark:bg-brand-950/40' : 'border-gray-200 hover:border-brand-300 dark:border-gray-800')}>
+            <span className="flex items-center gap-2 text-sm font-bold">{r === 'buyer' ? <ShoppingBag className="h-4 w-4 text-brand-700" /> : <Store className="h-4 w-4 text-brand-700" />}{t(`auth.role.${r}`)}</span>
+            <span className="text-xs text-ink-muted">{t(`auth.role.${r}Sub`)}</span>
+          </button>
+        ))}
+      </div>
+      <p className="-mt-2 mb-4 text-xs text-ink-muted">{t('auth.roleNote')}</p>
       <GoogleSignIn context="signup" note={<>{gBefore}{termsLink}{gMiddle}{privacyLink}{gAfter}</>} />
       <form onSubmit={submit} className="space-y-4">
         <Field label={t('auth.fullName')} htmlFor="fn" required><Input id="fn" required autoComplete="name" value={f.full_name} onChange={set('full_name')} /></Field>

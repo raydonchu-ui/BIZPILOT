@@ -33,8 +33,9 @@ export default function OrdersPage() {
     refetchInterval: 60_000,
     queryFn: async () => {
       let query = supabase.from('market_orders').select('id,number,status,payment_method,payment_status,total,customer_name,customer_phone,created_at,delivery_method,zone_name,flagged', { count: 'exact' }).eq('business_id', id);
-      if (filter === 'to_confirm') query = query.eq('status', 'pending').or('payment_method.eq.cod,payment_status.eq.paid');
-      if (filter === 'awaiting_payment') query = query.eq('status', 'pending').eq('payment_method', 'online').in('payment_status', ['awaiting_payment', 'failed']);
+      if (filter === 'to_confirm') query = query.eq('status', 'pending').or('payment_method.in.(cod,momo_direct),payment_status.eq.paid');
+      // Mobile Money paid to the seller directly: waiting for the seller to confirm the money arrived.
+      if (filter === 'awaiting_payment') query = query.in('status', ['pending', 'confirmed', 'processing', 'dispatched']).eq('payment_method', 'momo_direct').eq('payment_status', 'cod_pending');
       if (filter === 'active') query = query.in('status', ['confirmed', 'processing', 'dispatched']);
       if (filter === 'delivered') query = query.eq('status', 'delivered');
       if (filter === 'closed') query = query.in('status', ['cancelled', 'refunded']);
@@ -93,8 +94,8 @@ export function OrderDetailPage() {
       return { o: unwrap(o) as any, lines: unwrap(lines) as any[], events: unwrap(events) as any[], payments: (pays.data ?? []) as any[] };
     },
   });
-  const [modal, setModal] = useState<null | 'reject' | 'cancel' | 'deliver' | 'refund' | 'dispatch'>(null);
-  const [form, setForm] = useState({ reason: '', message: '', cod_method: 'cash', received_by: '', proof_note: '', restock: true, proof_path: '' });
+  const [modal, setModal] = useState<null | 'reject' | 'cancel' | 'deliver' | 'refund' | 'dispatch' | 'paid' | 'refunded'>(null);
+  const [form, setForm] = useState({ reason: '', message: '', cod_method: 'cash', received_by: '', proof_note: '', restock: true, proof_path: '', reference: '' });
   const [msg, setMsg] = useState({ text: '', note: false });
   if (q.isLoading) return <PageLoader />;
   if (q.error || !q.data) return <ErrorState error={q.error ?? { message: 'not_found' }} />;
@@ -105,6 +106,10 @@ export function OrderDetailPage() {
     return r;
   };
   const unpaidOnline = o.payment_method === 'online' && o.payment_status !== 'paid';
+  const direct = o.payment_method === 'cod' || o.payment_method === 'momo_direct';
+  const open = ['pending', 'confirmed', 'processing', 'dispatched'].includes(o.status);
+  const sellerConfirmed = o.payment_status === 'seller_confirmed';
+  const openPaid = () => { setForm((f) => ({ ...f, cod_method: o.payment_method === 'momo_direct' ? 'mtn_momo' : 'cash', reference: o.buyer_payment_ref ?? '' })); setModal('paid'); };
   const waText = t('orders.waTemplate', { name: o.customer_name.split(' ')[0], number: o.number, status: t(`orders.status.${o.status}`) });
   const onProof = async (file?: File) => {
     if (!file) return;
@@ -123,6 +128,15 @@ export function OrderDetailPage() {
           <Card>
             <CardHeader title={t('orders.nextStep')} />
             {o.status === 'pending' && unpaidOnline && <Alert tone="amber">{t('orders.waitPayment')}</Alert>}
+            {direct && open && o.payment_status === 'cod_pending' && (
+              <div className="mb-3">
+                <Alert tone={o.buyer_payment_reported_at ? 'amber' : 'blue'} title={o.buyer_payment_reported_at ? t('orders.buyerReported', { ref: o.buyer_payment_ref }) : undefined}
+                  action={<Button size="sm" variant="outline" onClick={openPaid}>{t('orders.paymentReceived')}</Button>}>
+                  {o.buyer_payment_reported_at ? t('orders.checkBeforeConfirm') : o.payment_method === 'momo_direct' ? t('orders.momoDirectWaiting') : t('orders.codWaiting')}
+                </Alert>
+              </div>
+            )}
+            {sellerConfirmed && open && <div className="mb-3"><Alert tone="green">{t('orders.youConfirmed', { method: t(`methods.${o.cod_method}`) })}</Alert></div>}
             {o.status === 'pending' && !unpaidOnline && (
               <div className="flex flex-wrap gap-2">
                 <Button icon={<CheckCircle2 className="h-4 w-4" />} loading={busy} onClick={() => act('confirm')}>{t('orders.confirm')}</Button>
@@ -144,7 +158,10 @@ export function OrderDetailPage() {
                 {can('sales.refund') && <Button size="sm" variant="outline" icon={<Undo2 className="h-4 w-4" />} onClick={() => setModal('refund')}>{t('orders.refund')}</Button>}
               </div>
             )}
-            {['cancelled', 'refunded'].includes(o.status) && <p className="text-sm text-ink-muted">{t('orders.closedInfo', { reason: o.cancel_reason ?? '' })}{o.payment_status === 'refund_pending' && ` ${t('orders.refundByBizpilot')}`}</p>}
+            {['cancelled', 'refunded'].includes(o.status) && <p className="text-sm text-ink-muted">{t('orders.closedInfo', { reason: o.cancel_reason ?? '' })}{o.payment_status === 'refund_pending' && ` ${o.payment_method === 'online' ? t('orders.refundByBizpilot') : t('orders.refundBySeller', { amount: formatMoney(o.total, lang) })}`}</p>}
+            {o.status === 'cancelled' && o.payment_status === 'refund_pending' && direct && (
+              <Button className="mt-2" size="sm" onClick={() => { setForm((f) => ({ ...f, reference: '' })); setModal('refunded'); }}>{t('orders.refundSent')}</Button>
+            )}
             {o.status !== 'cancelled' && <div className="mt-5"><OrderTimeline status={o.status} events={events} /></div>}
           </Card>
 
@@ -213,8 +230,11 @@ export function OrderDetailPage() {
           </Card>
           <Card>
             <CardHeader title={t('orders.paymentCol')} />
-            <p className="text-sm">{o.payment_method === 'cod' ? t('market.cod') : t('market.payOnline')} · <PaymentStatusBadge status={o.payment_status} /></p>
-            {o.payment_method === 'cod' && o.cod_collected_at && <p className="mt-1 text-xs text-ink-muted">{t('orders.codCollected', { amount: formatMoney(o.cod_collected_amount, lang), method: t(`methods.${o.cod_method}`), date: formatDateTime(o.cod_collected_at, lang) })}</p>}
+            <p className="text-sm">{o.payment_method === 'cod' ? t('market.cod') : o.payment_method === 'momo_direct' ? t('market.momoDirect') : t('market.payOnline')} · <PaymentStatusBadge status={o.payment_status} /></p>
+            {o.buyer_payment_ref && <p className="mt-1 text-xs text-ink-muted">{t('orders.buyerRef', { ref: o.buyer_payment_ref, date: formatDateTime(o.buyer_payment_reported_at, lang) })}</p>}
+            {o.payment_confirmed_at && <p className="mt-1 text-xs text-ink-muted">{t('orders.confirmedBySeller', { method: t(`methods.${o.cod_method}`), date: formatDateTime(o.payment_confirmed_at, lang) })}{o.payment_reference ? ` · ${o.payment_reference}` : ''}</p>}
+            {direct && <p className="mt-2 text-xs text-ink-muted">{t('orders.directNote')}</p>}
+            {direct && o.cod_collected_at && <p className="mt-1 text-xs text-ink-muted">{t('orders.codCollected', { amount: formatMoney(o.cod_collected_amount, lang), method: t(`methods.${o.cod_method}`), date: formatDateTime(o.cod_collected_at, lang) })}</p>}
             {payments.map((p) => (
               <p key={p.id} className="mt-1 text-xs text-ink-muted">{t(`orders.onlineStatus.${p.status}`)} · {formatMoney(p.amount, lang)}{p.medium ? ` · ${p.medium}` : ''}{p.verified_at ? ` · ${t('orders.verifiedAt', { date: formatDateTime(p.verified_at, lang) })}` : ''}</p>
             ))}
@@ -237,9 +257,9 @@ export function OrderDetailPage() {
         <Field label={t('orders.messageToCustomer')} optional><Textarea maxLength={500} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder={o.delivery_method === 'pickup' ? t('orders.readyPlaceholder') : t('orders.dispatchPlaceholder')} /></Field>
       </Modal>
       <Modal open={modal === 'deliver'} onClose={() => setModal(null)} title={o.delivery_method === 'pickup' ? t('orders.markCollected') : t('orders.markDelivered')}
-        footer={<><Button variant="outline" onClick={() => setModal(null)}>{t('common.back')}</Button><Button loading={busy} onClick={() => act('deliver', { cod_method: form.cod_method, received_by: form.received_by, proof_note: form.proof_note, proof_path: form.proof_path || null })}>{t('orders.confirmDelivered')}</Button></>}>
+        footer={<><Button variant="outline" onClick={() => setModal(null)}>{t('common.back')}</Button><Button loading={busy} onClick={() => act('deliver', { method: form.cod_method, reference: form.reference || null, received_by: form.received_by, proof_note: form.proof_note, proof_path: form.proof_path || null })}>{t('orders.confirmDelivered')}</Button></>}>
         <div className="space-y-4">
-          {o.payment_method === 'cod' ? (
+          {sellerConfirmed ? <Alert tone="green">{t('orders.youConfirmed', { method: t(`methods.${o.cod_method}`) })}</Alert> : direct ? (
             <>
               <Alert tone="blue">{t('orders.codConfirm', { amount: formatMoney(o.total, lang) })}</Alert>
               <Field label={t('orders.codMethod')} required>
@@ -255,6 +275,25 @@ export function OrderDetailPage() {
             <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(e) => onProof(e.target.files?.[0])} className="text-sm" />
           </Field>
           <p className="text-xs text-ink-muted">{t('orders.deliverEffect')}</p>
+        </div>
+      </Modal>
+      <Modal open={modal === 'paid'} onClose={() => setModal(null)} title={t('orders.paymentReceived')} size="sm"
+        footer={<><Button variant="outline" onClick={() => setModal(null)}>{t('common.back')}</Button><Button loading={busy} onClick={() => act('payment_received', { method: form.cod_method, reference: form.reference || null })}>{t('orders.confirmReceived')}</Button></>}>
+        <div className="space-y-4">
+          <Alert tone="amber">{t('orders.confirmReceivedHelp', { amount: formatMoney(o.total, lang) })}</Alert>
+          <Field label={t('orders.codMethod')} required>
+            <Select value={form.cod_method} onChange={(e) => setForm({ ...form, cod_method: e.target.value })}>
+              {['mtn_momo', 'orange_money', 'cash'].map((m) => <option key={m} value={m}>{t(`methods.${m}`)}</option>)}
+            </Select>
+          </Field>
+          <Field label={t('orders.paymentReference')} optional><Input maxLength={120} value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} /></Field>
+        </div>
+      </Modal>
+      <Modal open={modal === 'refunded'} onClose={() => setModal(null)} title={t('orders.refundSent')} size="sm"
+        footer={<><Button variant="outline" onClick={() => setModal(null)}>{t('common.back')}</Button><Button loading={busy} onClick={() => act('refunded', { reference: form.reference || null })}>{t('common.confirm')}</Button></>}>
+        <div className="space-y-4">
+          <p className="text-sm">{t('orders.refundSentHelp', { amount: formatMoney(o.total, lang) })}</p>
+          <Field label={t('orders.paymentReference')} optional><Input maxLength={120} value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} /></Field>
         </div>
       </Modal>
       <Modal open={modal === 'refund'} onClose={() => setModal(null)} title={t('orders.refund')} size="sm"

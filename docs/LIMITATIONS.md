@@ -53,7 +53,21 @@ The Terms, Privacy Policy and Billing Policy pages are **drafts written for a Ca
 - Wording on refunds, price changes and data retention in the Billing Policy.
 - The operator's identity. The legal pages don't yet name the company running BizPilot (legal name, address, RCCM, taxpayer number, contact). Add it once the operating entity exists.
 
+## Direct trade and sales records (26 October 2026)
+
+- **Direct Mobile Money:** BizPilot cannot verify a payment sent to a seller's own number. The buyer gives a transaction ID (text only, no screenshot upload), and the seller confirms after checking their account. Disputes are handled with the report button and the administrators.
+- **Nearby sellers:** by city, region or neighbourhood chosen by the buyer (remembered on the device). There is no GPS or map distance.
+- **Compare sellers:** matches listings in other stores whose names share the first two words. It does not recognise identical products with different names.
+- **Recently viewed:** kept on the device only.
+- **Alerts:** built when someone opens the app or by the optional daily job (03_optional_daily_alerts.sql). Thresholds are set per business in Settings → Operations.
+- **Until 06_upgrade_direct_trade.sql is run on the live database:**
+  - sales are recorded without a channel or delivery cost (the app falls back automatically);
+  - the Channels report, cancelling a sale, alert settings and the seller's Mobile Money settings show an error;
+  - Mobile Money to the seller is not offered at checkout.
+
 ## BizPilot Market (October 2026)
+
+> Since 26 October 2026, buyers pay sellers directly and the points below about online payments apply only to orders paid online before then.
 
 - **Payments:** Fapshi has no split payments, automatic recurring charges or refund API. Online payments go to BizPilot's Fapshi account. Seller payouts and buyer refunds are sent outside the app and recorded by an administrator with their reference. Subscriptions are paid one period at a time.
 - **Accounting of online payments:** on delivery, the shop sale is recorded with payment method "Other" (money held by BizPilot) and the seller's BizPilot balance increases. The money reaches the seller's real accounts only when BizPilot pays out.

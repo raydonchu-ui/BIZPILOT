@@ -11,11 +11,14 @@ import { formatDateTime, formatMoney } from '../../../lib/format';
 import { downloadCsv } from '../../../lib/csv';
 import { errorMessage } from '../../../lib/errors';
 import { discardQueued, retryQueued, syncQueue, useOfflineQueue } from '../../../lib/offline';
-import { Alert, Badge, Button, Card, CardHeader, ConfirmDialog, DataTable, EmptyState, ErrorState, Field, Input, LinkButton, PageHeader, PageLoader, Pagination, useMoney } from '../../../components/ui';
+import { Alert, Badge, Button, Card, CardHeader, ConfirmDialog, DataTable, EmptyState, ErrorState, Field, Input, LinkButton, PageHeader, PageLoader, Pagination, Select, useMoney } from '../../../components/ui';
+
+const CHANNEL_KEYS = ['in_person', 'whatsapp', 'facebook', 'instagram', 'tiktok', 'phone', 'marketplace', 'other'];
 
 const PAGE = 25;
 
 export function saleStatus(s: any) {
+  if (s.cancelled_at) return { key: 'cancelled', tone: 'gray' as const, owed: 0 };
   const charge = Number(s.total) - Number(s.returned_total) + Number(s.refunded_total);
   const owed = charge - Number(s.paid_total);
   if (Number(s.returned_total) >= Number(s.total) && Number(s.total) > 0) return { key: 'returned', tone: 'gray' as const, owed: 0 };
@@ -33,27 +36,29 @@ export default function SalesPage() {
   const [from, setFrom] = useState(addDays(localToday(biz.timezone), -6));
   const [to, setTo] = useState(localToday(biz.timezone));
   const [q, setQ] = useState('');
+  const [channel, setChannel] = useState(params.get('channel') ?? '');
   const [page, setPage] = useState(0);
   const build = () => {
     let query = supabase.from('sales').select('*, customers(name)', { count: 'exact' }).eq('business_id', id)
       .gte('sold_at', `${from}T00:00:00+01:00`).lt('sold_at', `${addDays(to, 1)}T00:00:00+01:00`).order('sold_at', { ascending: false });
     if (q.trim()) query = query.ilike('number', `%${q.trim()}%`);
+    if (channel) query = query.eq('channel', channel);
     return query;
   };
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['sales', id, from, to, q, page],
+    queryKey: ['sales', id, from, to, q, channel, page],
     queryFn: async () => { const r = await build().range(page * PAGE, page * PAGE + PAGE - 1); return { rows: unwrap(r) as any[], count: r.count ?? 0 }; },
   });
   const totals = useQuery({
-    queryKey: ['sales-totals', id, from, to, q],
+    queryKey: ['sales-totals', id, from, to, q, channel],
     queryFn: async () => {
-      const rows = unwrap(await build().select('total,returned_total,paid_total,refunded_total').limit(10000)) as any[];
+      const rows = unwrap(await build().select('*').limit(10000)) as any[];
       return rows.reduce((a, r) => ({ n: a.n + 1, total: a.total + Number(r.total) - Number(r.returned_total), owed: a.owed + saleStatus(r).owed }), { n: 0, total: 0, owed: 0 });
     },
   });
   const exportCsv = async () => {
     const rows = unwrap(await build().limit(10000)) as any[];
-    downloadCsv('bizpilot-sales.csv', rows.map((s) => ({ number: s.number, date: s.sold_at, customer: s.customers?.name ?? '', subtotal: s.subtotal,
+    downloadCsv(`bizpilot-sales-${from}-to-${to}.csv`, rows.map((s) => ({ number: s.number, date: s.sold_at, channel: s.channel ?? '', status: saleStatus(s).key, customer: s.customers?.name ?? '', subtotal: s.subtotal,
       discounts: Number(s.line_discount_total) + Number(s.sale_discount), total: s.total, tax: s.tax_total, cost: Math.round(Number(s.cost_total)),
       returned: s.returned_total, paid: s.paid_total, outstanding: saleStatus(s).owed, offline: s.offline })));
   };
@@ -64,10 +69,11 @@ export default function SalesPage() {
         {can('sales.create') && <LinkButton to="/app/sales/new" icon={<Plus className="h-4 w-4" />}>{t('nav.newSale')}</LinkButton>}</>} />
       <OfflineQueuePanel forceOpen={params.get('offline') === '1'} />
       <Card>
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Field label={t('common.from')}><Input type="date" value={from} max={to} onChange={(e) => { setFrom(e.target.value); setPage(0); }} /></Field>
           <Field label={t('common.to')}><Input type="date" value={to} min={from} onChange={(e) => { setTo(e.target.value); setPage(0); }} /></Field>
           <Field label={t('common.search')}><Input placeholder="S-00012" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} /></Field>
+          <Field label={t('sales.channel')}><Select value={channel} onChange={(e) => { setChannel(e.target.value); setPage(0); }}><option value="">{t('common.all')}</option>{CHANNEL_KEYS.map((c) => <option key={c} value={c}>{t(`channels.${c}`)}</option>)}</Select></Field>
           <div className="flex items-end gap-4 text-sm">
             {totals.data && <><span>{t('sales.count', { n: totals.data.n })}</span><span>{t('common.total')}: <b>{money(totals.data.total)}</b></span></>}
           </div>
@@ -79,6 +85,7 @@ export default function SalesPage() {
               columns={[
                 { key: 'n', header: t('sales.number'), render: (s) => <span className="font-semibold">{s.number}{s.offline && <Badge tone="gray" className="ml-1">{t('offline.badge')}</Badge>}</span> },
                 { key: 'd', header: t('common.date'), render: (s) => formatDateTime(s.sold_at, lang) },
+                { key: 'ch', header: t('sales.channel'), hideOnMobile: true, render: (s) => s.channel ? <span className="text-sm">{t(`channels.${s.channel}`)}</span> : '' },
                 { key: 'c', header: t('pos.customer'), hideOnMobile: true, render: (s) => s.customers?.name ?? <span className="text-ink-muted">{t('common.walkIn')}</span> },
                 { key: 't', header: t('common.total'), align: 'right', render: (s) => money(s.total) },
                 { key: 's', header: t('common.status'), align: 'center', render: (s) => { const st = saleStatus(s); return <Badge tone={st.tone}>{t(`sales.status.${st.key}`)}</Badge>; } },

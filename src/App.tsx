@@ -80,8 +80,11 @@ function WithContext({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
+  const { session } = useAuth();
+  // Buyers without a business go to their buyer account; anyone can start selling from there.
+  const buyer = session?.user.user_metadata?.account_type === 'buyer';
   return (
-    <BusinessProvider fallback={<Navigate to="/onboarding" replace />}>
+    <BusinessProvider fallback={<Navigate to={buyer ? '/account' : '/onboarding'} replace />}>
       <AppLayout />
     </BusinessProvider>
   );

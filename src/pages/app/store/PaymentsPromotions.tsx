@@ -39,14 +39,16 @@ export default function PaymentsPage() {
   if (summary.error) return <ErrorState error={summary.error} onRetry={() => summary.refetch()} />;
   const s = summary.data;
   const bal = Number(s.balance);
+  const legacy = bal !== 0 || Number(s.held_undelivered) > 0 || Number(s.paid_out_total) > 0 || (ledger.data ?? []).length > 0;
   return (
     <div>
       <PageHeader title={t('nav.payments')} subtitle={t('seller.pay.subtitle')} />
+      {/* Buyers pay sellers directly; a BizPilot balance only exists for older online orders or fees. */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label={bal >= 0 ? t('seller.pay.owedToYou') : t('seller.pay.youOwe')} value={formatMoney(Math.abs(bal), lang)} icon={<Wallet className="h-5 w-5" />} tone={bal >= 0 ? 'green' : 'red'} hint={t('seller.pay.owedHint')} />
-        <StatCard label={t('seller.pay.held')} value={formatMoney(s.held_undelivered, lang)} tone="amber" hint={t('seller.pay.heldHint')} />
-        <StatCard label={t('seller.pay.paidOut')} value={formatMoney(s.paid_out_total, lang)} tone="blue" />
-        <StatCard label={t('seller.pay.codCollected')} value={formatMoney(s.cod_collected_30d, lang)} tone="purple" hint={t('seller.pay.last30')} />
+        <StatCard label={t('seller.pay.codCollected')} value={formatMoney(s.cod_collected_30d, lang)} icon={<Wallet className="h-5 w-5" />} tone="green" hint={t('seller.pay.last30')} />
+        {legacy && <StatCard label={bal >= 0 ? t('seller.pay.owedToYou') : t('seller.pay.youOwe')} value={formatMoney(Math.abs(bal), lang)} tone={bal >= 0 ? 'blue' : 'red'} hint={t('seller.pay.owedHint')} />}
+        {legacy && Number(s.held_undelivered) > 0 && <StatCard label={t('seller.pay.held')} value={formatMoney(s.held_undelivered, lang)} tone="amber" hint={t('seller.pay.heldHint')} />}
+        {legacy && Number(s.paid_out_total) > 0 && <StatCard label={t('seller.pay.paidOut')} value={formatMoney(s.paid_out_total, lang)} tone="blue" />}
       </div>
       <Card className="mt-4">
         <div className="flex gap-3 text-sm">
@@ -55,13 +57,13 @@ export default function PaymentsPage() {
             <p className="font-semibold">{t('seller.pay.howTitle')}</p>
             <p className="text-ink-soft dark:text-gray-300">{t('seller.pay.how1')}</p>
             <p className="text-ink-soft dark:text-gray-300">{t('seller.pay.how2')}</p>
-            <p className="font-semibold">{t('seller.store.fees', { commission: s.config.commission_pct, fee: s.config.online_fee_pct })}</p>
+            {Number(s.config.commission_pct) > 0 && <p className="font-semibold">{t('seller.store.commissionCod', { pct: s.config.commission_pct })}</p>}
             <p className="text-xs text-ink-muted">{t('seller.pay.deliveryFees', { amount: formatMoney(s.delivery_fees_30d, lang), fees: formatMoney(s.commission_30d, lang) })}</p>
           </div>
         </div>
       </Card>
       {Number(s.refund_pending) > 0 && <div className="mt-4"><Alert tone="amber">{t('seller.pay.refundPending', { n: s.refund_pending })}</Alert></div>}
-      <Card className="mt-4">
+      {legacy && <Card className="mt-4">
         <Tabs className="mb-3" value={tab} onChange={setTab} items={[{ value: 'ledger', label: t('seller.pay.ledger') }, { value: 'online', label: t('seller.pay.onlinePayments') }]} />
         {tab === 'ledger' ? (
           ledger.isLoading ? <PageLoader /> : (
@@ -80,7 +82,7 @@ export default function PaymentsPage() {
             { key: 'a', header: t('seller.pay.amount'), align: 'right', render: (r) => formatMoney(r.amount, lang) },
           ]} />
         )}
-      </Card>
+      </Card>}
     </div>
   );
 }

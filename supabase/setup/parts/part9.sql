@@ -1,4 +1,4 @@
--- BizPilot setup PART 9 of 17. Run parts in order.
+-- BizPilot setup PART 9 of 19. Run parts in order.
 begin;
 create or replace function public.supplier_comparison(p_business uuid, p_from date, p_to date)
 returns jsonb language plpgsql stable security definer set search_path = public as $$

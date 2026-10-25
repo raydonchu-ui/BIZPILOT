@@ -1,4 +1,4 @@
--- BizPilot setup PART 12 of 17. Run parts in order.
+-- BizPilot setup PART 12 of 19. Run parts in order.
 begin;
 create or replace function app.listing_within_limit(bid uuid, since timestamptz, pid uuid) returns boolean
 language plpgsql stable security definer set search_path = public as $$

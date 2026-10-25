@@ -72,7 +72,7 @@ export const en = {
   expenseCategories: {
     rent: 'Rent', salaries: 'Salaries & wages', utilities: 'Utilities (electricity, water)', transport: 'Transport',
     communication: 'Internet & telephone', packaging: 'Packaging', repairs: 'Repairs & maintenance', marketing: 'Marketing',
-    bank_fees: 'Bank & payment fees', taxes_licences: 'Taxes & licences', security: 'Security', cleaning: 'Cleaning', other: 'Other',
+    delivery: 'Delivery & couriers', bank_fees: 'Bank & payment fees', taxes_licences: 'Taxes & licences', security: 'Security', cleaning: 'Cleaning', other: 'Other',
   },
   movementTypes: {
     opening: 'Opening stock', purchase_receipt: 'Stock received', sale: 'Sale', sale_return: 'Customer return',
@@ -103,7 +103,9 @@ export const en = {
     checkout_invalid: 'Your cart needs attention before ordering.', checkout_blocked: 'This contact cannot place orders. Contact BizPilot support.',
     one_seller_per_order: 'Orders are placed with one store at a time. Finish this order or start a new cart.', cannot_order_from_own_store: 'You cannot order from your own store.',
     too_many_open_orders: 'You already have several open orders at this store. Wait for them to be delivered.', payment_method_not_available: 'This payment method is not available for this store.',
-    online_minimum_amount: 'Online payment needs an order of at least {min} FCFA.', online_payments_not_available: 'Online payment is not available yet.',
+    online_minimum_amount: 'Online payment needs an order of at least {min} FCFA.', online_payments_not_available: 'Online payment is not available yet.', momo_number_required: 'Add at least one Mobile Money number (MTN or Orange).',
+    invalid_channel: 'Choose where the sale was made.', use_order_refund: 'This sale comes from a marketplace order: refund it from the order.',
+    order_payments_direct: 'Orders are paid directly to the seller.',
     marketplace_closed: 'The marketplace is temporarily closed.', order_not_cancellable: 'This order can no longer be cancelled.', order_not_payable: 'This order can no longer be paid.',
     already_paid: 'This order is already paid.', order_not_paid: 'The customer has not paid yet.', invalid_order_status: 'This action is not possible at this step of the order.',
     payment_method_required: 'Choose how the customer paid.', message_required: 'Write a message first.', review_requires_delivery: 'You can review a product after you receive it.',
@@ -275,7 +277,7 @@ export const fr: typeof en = {
   expenseCategories: {
     rent: 'Loyer', salaries: 'Salaires', utilities: 'Électricité et eau', transport: 'Transport',
     communication: 'Internet et téléphone', packaging: 'Emballages', repairs: 'Réparations et entretien', marketing: 'Publicité',
-    bank_fees: 'Frais bancaires et de paiement', taxes_licences: 'Impôts et licences', security: 'Gardiennage', cleaning: 'Nettoyage', other: 'Autre',
+    delivery: 'Livraison et coursiers', bank_fees: 'Frais bancaires et de paiement', taxes_licences: 'Impôts et licences', security: 'Gardiennage', cleaning: 'Nettoyage', other: 'Autre',
   },
   movementTypes: {
     opening: 'Stock initial', purchase_receipt: 'Réception de marchandises', sale: 'Vente', sale_return: 'Retour client',
@@ -306,7 +308,9 @@ export const fr: typeof en = {
     checkout_invalid: 'Votre panier doit être corrigé avant de commander.', checkout_blocked: 'Ce contact ne peut pas commander. Contactez le support BizPilot.',
     one_seller_per_order: 'Chaque commande se fait avec une seule boutique. Terminez cette commande ou commencez un nouveau panier.', cannot_order_from_own_store: 'Vous ne pouvez pas commander dans votre propre boutique.',
     too_many_open_orders: 'Vous avez déjà plusieurs commandes en cours dans cette boutique. Attendez leur livraison.', payment_method_not_available: 'Ce moyen de paiement n’est pas disponible pour cette boutique.',
-    online_minimum_amount: 'Le paiement en ligne demande une commande d’au moins {min} FCFA.', online_payments_not_available: 'Le paiement en ligne n’est pas encore disponible.',
+    online_minimum_amount: 'Le paiement en ligne demande une commande d’au moins {min} FCFA.', online_payments_not_available: 'Le paiement en ligne n’est pas encore disponible.', momo_number_required: 'Ajoutez au moins un numéro Mobile Money (MTN ou Orange).',
+    invalid_channel: 'Choisissez où la vente a été faite.', use_order_refund: 'Cette vente vient d’une commande en ligne : remboursez-la depuis la commande.',
+    order_payments_direct: 'Les commandes se paient directement au vendeur.',
     marketplace_closed: 'Le marché est temporairement fermé.', order_not_cancellable: 'Cette commande ne peut plus être annulée.', order_not_payable: 'Cette commande ne peut plus être payée.',
     already_paid: 'Cette commande est déjà payée.', order_not_paid: 'Le client n’a pas encore payé.', invalid_order_status: 'Cette action n’est pas possible à cette étape de la commande.',
     payment_method_required: 'Choisissez comment le client a payé.', message_required: 'Écrivez d’abord un message.', review_requires_delivery: 'Vous pourrez noter un produit après l’avoir reçu.',

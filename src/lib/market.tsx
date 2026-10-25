@@ -11,7 +11,7 @@ export interface StoreRef { slug: string; name: string; city?: string | null; ve
 export interface ProductCard {
   id: string; name: string; brand: string | null; image: string | null; unit: string; price: number; max_price: number;
   compare_at_price: number | null; available: number; options: number; category: string | null; subcategory: string | null;
-  rating_avg: number | null; rating_count: number; store: StoreRef;
+  rating_avg: number | null; rating_count: number; store: StoreRef; condition?: string | null; sold?: boolean;
 }
 export interface StoreCard {
   business_id: string; slug: string; name: string; tagline: string | null; logo_path: string | null; city: string | null;
@@ -178,12 +178,7 @@ export function detectMedium(phone: string): Medium | null {
   return null;
 }
 
-/** Asks Fapshi to send the payment request to the phone (or returns a payment page link). */
-export async function requestOrderPayment(orderId: string, token: string | null, phone?: string, medium?: Medium) {
-  const d = await invokeFapshi({ action: 'order', order_id: orderId, token, ...(phone ? { phone, medium } : {}) });
-  if (!d?.payment_id) throw new ApiError({ message: d?.error ?? 'payment_provider_error' });
-  return d as PayStart;
-}
+/** Fapshi: BizPilot subscription payments only (marketplace buyers pay sellers directly). */
 export async function requestSubscriptionPayment(businessId: string, plan: string, period: 'monthly' | 'annual', phone?: string, medium?: Medium) {
   const d = await invokeFapshi({ action: 'subscription', business_id: businessId, plan_code: plan, period, ...(phone ? { phone, medium } : {}) });
   if (!d?.payment_id) throw new ApiError({ message: d?.error ?? 'payment_provider_error' });
@@ -208,6 +203,23 @@ export function siteOrigin() {
 }
 export function storeUrl(slug: string) { return `${siteOrigin()}/s/${slug}`; }
 export function productUrl(slug: string, id: string) { return `${siteOrigin()}/s/${slug}/p/${id}`; }
+/** True once the direct-trade database upgrade (sales channels, product condition, seller Mobile Money) is applied. */
+export function useDirectTrade() {
+  return useQuery({
+    queryKey: ['direct-trade-db'], staleTime: Infinity, retry: false,
+    queryFn: async () => !(await supabase.from('products').select('condition').limit(1)).error,
+  }).data === true;
+}
+
+// Recently viewed listings, kept on this device only.
+const VIEWED_KEY = 'bizpilot.viewed';
+export function recentlyViewed(): string[] {
+  try { const v = JSON.parse(localStorage.getItem(VIEWED_KEY) ?? '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 12) : []; } catch { return []; }
+}
+export function rememberViewed(id: string) {
+  try { localStorage.setItem(VIEWED_KEY, JSON.stringify([id, ...recentlyViewed().filter((x) => x !== id)].slice(0, 12))); } catch { /* private mode */ }
+}
+
 export function waLink(phone: string | null | undefined, text?: string) {
   const d = (phone ?? '').replace(/\D/g, '');
   return `https://wa.me/${d}${text ? `?text=${encodeURIComponent(text)}` : ''}`;

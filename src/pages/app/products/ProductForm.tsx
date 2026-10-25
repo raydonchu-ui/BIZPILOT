@@ -16,7 +16,7 @@ import { ATTRIBUTE_FIELDS, barcodeProblem, COMMON_UNITS, DEFAULT_ATTRIBUTE_SET, 
 import { Alert, Button, Card, Checkbox, ErrorState, Field, Input, PageHeader, PageLoader, Select, Textarea, UpgradeNotice } from '../../../components/ui';
 import { CameraScanner } from '../../../components/ProductPicker';
 import { VariantGenerator, variantPayload, type VariantOption, type VariantRow } from '../../../components/VariantGenerator';
-import { publicUrl, uploadStorefrontImage, useMarketConfig } from '../../../lib/market';
+import { publicUrl, uploadStorefrontImage, useDirectTrade, useMarketConfig } from '../../../lib/market';
 
 interface UnitRow { id?: string; key: string; name: string; factor: string; selling_price: string; barcode: string; is_default_purchase: boolean; is_default_sale: boolean; active: boolean; used?: boolean }
 
@@ -24,7 +24,7 @@ const blank = {
   name: '', sku: '', barcode: '', category_id: '', subcategory: '', brand: '', description: '', base_unit: 'piece',
   allow_fraction: false, purchase_cost: '', selling_price: '', min_stock: '', lead_time_days: '', min_order_qty: '',
   preferred_supplier_id: '', location: '', track_expiry: false, variant_of: '', variant_label: '', image_path: '' as string | null,
-  online_published: false, online_images: [] as string[], compare_at_price: '',
+  online_published: false, online_images: [] as string[], compare_at_price: '', condition: '', single_item: false,
 };
 type SectionKey = 'pricing' | 'identifiers' | 'variants' | 'details' | 'online' | 'more';
 
@@ -70,6 +70,7 @@ export default function ProductForm() {
   const [scanning, setScanning] = useState(false);
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({ pricing: true, identifiers: false, variants: false, details: false, online: false, more: false });
   const market = Boolean(useMarketConfig().data);
+  const direct = useDirectTrade();
   const [onlineUploading, setOnlineUploading] = useState(false);
   const [useVariants, setUseVariants] = useState(false);
   const [vOptions, setVOptions] = useState<VariantOption[]>([{ name: '', values: '' }]);
@@ -112,6 +113,7 @@ export default function ProductForm() {
       min_order_qty: p.min_order_qty?.toString() ?? '', preferred_supplier_id: p.preferred_supplier_id ?? '', location: p.location ?? '',
       track_expiry: p.track_expiry, variant_of: p.variant_of ?? '', variant_label: p.variant_label ?? '', image_path: p.image_path,
       online_published: Boolean(p.online_published), online_images: p.online_images ?? [], compare_at_price: p.compare_at_price?.toString() ?? '',
+      condition: p.condition ?? '', single_item: Boolean(p.single_item),
     });
     setAttrs(Object.fromEntries(Object.entries(p.attributes ?? {}).map(([k, v]) => [k, String(v)])));
     setUnits((p.product_units ?? []).map((u: ProductUnit) => ({ id: u.id, key: u.id, name: u.name, factor: String(u.factor), selling_price: u.selling_price?.toString() ?? '',
@@ -186,6 +188,7 @@ export default function ProductForm() {
         // Online-store fields exist only once the marketplace database upgrade is applied.
         ...(market ? { online_images: f.online_images, compare_at_price: f.compare_at_price === '' ? null : toNumber(f.compare_at_price),
           ...(f.variant_of ? {} : { online_published: f.online_published }) } : {}),
+        ...(direct ? { condition: f.condition || null, single_item: f.single_item } : {}),
       };
       let pid = productId;
       if (editing) {
@@ -386,6 +389,15 @@ export default function ProductForm() {
               <Field label={t('seller.product.comparePrice')} optional hint={t('seller.product.comparePriceHint')}>
                 <Input type="number" min="0" step="any" inputMode="decimal" value={f.compare_at_price} onChange={set('compare_at_price')} suffix="FCFA" />
               </Field>
+              {direct && <>
+                <Field label={t('market.conditionLabel')} optional>
+                  <Select value={f.condition} onChange={(e) => setF((x) => ({ ...x, condition: e.target.value }))}>
+                    <option value="">{t('seller.product.conditionNotSet')}</option>
+                    {['new', 'like_new', 'used_good', 'used_fair', 'refurbished', 'for_parts'].map((c) => <option key={c} value={c}>{t(`market.condition.${c}`)}</option>)}
+                  </Select>
+                </Field>
+                <Checkbox checked={f.single_item} onChange={(v) => setF((x) => ({ ...x, single_item: v }))} label={t('seller.product.singleItem')} hint={t('seller.product.singleItemHint')} />
+              </>}
               <div>
                 <p className="mb-1.5 text-sm font-medium text-ink-soft dark:text-gray-300">{t('seller.product.photos')} <span className="text-xs font-normal text-ink-muted">({t('seller.product.photosHint')})</span></p>
                 <div className="flex flex-wrap gap-3">

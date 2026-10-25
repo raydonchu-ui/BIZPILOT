@@ -5,7 +5,7 @@
 // as saved until the server confirms it. Business-rule failures (e.g. stock no
 // longer available) are kept as "needs attention" for the user to resolve.
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { rpc } from './api';
+import { recordSale } from './api';
 
 export interface QueuedSale {
   client_ref: string;
@@ -57,7 +57,7 @@ export async function syncQueue(): Promise<{ synced: number; failed: number }> {
   try {
     for (const item of read().filter((i) => i.status === 'pending')) {
       try {
-        await rpc('create_sale', { p_business: item.business_id, p: { ...item.payload, client_ref: item.client_ref, offline: true } });
+        await recordSale(item.business_id, { ...item.payload, client_ref: item.client_ref, offline: true });
         discardQueued(item.client_ref);
         synced++;
       } catch (e: any) {
