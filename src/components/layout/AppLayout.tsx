@@ -46,6 +46,7 @@ export const NAV: NavItem[] = [
   { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true, group: 'main' },
   { to: '/app/store', key: 'myStore', icon: Store, perm: 'store.manage', group: 'online' },
   { to: '/app/orders', key: 'orders', icon: PackageCheck, perm: 'orders.manage', group: 'online', market: true },
+  { to: '/app/messages', key: 'messages', icon: MessageSquare, perm: 'orders.manage', group: 'online', market: true },
   { to: '/app/promotions', key: 'promotions', icon: BadgePercent, perm: 'store.manage', feature: 'promotions', group: 'online', market: true },
   { to: '/app/sales', key: 'sales', icon: ShoppingCart, perm: 'sales.view', group: 'shop' },
   { to: '/app/customers', key: 'customers', icon: Users, perm: 'customers.manage', group: 'shop' },

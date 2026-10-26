@@ -152,12 +152,29 @@ New projects: `01_bizpilot_setup.sql` already includes everything. Existing proj
    - comparing sellers, the channel report and the new alerts.
 
    It checks that 05 is installed. It can be run again safely: verified on a copy with data, where sales, stock, totals and payments were unchanged, and on a second run.
+4. `07_upgrade_storefront_chat.sql` adds:
+   - stock status on product cards (In stock, Low stock, Out of stock), from recorded stock only;
+   - the city selector for real: shops and products are filtered by city, with accents and capitals ignored, and the shopper dashboard numbers;
+   - messaging between shoppers and stores: product-linked conversations, unread counts, the inbox and the notifications list.
+
+   It checks that 06 is installed (`scripts/sql/check_before_07.sql`). Each statement only creates or replaces functions and adds new tables; it changes no existing business, product, stock, sale or payment.
 
 Each file checks that it is run in the right order and only once. They add tables and functions and do not change existing businesses, products, stock, sales, payments or customers (verified on a copy with data). Until they are run, the app keeps working: the market says "opening soon" and seller pages explain the update.
 
+## Messages and background notifications
+
+- A shopper messages a store from the store page or a product page ("Message the seller"). A conversation belongs to one shopper, one store and, when it starts from a product, that product. Members of the store who can manage orders (owner, manager, cashier) answer from **Messages** in the seller app, or from the same Messages page in the shop.
+- A new message shows as a pop-up while BizPilot is open, raises the bell and the Messages badge, and appears in the notifications list.
+- Background notifications, when the app is closed, need a one-time setup:
+  1. Make a VAPID key pair: `npx web-push generate-vapid-keys` (or any tool that makes P-256 keys in base64url form).
+  2. Supabase → Edge Functions → Secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (a `mailto:` address). Deploy with `supabase functions deploy chat-push` and keep JWT verification on.
+  3. The build host: `VITE_VAPID_PUBLIC_KEY` with the public key, then redeploy.
+  Until these are set, messaging works without background alerts, and the account page says they are not available.
+- Each person turns alerts on per device under **My account → Profile**, and the browser must allow notifications. On iPhone, web push works only after the app is added to the Home Screen.
+
 ## Testing
 
-- **DB tests:** `tests/db/marketplace.test.ts` (15 tests, including direct Mobile Money to the seller), `tests/db/records.test.ts` (8 tests: channels, delivery cost, duplicates, credit, cancellation, partial returns, incomplete profit, one-of-a-kind items, alerts) and `tests/db/fapshi_function.test.ts` (12 tests, subscriptions only: the edge function against the real local database with a simulated Fapshi API).
+- **DB tests:** `tests/db/storefront.test.ts` (5 tests: stock status, read-only storefront for customers, store editing by owners and managers only), `tests/db/shopper.test.ts` (6 tests: city filtering, accents and capitals, city counts, dashboard sign-in), `tests/db/messaging.test.ts` (12 tests: conversations, unread counts, inbox rows, isolation between shoppers and stores, refused writes, push subscriptions), `tests/db/marketplace.test.ts` (15 tests, including direct Mobile Money to the seller), `tests/db/records.test.ts` (8 tests: channels, delivery cost, duplicates, credit, cancellation, partial returns, incomplete profit, one-of-a-kind items, alerts) and `tests/db/fapshi_function.test.ts` (12 tests, subscriptions only: the edge function against the real local database with a simulated Fapshi API).
 - **Browser tests:** `e2e/marketplace.spec.ts` covers seller setup, guest checkout, fulfilment, review, online payment and admin moderation. For the online payment test, run:
   ```
   node e2e/fapshiMock.mjs &

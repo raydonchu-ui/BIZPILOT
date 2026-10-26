@@ -130,7 +130,7 @@ test('a guest finds the product, checks out with cash on delivery and can follow
   await page.getByRole('link', { name: new RegExp(product) }).first().click();
   await expect(page.getByRole('heading', { name: product })).toBeVisible();
   await expect(page.getByText('In stock').first()).toBeVisible();
-  await expect(page.getByText(/10.000 FCFA/)).toBeVisible(); // "was" price shown
+  await expect(page.getByText(/10.000 XAF/)).toBeVisible(); // "was" price shown
   await page.getByRole('button', { name: 'Increase' }).click();
   await page.getByRole('button', { name: 'Buy now' }).click();
 
@@ -140,7 +140,7 @@ test('a guest finds the product, checks out with cash on delivery and can follow
   await page.getByLabel(/^Delivery area/).selectOption({ index: 1 });
   await page.getByLabel(/^City/).fill('Douala');
   await page.getByLabel(/^Street \/ directions/).fill('Rue Joss, near the bakery');
-  await expect(page.getByText(/^17.000 FCFA$/)).toBeVisible(); // 2 × 8 000 + 1 000 delivery, computed by the server
+  await expect(page.getByText(/^17.000 XAF$/)).toBeVisible(); // 2 × 8 000 + 1 000 delivery, computed by the server
   await page.getByRole('button', { name: 'Place order' }).click();
   await expect(page.getByText(/^Order ORD-\d+ placed$/)).toBeVisible();
   orderUrl = page.url().replace(/\?.*$/, '');
@@ -232,7 +232,7 @@ test('a buyer pays the seller directly by Mobile Money; only the seller confirms
   await expect(page.getByText(/BizPilot never receives or holds the money/)).toBeVisible();
   await page.getByRole('button', { name: 'Place order' }).click();
   await expect(page).toHaveURL(/\/order\//);
-  await expect(page.getByText(/Pay 8,000 FCFA to Awa Mode/)).toBeVisible();
+  await expect(page.getByText(/Pay 8,000 XAF to Awa Mode/)).toBeVisible();
   await expect(page.getByText('677998877')).toBeVisible();
   await expect(page.getByText('Name on the account: Awa Mode')).toBeVisible();
   await page.getByLabel(/^Transaction ID/).fill('MP251026.1111');

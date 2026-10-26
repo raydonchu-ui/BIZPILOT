@@ -1,20 +1,22 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
-  BadgeCheck, Banknote, Clock, CreditCard, Facebook, Heart, Instagram, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Store, Truck, Undo2,
+  BadgeCheck, Banknote, Clock, CreditCard, Facebook, Heart, Instagram, Link2, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Store, Truck, Undo2,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { rpc, unwrap } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
-import { formatDate, formatMoney } from '../../lib/format';
+import { formatDate, formatXaf } from '../../lib/format';
+import { formatClock, openStatus } from '../../lib/hours';
 import { ProductCard, productUrl, publicUrl, rememberViewed, storeUrl, useCart, waLink } from '../../lib/market';
 import { useAction } from '../../lib/useAction';
 import { useToast } from '../../lib/toast';
+import { MessageSellerButton } from '../../components/messaging';
 import { MarketImage, Price, ProductGrid, QtyStepper, ReportButton, ShareBar, StockBadge, Stars } from '../../components/market';
-import { Badge, Button, Card, EmptyState, ErrorState, LinkButton, Modal, PageLoader, Tabs } from '../../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, LinkButton, Modal, PageLoader } from '../../components/ui';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
@@ -43,13 +45,122 @@ function useFollow(businessId: string | undefined) {
   return { following: Boolean(q.data), toggle, enabled: Boolean(session) };
 }
 
+type StoreTab = 'products' | 'about' | 'reviews' | 'location';
+
+/** TikTok has no icon in the icon set we use, so it gets its own mark. */
+function TikTokIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M16.6 5.8A4.3 4.3 0 0 1 15.5 3h-3.2v12.4a2.6 2.6 0 1 1-2.6-2.6c.3 0 .5 0 .8.1V9.6a6 6 0 1 0 5 5.9V9.2a7.5 7.5 0 0 0 4.4 1.4V7.4a4.3 4.3 0 0 1-3.3-1.6z" />
+    </svg>
+  );
+}
+
+function StoreStatusCard({ s }: { s: any }) {
+  const { t, lang } = useI18n();
+  const status = openStatus(s.opening_hours);
+  if (!status.configured) return null;
+  return (
+    <div className={clsx('min-w-[7.5rem] rounded-2xl px-3 py-2.5 text-sm', status.open ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200')}>
+      <p className="flex items-center gap-2 font-bold">
+        <span className={clsx('h-2.5 w-2.5 rounded-full', status.open ? 'bg-emerald-500' : 'bg-gray-400')} aria-hidden="true" />
+        {status.open ? t('market.openNow') : t('market.closedNow')}
+      </p>
+      <p className="mt-0.5 text-xs leading-snug">
+        {status.today ? `${formatClock(status.today.open, lang)} – ${formatClock(status.today.close, lang)}` : t('market.closedToday')}
+      </p>
+    </div>
+  );
+}
+
+function StoreActions({ s }: { s: any }) {
+  const { t } = useI18n();
+  const actions = [
+    s.whatsapp && { key: 'wa', label: 'WhatsApp', href: waLink(s.whatsapp, t('market.waHello', { store: s.name })), cls: 'bg-[#16a34a] text-white hover:bg-[#15803d]', icon: <MessageCircle className="h-5 w-5" /> },
+    s.phone && { key: 'call', label: t('market.callShop'), href: `tel:${s.phone}`, cls: 'bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300', icon: <Phone className="h-5 w-5" /> },
+    s.email && { key: 'mail', label: t('market.emailShop'), href: `mailto:${s.email}`, cls: 'bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300', icon: <Mail className="h-5 w-5" /> },
+  ].filter(Boolean) as { key: string; label: string; href: string; cls: string; icon: ReactNode }[];
+  if (!actions.length) return null;
+  return (
+    <div className={clsx('grid gap-2', actions.length === 1 ? 'grid-cols-1' : actions.length === 2 ? 'grid-cols-2' : 'grid-cols-3')}>
+      {actions.map((a) => (
+        <a key={a.key} href={a.href} target={a.key === 'wa' ? '_blank' : undefined} rel={a.key === 'wa' ? 'noopener noreferrer' : undefined}
+          className={clsx('flex h-12 items-center justify-center gap-1.5 rounded-2xl px-1.5 text-[13px] font-bold whitespace-nowrap transition', a.cls)}>
+          <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{a.icon}</span>{a.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function StoreSocials({ s }: { s: any }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const url = storeUrl(s.slug);
+  const copy = async () => { try { await navigator.clipboard.writeText(url); toast(t('market.linkCopied'), 'success'); } catch { window.prompt(t('market.copyLink'), url); } };
+  const items = [
+    s.facebook_url && { key: 'fb', label: 'Facebook', href: s.facebook_url, icon: <Facebook className="h-5 w-5" />, cls: 'text-[#1877F2]' },
+    s.instagram_url && { key: 'ig', label: 'Instagram', href: s.instagram_url, icon: <Instagram className="h-5 w-5" />, cls: 'text-[#E1306C]' },
+    s.tiktok_url && { key: 'tt', label: 'TikTok', href: s.tiktok_url, icon: <TikTokIcon className="h-5 w-5" />, cls: 'text-ink dark:text-gray-100' },
+  ].filter(Boolean) as { key: string; label: string; href: string; icon: ReactNode; cls: string }[];
+  return (
+    <ul className="flex justify-around gap-2 pt-1" aria-label={t('market.shareStore')}>
+      {items.map((x) => (
+        <li key={x.key}>
+          <a href={x.href} target="_blank" rel="noopener noreferrer nofollow" className="flex w-20 flex-col items-center gap-1.5 text-xs font-semibold text-ink-soft dark:text-gray-300">
+            <span className={clsx('flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800', x.cls)}>{x.icon}</span>{x.label}
+          </a>
+        </li>
+      ))}
+      <li>
+        <button type="button" onClick={copy} className="flex w-20 flex-col items-center gap-1.5 text-xs font-semibold text-ink-soft dark:text-gray-300">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-50 text-brand-700 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:text-brand-300"><Link2 className="h-5 w-5" /></span>
+          {t('market.storeLink')}
+        </button>
+      </li>
+    </ul>
+  );
+}
+
+function StoreLocation({ s }: { s: any }) {
+  const { t } = useI18n();
+  const mapsQuery = [s.address, s.neighborhood, s.city, 'Cameroon'].filter(Boolean).join(', ');
+  const hasPlace = Boolean(s.address || s.neighborhood || s.city);
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <h2 className="mb-3 flex items-center gap-2 font-bold"><MapPin className="h-4 w-4 text-brand-700" />{t('market.locationTitle')}</h2>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          {s.city && <><dt className="text-ink-muted">{t('market.city')}</dt><dd className="font-semibold">{s.city}</dd></>}
+          {s.region && <><dt className="text-ink-muted">{t('market.region')}</dt><dd>{s.region}</dd></>}
+          {s.neighborhood && <><dt className="text-ink-muted">{t('seller.store.neighborhood')}</dt><dd>{s.neighborhood}</dd></>}
+          {s.address && <><dt className="text-ink-muted">{t('market.address')}</dt><dd>{s.address}</dd></>}
+          {s.service_area && <><dt className="text-ink-muted">{t('seller.store.serviceArea')}</dt><dd>{s.service_area}</dd></>}
+        </dl>
+        {s.pickup_enabled && <p className="mt-3 text-sm"><span className="font-semibold">{t('market.pickupInStore')}</span>{s.pickup_note ? ` · ${s.pickup_note}` : ''}</p>}
+        {!hasPlace && !s.pickup_enabled && <EmptyState title={t('market.noLocation')} body={t('market.noLocationBody')} />}
+        {hasPlace && (
+          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`} target="_blank" rel="noopener noreferrer nofollow"
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800">
+            <MapPin className="h-4 w-4" />{t('market.openInMaps')}
+          </a>
+        )}
+      </Card>
+      <Card>
+        <h2 className="mb-3 flex items-center gap-2 font-bold"><Truck className="h-4 w-4 text-brand-700" />{t('market.delivery')}</h2>
+        <DeliverySummary s={s} />
+      </Card>
+    </div>
+  );
+}
+
 export function StorePage() {
   const { slug } = useParams();
   const { t, lang } = useI18n();
-  const { session } = useAuth();
+  const { session, context } = useAuth();
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') as 'products' | 'about' | 'reviews') ?? 'products';
+  const tab = (params.get('tab') as StoreTab) ?? 'products';
   const cat = params.get('category') ?? '';
   const st = useStore(slug);
   const follow = useFollow(st.data?.business_id);
@@ -62,59 +173,81 @@ export function StorePage() {
   if (!st.data) return <NotAvailable title={t('market.storeNotFound')} body={t('market.storeNotFoundBody')} />;
   const s = st.data;
   if (s.unavailable) return <NotAvailable title={t('market.storeUnavailable', { name: s.name })} body={t('market.storeUnavailableBody')} />;
-  const setTab = (v: string) => { const n = new URLSearchParams(params); n.set('tab', v); setParams(n, { replace: true }); };
+  const setTab = (v: StoreTab) => { const n = new URLSearchParams(params); n.set('tab', v); setParams(n, { replace: true }); };
   const color = s.brand_color ?? '#156834';
   const cover = publicUrl(s.cover_path);
+  // Customers only browse. Staff who can manage this store get a link to the editor.
+  const canManage = Boolean(session && context?.businesses.some((b) => b.id === s.business_id && b.permissions.includes('store.manage')));
+  const tabs: { value: StoreTab; label: string }[] = [
+    { value: 'products', label: t('market.tabProducts') }, { value: 'about', label: t('market.tabAbout') },
+    { value: 'reviews', label: t('market.tabReviews') }, { value: 'location', label: t('market.tabLocation') },
+  ];
   return (
-    <div>
-      <div className="h-32 w-full sm:h-48" style={cover ? { backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: `linear-gradient(135deg, ${color}, #08261a)` }} />
+    <div className="pb-8">
+      <div className="relative h-44 w-full overflow-hidden sm:h-60" style={cover ? undefined : { background: `linear-gradient(135deg, ${color}, #08261a)` }}>
+        {cover && <img src={cover} alt="" className="h-full w-full object-cover" />}
+      </div>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="-mt-10 flex flex-col gap-4 sm:-mt-12 sm:flex-row sm:items-end">
-          <MarketImage path={s.logo_path} alt={s.name} className="h-20 w-20 border-4 border-white bg-white shadow-md dark:border-gray-950 sm:h-24 sm:w-24" rounded="rounded-2xl" />
+        <div className="-mt-12 flex items-end justify-between gap-3 sm:-mt-14">
+          <MarketImage path={s.logo_path} alt={s.name} className="relative z-10 h-24 w-24 border-4 border-white bg-white shadow-md dark:border-gray-950 sm:h-28 sm:w-28" rounded="rounded-full" />
+          <div className="mb-1 hidden sm:block"><StoreStatusCard s={s} /></div>
+        </div>
+        <div className="mt-3 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight sm:text-3xl">{s.name}
-              {s.verified && <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800 ring-1 ring-brand-200"><BadgeCheck className="h-3.5 w-3.5" />{t('market.verified')}</span>}
+            <h1 className="flex min-w-0 items-center gap-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <span className="min-w-0 break-words">{s.name}</span>
+              {s.verified && <BadgeCheck className="h-5 w-5 shrink-0 text-brand-600" aria-label={t('market.verified')} />}
             </h1>
+            <p className="mt-0.5 text-sm text-ink-muted">{t(`businessCategories.${s.business_type}`)}</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
-              <span>{t(`businessCategories.${s.business_type}`)}</span>
-              {s.city && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{s.city}</span>}
-              {s.rating_count > 0 && <Stars value={s.rating_avg} count={s.rating_count} />}
+              {s.city && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{[s.neighborhood, s.city].filter(Boolean).join(', ')}</span>}
+              <Stars value={s.rating_avg} count={s.rating_count} size="md" />
             </p>
-            {s.tagline && <p className="mt-1 text-sm text-ink-soft dark:text-gray-300">{s.tagline}</p>}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {s.whatsapp && <a href={waLink(s.whatsapp, t('market.waHello', { store: s.name }))} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#25D366] px-3 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" />WhatsApp</a>}
-            {s.phone && <a href={`tel:${s.phone}`} className="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-300 px-3 text-sm font-semibold dark:border-gray-700"><Phone className="h-4 w-4" />{t('market.call')}</a>}
-            {follow.enabled ? (
-              <Button variant={follow.following ? 'secondary' : 'outline'} icon={<Heart className={clsx('h-4 w-4', follow.following && 'fill-current')} />} onClick={follow.toggle}>
-                {follow.following ? t('market.following') : t('market.follow')}
-              </Button>
-            ) : <Button variant="outline" icon={<Heart className="h-4 w-4" />} onClick={() => nav(`/login?next=/s/${s.slug}`)}>{t('market.follow')}</Button>}
-          </div>
+          <div className="sm:hidden"><StoreStatusCard s={s} /></div>
+        </div>
+        {(s.tagline || s.description) && <p className="mt-3 line-clamp-2 text-sm text-ink-soft dark:text-gray-300">{s.tagline || s.description}</p>}
+
+        <div className="mt-4 space-y-3">
+          <StoreActions s={s} />
+          <MessageSellerButton store={s.slug} storeName={s.name} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-700 px-3 text-sm font-bold text-white hover:bg-brand-800" />
+          {follow.enabled ? (
+            <Button variant={follow.following ? 'secondary' : 'outline'} block icon={<Heart className={clsx('h-4 w-4', follow.following && 'fill-current')} />} onClick={follow.toggle}>
+              {follow.following ? t('market.following') : t('market.follow')}
+            </Button>
+          ) : <Button variant="outline" block icon={<Heart className="h-4 w-4" />} onClick={() => nav(`/login?next=/s/${s.slug}`)}>{t('market.follow')}</Button>}
+          <StoreSocials s={s} />
+          {canManage && <LinkButton to="/app/store" variant="ghost" block>{t('market.manageStore')}</LinkButton>}
         </div>
 
-        <Tabs className="mt-6" value={tab} onChange={setTab} items={[
-          { value: 'products', label: t('market.tabProducts') }, { value: 'about', label: t('market.tabAbout') },
-          { value: 'reviews', label: `${t('market.tabReviews')} (${s.rating_count})` },
-        ]} />
+        <div className="mt-6 flex border-b border-gray-200 dark:border-gray-800" role="tablist" aria-label={t('market.storeSections')}>
+          {tabs.map((x) => (
+            <button key={x.value} type="button" role="tab" aria-selected={tab === x.value} onClick={() => setTab(x.value)}
+              className={clsx('-mb-px flex-1 border-b-2 px-2 py-3 text-sm font-semibold transition sm:flex-none sm:px-5',
+                tab === x.value ? 'border-brand-700 text-brand-700 dark:border-brand-400 dark:text-brand-400' : 'border-transparent text-ink-muted hover:text-ink dark:hover:text-gray-200')}>
+              {x.label}
+            </button>
+          ))}
+        </div>
 
-        <div className="py-6">
+        <div className="py-5">
           {tab === 'products' && (
             <>
               {s.categories.length > 0 && (
-                <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+                <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label={t('market.categories')}>
                   {[{ name: '', products: null }, ...s.categories].map((c: any) => (
                     <button key={c.name || 'all'} aria-pressed={cat === c.name} onClick={() => { const n = new URLSearchParams(params); if (c.name) n.set('category', c.name); else n.delete('category'); setParams(n, { replace: true }); }}
-                      className={clsx('whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold ring-1', cat === c.name ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-ink-soft ring-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800')}>
-                      {c.name || t('market.allProducts')}{c.products ? ` · ${c.products}` : ''}
+                      className={clsx('whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ring-1 transition', cat === c.name ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-ink-soft ring-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800')}>
+                      {c.name || t('market.allProducts')}
                     </button>
                   ))}
                 </div>
               )}
-              {products.isLoading ? <PageLoader /> : <ProductGrid items={products.data?.items ?? []} empty={<EmptyState title={t('market.storeEmpty')} />} />}
+              {products.isLoading ? <PageLoader /> : <ProductGrid dense hideStore items={products.data?.items ?? []} empty={<EmptyState title={t('market.storeEmpty')} />} />}
             </>
           )}
           {tab === 'about' && <StoreAbout s={s} />}
+          {tab === 'location' && <StoreLocation s={s} />}
           {tab === 'reviews' && (
             <Card>
               {s.reviews.length === 0 ? <EmptyState title={t('market.noReviews')} body={t('market.noReviewsBody')} /> : (
@@ -134,7 +267,6 @@ export function StorePage() {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-gray-200 py-6 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
-          <div><p className="mb-2 text-sm font-semibold">{t('market.shareStore')}</p><ShareBar url={storeUrl(s.slug)} text={t('market.shareStoreText', { store: s.name })} /></div>
           <ReportButton targetType="store" targetId={s.business_id} signedIn={Boolean(session)} label={t('market.reportStore')} />
         </div>
       </div>
@@ -178,7 +310,7 @@ function StoreAbout({ s }: { s: any }) {
         <DeliverySummary s={s} />
         <h2 className="mb-2 mt-5 flex items-center gap-2 font-bold"><CreditCard className="h-4 w-4" />{t('market.paymentMethods')}</h2>
         <PaymentSummary s={s} />
-        {s.min_order_amount > 0 && <p className="mt-3 text-xs text-ink-muted">{t('market.minOrder', { amount: formatMoney(s.min_order_amount, lang) })}</p>}
+        {s.min_order_amount > 0 && <p className="mt-3 text-xs text-ink-muted">{t('market.minOrder', { amount: formatXaf(s.min_order_amount, lang) })}</p>}
         {s.return_policy && <>
           <h2 className="mb-2 mt-5 flex items-center gap-2 font-bold"><Undo2 className="h-4 w-4" />{t('market.returnPolicy')}</h2>
           <p className="whitespace-pre-line text-sm text-ink-soft dark:text-gray-300">{s.return_policy}</p>
@@ -193,7 +325,7 @@ function DeliverySummary({ s }: { s: any }) {
   return (
     <div className="space-y-1 text-sm">
       {s.zones.length === 0 && !s.pickup_enabled && <p className="text-ink-muted">{t('market.noDeliveryInfo')}</p>}
-      {s.zones.map((z: any) => <p key={z.id} className="flex justify-between gap-3"><span>{z.name}{z.eta ? <span className="text-ink-muted"> · {z.eta}</span> : null}</span><b>{Number(z.fee) ? formatMoney(z.fee, lang) : t('market.free')}</b></p>)}
+      {s.zones.map((z: any) => <p key={z.id} className="flex justify-between gap-3"><span>{z.name}{z.eta ? <span className="text-ink-muted"> · {z.eta}</span> : null}</span><b>{Number(z.fee) ? formatXaf(z.fee, lang) : t('market.free')}</b></p>)}
       {s.pickup_enabled && <p className="flex justify-between gap-3"><span>{t('market.pickupInStore')}{s.pickup_note ? <span className="text-ink-muted"> · {s.pickup_note}</span> : null}</span><b>{t('market.free')}</b></p>}
       {s.delivery_note && <p className="pt-1 text-xs text-ink-muted">{s.delivery_note}</p>}
     </div>
@@ -369,9 +501,12 @@ function ProductView({ p, store }: { p: any; store: any }) {
                 <div><p className="mb-1 flex items-center gap-1.5 font-semibold"><CreditCard className="h-4 w-4" />{t('market.paymentMethods')}</p><PaymentSummary s={store} /></div>
               </div>
             )}
-            {store?.whatsapp && <a href={waLink(store.whatsapp, t('market.waProductFull', { product: p.name, variant: sel?.label ? ` (${sel.label})` : '', qty, price: sel ? formatMoney(sel.price, lang) : '', url: productUrl(p.store.slug, p.id) }))} target="_blank" rel="noopener noreferrer"
+            {store?.whatsapp && <a href={waLink(store.whatsapp, t('market.waProductFull', { product: p.name, variant: sel?.label ? ` (${sel.label})` : '', qty, price: sel ? formatXaf(sel.price, lang) : '', url: productUrl(p.store.slug, p.id) }))} target="_blank" rel="noopener noreferrer"
               className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-white hover:bg-[#1ebe5b]"><MessageCircle className="h-4 w-4" />{t('market.orderOnWhatsappShort')}</a>}
             {store?.phone && <a href={`tel:${store.phone}`} className="ml-2 mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold ring-1 ring-gray-300 dark:ring-gray-700"><Phone className="h-4 w-4" />{t('market.callSeller')}</a>}
+            <MessageSellerButton className="ml-2 mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold ring-1 ring-gray-300 hover:bg-gray-50 dark:ring-gray-700 dark:hover:bg-gray-800"
+              store={p.store.slug} storeName={p.store.name} product={{ id: p.id, name: p.name, image: p.images?.[0] ?? null }} />
+
           </Card>
 
           {(p.description || attrs.length > 0) && (
@@ -416,11 +551,11 @@ function ProductView({ p, store }: { p: any; store: any }) {
             <table className="min-w-full text-sm">
               <thead><tr className="text-left text-xs uppercase text-ink-muted"><th className="px-3 py-2">{t('market.productCol')}</th><th className="px-3 py-2">{t('market.sellerCol')}</th><th className="px-3 py-2 text-right">{t('market.priceCol')}</th><th className="px-3 py-2">{t('market.availability')}</th></tr></thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                <tr className="bg-brand-50/50 dark:bg-brand-950/30"><td className="px-3 py-2 font-semibold">{p.name}</td><td className="px-3 py-2">{p.store.name}{p.store.city ? ` · ${p.store.city}` : ''}</td><td className="px-3 py-2 text-right font-bold">{formatMoney(p.price, lang)}</td><td className="px-3 py-2">{p.sold ? t('market.sold') : Number(p.available) > 0 ? t('market.inStock') : t('market.outOfStock')}</td></tr>
+                <tr className="bg-brand-50/50 dark:bg-brand-950/30"><td className="px-3 py-2 font-semibold">{p.name}</td><td className="px-3 py-2">{p.store.name}{p.store.city ? ` · ${p.store.city}` : ''}</td><td className="px-3 py-2 text-right font-bold">{formatXaf(p.price, lang)}</td><td className="px-3 py-2">{p.sold ? t('market.sold') : Number(p.available) > 0 ? t('market.inStock') : t('market.outOfStock')}</td></tr>
                 {p.other_sellers.map((x: any) => (
                   <tr key={x.id}><td className="px-3 py-2"><Link to={`/s/${x.store.slug}/p/${x.id}`} className="font-semibold text-brand-700 hover:underline">{x.name}</Link></td>
                     <td className="px-3 py-2">{x.store.name}{x.store.verified && <BadgeCheck className="ml-1 inline h-3.5 w-3.5 text-brand-600" />}{x.store.city ? ` · ${x.store.city}` : ''}{x.rating_count > 0 ? ` · ★ ${x.rating_avg}` : ''}</td>
-                    <td className="px-3 py-2 text-right font-bold">{formatMoney(x.price, lang)}</td>
+                    <td className="px-3 py-2 text-right font-bold">{formatXaf(x.price, lang)}</td>
                     <td className="px-3 py-2">{x.sold ? t('market.sold') : Number(x.available) > 0 ? t('market.inStock') : t('market.outOfStock')}</td></tr>
                 ))}
               </tbody>

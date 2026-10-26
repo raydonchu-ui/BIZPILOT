@@ -6,7 +6,7 @@ import { CheckCircle2, Copy, Loader2, MapPin, MessageCircle, Phone, Send, Shield
 import { useI18n } from '../../i18n';
 import { rpc } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { formatDateTime, formatMoney } from '../../lib/format';
+import { formatDateTime, formatXaf } from '../../lib/format';
 import { guestOrders, guestToken, rememberGuestOrder, siteOrigin, verifyPayment, waLink } from '../../lib/market';
 import { useAction } from '../../lib/useAction';
 import { useToast } from '../../lib/toast';
@@ -73,10 +73,10 @@ export function OrderPage() {
         <div className="mt-4"><Alert tone="amber" title={t('market.orderCancelled')}>
           {t(`market.cancelReasons.${['payment_not_completed', 'not_confirmed_in_time', 'cancelled_by_customer'].includes(o.cancel_reason) ? o.cancel_reason : 'other'}`, { reason: o.cancel_reason })}
           {o.payment_status === 'refund_pending' && <p className="mt-1 font-semibold">{t('market.refundPending')}</p>}
-          {o.payment_status === 'refunded' && <p className="mt-1 font-semibold">{t('market.refunded', { amount: formatMoney(o.refund_amount ?? o.total, lang) })}</p>}
+          {o.payment_status === 'refunded' && <p className="mt-1 font-semibold">{t('market.refunded', { amount: formatXaf(o.refund_amount ?? o.total, lang) })}</p>}
         </Alert></div>
       )}
-      {o.status === 'refunded' && <div className="mt-4"><Alert tone="blue">{o.payment_status === 'refund_pending' ? t('market.refundPending') : t('market.refunded', { amount: formatMoney(o.refund_amount ?? o.total, lang) })}</Alert></div>}
+      {o.status === 'refunded' && <div className="mt-4"><Alert tone="blue">{o.payment_status === 'refund_pending' ? t('market.refundPending') : t('market.refunded', { amount: formatXaf(o.refund_amount ?? o.total, lang) })}</Alert></div>}
 
       {!['cancelled'].includes(o.status) && <Card className="mt-4"><OrderTimeline status={o.status} events={o.events} /></Card>}
 
@@ -91,9 +91,9 @@ export function OrderPage() {
                     <div className="min-w-0 flex-1">
                       <Link to={`/s/${o.store.slug}/p/${l.listing_id ?? l.product_id}`} className="font-semibold hover:underline">{l.name}</Link>
                       {l.variant_label && <p className="text-xs text-ink-muted">{l.variant_label}</p>}
-                      <p className="text-sm text-ink-muted">{Number(l.quantity)} × {formatMoney(l.unit_price, lang)}</p>
+                      <p className="text-sm text-ink-muted">{Number(l.quantity)} × {formatXaf(l.unit_price, lang)}</p>
                     </div>
-                    <p className="font-bold">{formatMoney(l.line_total, lang)}</p>
+                    <p className="font-bold">{formatXaf(l.line_total, lang)}</p>
                   </div>
                   {o.can_review && !l.reviewed && <ReviewForm orderId={o.id} token={token} productId={l.product_id} onDone={() => q.refetch()} />}
                   {l.reviewed && <p className="mt-2 flex items-center gap-1 text-xs text-brand-700"><CheckCircle2 className="h-3.5 w-3.5" />{t('market.reviewThanks')}</p>}
@@ -101,10 +101,10 @@ export function OrderPage() {
               ))}
             </ul>
             <dl className="space-y-1 border-t border-gray-100 p-4 text-sm dark:border-gray-800">
-              <div className="flex justify-between"><dt className="text-ink-muted">{t('market.subtotal')}</dt><dd>{formatMoney(o.subtotal, lang)}</dd></div>
-              {Number(o.discount) > 0 && <div className="flex justify-between"><dt className="text-ink-muted">{t('market.discount')}{o.promo_code ? ` (${o.promo_code})` : ''}</dt><dd>− {formatMoney(o.discount, lang)}</dd></div>}
-              <div className="flex justify-between"><dt className="text-ink-muted">{o.delivery_method === 'pickup' ? t('market.pickupInStore') : t('market.deliveryFee')}</dt><dd>{Number(o.delivery_fee) ? formatMoney(o.delivery_fee, lang) : t('market.free')}</dd></div>
-              <div className="flex justify-between text-base font-extrabold"><dt>{t('market.total')}</dt><dd>{formatMoney(o.total, lang)}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-muted">{t('market.subtotal')}</dt><dd>{formatXaf(o.subtotal, lang)}</dd></div>
+              {Number(o.discount) > 0 && <div className="flex justify-between"><dt className="text-ink-muted">{t('market.discount')}{o.promo_code ? ` (${o.promo_code})` : ''}</dt><dd>− {formatXaf(o.discount, lang)}</dd></div>}
+              <div className="flex justify-between"><dt className="text-ink-muted">{o.delivery_method === 'pickup' ? t('market.pickupInStore') : t('market.deliveryFee')}</dt><dd>{Number(o.delivery_fee) ? formatXaf(o.delivery_fee, lang) : t('market.free')}</dd></div>
+              <div className="flex justify-between text-base font-extrabold"><dt>{t('market.total')}</dt><dd>{formatXaf(o.total, lang)}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">{t('market.paymentMethod')}</dt><dd>{o.payment_method === 'cod' ? t('market.cod') : t('market.payOnline')}</dd></div>
             </dl>
           </Card>
@@ -265,7 +265,7 @@ function DirectMomoCard({ order: o, token, onDone }: { order: any; token: string
       <div className="flex items-start gap-3">
         <Smartphone className="h-6 w-6 shrink-0 text-amber-700" />
         <div className="flex-1">
-          <p className="font-bold">{t('market.payTheSeller', { amount: formatMoney(o.total, lang), store: o.store.name })}</p>
+          <p className="font-bold">{t('market.payTheSeller', { amount: formatXaf(o.total, lang), store: o.store.name })}</p>
           <p className="text-sm">{t('market.payTheSellerBody')}</p>
         </div>
       </div>

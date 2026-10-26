@@ -16,6 +16,8 @@ import { PwaPrompt } from './components/PwaPrompt';
 import { StoreLockGate } from './components/StoreLock';
 import { CartProvider } from './lib/market';
 import { MarketLayout } from './pages/market/MarketLayout';
+import { MessagesPage, NotificationsPage as InboxPage, ThreadPage } from './pages/market/MessagesPages';
+import { InboxListener } from './components/messaging';
 
 const Dashboard = lazy(() => import('./pages/app/Dashboard'));
 const SetupChecklist = lazy(() => import('./pages/app/SetupChecklist'));
@@ -62,6 +64,8 @@ const CheckoutPage = lazy(() => import('./pages/market/CheckoutPages').then((m) 
 const OrderPage = lazy(() => import('./pages/market/OrderPages').then((m) => ({ default: m.OrderPage })));
 const PayReturnPage = lazy(() => import('./pages/market/OrderPages').then((m) => ({ default: m.PayReturnPage })));
 const AccountPage = lazy(() => import('./pages/market/AccountPage'));
+const ShopsPage = lazy(() => import('./pages/market/ShopsPage').then((m) => ({ default: m.ShopsPage })));
+const MarketCategoriesPage = lazy(() => import('./pages/market/ShopsPage').then((m) => ({ default: m.CategoriesPage })));
 
 // Signed-in area. Store Lock is checked first (the server refuses business data while locked);
 // requirePin asks for a PIN to be created before the dashboard is shown for the first time.
@@ -101,11 +105,14 @@ export function App() {
     <CartProvider>
     <Suspense fallback={<PageLoader />}>
       <PwaPrompt />
+      <InboxListener />
       <Routes>
         {/* BizPilot Market: public shopping (no Store Lock: shoppers' own data only). */}
         <Route element={<MarketLayout />}>
           <Route path="market" element={<MarketHome />} />
           <Route path="market/search" element={<MarketSearch />} />
+          <Route path="market/shops" element={<ShopsPage />} />
+          <Route path="market/categories" element={<MarketCategoriesPage />} />
           <Route path="s/:slug" element={<StorePage />} />
           <Route path="s/:slug/p/:id" element={<ProductPage />} />
           <Route path="cart" element={<CartPage />} />
@@ -113,6 +120,9 @@ export function App() {
           <Route path="order/:id" element={<OrderPage />} />
           <Route path="pay/return" element={<PayReturnPage />} />
           <Route path="account" element={<AccountPage />} />
+          <Route path="messages" element={<RequireAuth requirePin={false}><MessagesPage /></RequireAuth>} />
+          <Route path="messages/:id" element={<RequireAuth requirePin={false}><ThreadPage /></RequireAuth>} />
+          <Route path="notifications" element={<RequireAuth requirePin={false}><InboxPage /></RequireAuth>} />
         </Route>
         <Route element={<PublicLayout />}>
           <Route index element={<Home />} />
@@ -175,6 +185,8 @@ export function App() {
           <Route path="store" element={<MyStorePage />} />
           <Route path="orders" element={<SellerOrdersPage />} />
           <Route path="orders/:orderId" element={<SellerOrderDetail />} />
+          <Route path="messages" element={<MessagesPage />} />
+          <Route path="messages/:id" element={<ThreadPage />} />
           <Route path="payments" element={<SellerPaymentsPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
           <Route path="*" element={<Navigate to="/app" replace />} />

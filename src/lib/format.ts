@@ -14,6 +14,14 @@ export function formatMoney(value: number | string | null | undefined, lang: Lan
   return `${s} ${currencyLabel(currency)}`;
 }
 
+/** Shopper prices (storefront, product cards, shopper dashboard): "9,000 XAF", as in the BizPilot Market design. */
+export function formatXaf(value: number | string | null | undefined, lang: Lang) {
+  if (value === null || value === undefined || value === '') return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return `${new Intl.NumberFormat(locale(lang), { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)} XAF`;
+}
+
 /** Compact money for chart axes and small cards: 1.2M, 850K */
 export function formatCompact(value: number, lang: Lang) {
   return new Intl.NumberFormat(locale(lang), { notation: 'compact', maximumFractionDigits: 1 }).format(value);

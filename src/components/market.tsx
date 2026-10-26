@@ -1,13 +1,20 @@
 import { ReactNode, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { BadgeCheck, Copy, Facebook, Flag, MessageCircle, Minus, Package, Plus, Share2, Star, Store } from 'lucide-react';
+import { BadgeCheck, ChevronDown, Copy, Facebook, Flag, Heart, Home, LayoutGrid, MapPin, MessageCircle, Minus, Package, Plus, Search, Share2, Star, Store, UserRound } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
+import { CAMEROON_CITIES, cityKey } from '../lib/cities';
+import { supabase } from '../lib/supabase';
+import { unwrap } from '../lib/api';
 import { useI18n } from '../i18n';
-import { formatMoney } from '../lib/format';
-import { ProductCard, publicUrl, shareLinks, StoreCard } from '../lib/market';
+import { formatXaf } from '../lib/format';
+import { ProductCard, publicUrl, shareLinks, StoreCard, useCity } from '../lib/market';
 import { rpc } from '../lib/api';
 import { useAction } from '../lib/useAction';
 import { useToast } from '../lib/toast';
+import { useMessagesUnread } from '../lib/messages';
 import { Button, Field, Input, Modal, Select, Textarea } from './ui';
 
 export function MarketImage({ path, alt, className, iconClassName, rounded = 'rounded-xl' }:
@@ -28,8 +35,8 @@ export function Price({ value, compareAt, from, className }: { value: number; co
   const { t, lang } = useI18n();
   return (
     <span className={clsx('inline-flex flex-wrap items-baseline gap-x-2', className)}>
-      <span className="font-extrabold text-ink dark:text-white">{from && <span className="mr-1 text-xs font-semibold text-ink-muted">{t('market.from')}</span>}{formatMoney(value, lang)}</span>
-      {compareAt ? <span className="text-xs text-ink-muted line-through">{formatMoney(compareAt, lang)}</span> : null}
+      <span className="font-extrabold text-ink dark:text-white">{from && <span className="mr-1 text-xs font-semibold text-ink-muted">{t('market.from')}</span>}{formatXaf(value, lang)}</span>
+      {compareAt ? <span className="text-xs text-ink-muted line-through">{formatXaf(compareAt, lang)}</span> : null}
     </span>
   );
 }
@@ -53,34 +60,85 @@ export function StockBadge({ available }: { available: number }) {
   return <span className="text-xs font-semibold text-brand-700 dark:text-brand-400">{t('market.inStock')}</span>;
 }
 
-export function ProductTile({ p }: { p: ProductCard }) {
+/** Stock status pill from recorded stock: In Stock / Low Stock / Out of Stock. */
+export function StockPill({ stock, sold }: { stock?: string | null; sold?: boolean }) {
   const { t } = useI18n();
-  const out = Number(p.available) <= 0;
+  if (sold) return <span className="inline-flex w-fit rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">{t('market.sold')}</span>;
+  const map: Record<string, string> = {
+    in: 'bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300',
+    low: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    out: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300',
+  };
+  const key = stock === 'low' || stock === 'out' ? stock : 'in';
+  return <span className={clsx('inline-flex w-fit whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold', map[key])}>{t(`market.stock.${key}`)}</span>;
+}
+
+/** Heart on a product: saves it to the signed-in shopper's favourites (market_favorites, RLS-protected). */
+export function FavoriteHeart({ productId }: { productId: string }) {
+  const { t } = useI18n();
+  const { session } = useAuth();
+  const qc = useQueryClient();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const ids = useQuery({
+    queryKey: ['favorite-ids', session?.user.id], enabled: Boolean(session), staleTime: 60_000,
+    queryFn: async () => (unwrap(await supabase.from('market_favorites').select('product_id')) as { product_id: string }[]).map((r) => r.product_id),
+  });
+  const on = Boolean(ids.data?.includes(productId));
+  const toggle = async (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!session) { nav(`/login?next=${encodeURIComponent(loc.pathname)}`); return; }
+    if (on) await supabase.from('market_favorites').delete().eq('product_id', productId);
+    else await supabase.from('market_favorites').insert({ product_id: productId });
+    qc.invalidateQueries({ queryKey: ['favorite-ids'] });
+    qc.invalidateQueries({ queryKey: ['fav', productId] });
+    qc.invalidateQueries({ queryKey: ['wishlist'] });
+  };
   return (
-    <Link to={`/s/${p.store.slug}/p/${p.id}`} className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
-      <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-gray-800">
-        <MarketImage path={p.image} alt={p.name} rounded="" className="h-full w-full transition group-hover:scale-[1.02]" />
-        {p.compare_at_price && <span className="absolute left-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">{t('market.sale')}</span>}
-        {out && <span className="absolute inset-x-0 bottom-0 bg-gray-900/70 py-1 text-center text-xs font-semibold text-white">{p.sold ? t('market.sold') : t('market.outOfStock')}</span>}
-        {p.condition && p.condition !== 'new' && <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-ink dark:bg-gray-900/90 dark:text-gray-100">{t(`market.condition.${p.condition}`)}</span>}
-      </div>
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <p className="line-clamp-2 text-sm font-semibold leading-snug text-ink dark:text-gray-100">{p.name}</p>
-        <Price value={Number(p.price)} compareAt={p.compare_at_price ? Number(p.compare_at_price) : null} from={Number(p.max_price) > Number(p.price)} className="text-sm" />
-        {p.rating_count > 0 && <Stars value={p.rating_avg} count={p.rating_count} />}
-        <p className="mt-auto flex items-center gap-1 truncate pt-1 text-xs text-ink-muted">
-          <Store className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{p.store.name}</span>
-          {p.store.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-label={t('market.verified')} />}
-          {p.store.city && <span className="truncate">· {p.store.city}</span>}
-        </p>
-      </div>
-    </Link>
+    <button type="button" onClick={toggle} aria-pressed={on} aria-label={on ? t('market.removeFromWishlist') : t('market.addToWishlist')}
+      className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-ink shadow-sm ring-1 ring-black/5 hover:bg-white dark:bg-gray-900/95 dark:text-gray-100">
+      <Heart className={clsx('h-4 w-4', on && 'fill-red-500 text-red-500')} />
+    </button>
   );
 }
 
-export function ProductGrid({ items, empty }: { items: ProductCard[]; empty?: ReactNode }) {
+export function ProductTile({ p, hideStore }: { p: ProductCard; hideStore?: boolean }) {
+  const { t } = useI18n();
+  const out = Number(p.available) <= 0 || p.sold;
+  return (
+    <div className="group relative flex flex-col">
+      <Link to={`/s/${p.store.slug}/p/${p.id}`} className="flex flex-1 flex-col rounded-2xl border border-gray-200/80 bg-white p-2 shadow-card transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
+        <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-800">
+          <MarketImage path={p.image} alt={p.name} rounded="" className="h-full w-full transition group-hover:scale-[1.02]" />
+          {p.compare_at_price && <span className="absolute left-1.5 top-1.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{t('market.sale')}</span>}
+          {p.condition && p.condition !== 'new' && <span className="absolute bottom-1.5 left-1.5 rounded-full bg-white/95 px-1.5 py-0.5 text-[10px] font-semibold text-ink dark:bg-gray-900/95 dark:text-gray-100">{t(`market.condition.${p.condition}`)}</span>}
+        </div>
+        <div className="flex flex-1 flex-col gap-1 px-0.5 pb-0.5 pt-2">
+          <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-ink dark:text-gray-100">{p.name}</p>
+          <Price value={Number(p.price)} compareAt={p.compare_at_price ? Number(p.compare_at_price) : null} from={Number(p.max_price) > Number(p.price)} className="text-sm" />
+          <StockPill stock={out ? 'out' : p.stock} sold={p.sold} />
+          {!hideStore && (
+            <p className="mt-auto flex items-center gap-1 truncate pt-1 text-xs text-ink-muted">
+              <Store className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{p.store.name}</span>
+              {p.store.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-label={t('market.verified')} />}
+              {p.store.city && <span className="truncate">· {p.store.city}</span>}
+            </p>
+          )}
+        </div>
+      </Link>
+      <FavoriteHeart productId={p.id} />
+    </div>
+  );
+}
+
+/** Product grid. `dense` gives three columns on phones (storefront), two otherwise. */
+export function ProductGrid({ items, empty, dense, hideStore }: { items: ProductCard[]; empty?: ReactNode; dense?: boolean; hideStore?: boolean }) {
   if (!items.length) return <>{empty}</>;
-  return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">{items.map((p) => <ProductTile key={p.id} p={p} />)}</div>;
+  return (
+    <div className={clsx('grid gap-3 sm:gap-4', dense ? 'grid-cols-3 sm:grid-cols-4 lg:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5')}>
+      {items.map((p) => <ProductTile key={p.id} p={p} hideStore={hideStore} />)}
+    </div>
+  );
 }
 
 export function StoreTile({ s }: { s: StoreCard }) {
@@ -206,5 +264,95 @@ export function OrderTimeline({ status, events }: { status: string; events: { st
         );
       })}
     </ol>
+  );
+}
+
+/** Choose the city the marketplace shows. Lists every town in Cameroon, with the number of shops where there are any. */
+export function CitySelector({ block }: { block?: boolean }) {
+  const { t } = useI18n();
+  const [city, setCity] = useCity();
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const counts = useQuery({
+    queryKey: ['market-home', ''], staleTime: 60_000,
+    queryFn: () => rpc<{ cities: { city: string; shops: number }[] }>('market_home', { p_city: null }),
+  });
+  const shopsIn = new Map((counts.data?.cities ?? []).map((c) => [cityKey(c.city), c.shops]));
+  const needle = cityKey(q);
+  const list = CAMEROON_CITIES.filter((c) => !needle || cityKey(c).includes(needle));
+  const choose = (next: string) => { setCity(next); setOpen(false); setQ(''); };
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
+        className={clsx('flex min-h-12 items-center gap-3 rounded-2xl bg-brand-50 px-3 py-2 text-left transition hover:bg-brand-100 dark:bg-brand-950/40 dark:hover:bg-brand-900/40', block ? 'w-full' : 'w-fit')}>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white"><MapPin className="h-4 w-4" /></span>
+        <span className="min-w-0 flex-1">
+          {block ? (
+            <>
+              <span className="block text-xs font-semibold text-ink-muted">{t('market.chooseCity')}</span>
+              <span className="block truncate text-sm font-bold text-ink dark:text-gray-100">{city ? `${city}, ${t('market.cityCameroon')}` : t('market.allCameroon')}</span>
+            </>
+          ) : (
+            <>
+              <span className="block text-sm font-bold text-ink dark:text-gray-100">{city || t('market.chooseCity')}</span>
+              <span className="block truncate text-xs text-ink-muted">{city ? t('market.cityCameroon') : t('market.allCameroon')}</span>
+            </>
+          )}
+        </span>
+        <ChevronDown className="h-5 w-5 shrink-0 text-ink-soft" />
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} title={t('market.chooseCity')} size="sm">
+        <div className="space-y-3">
+          <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('market.searchCity')} prefixIcon={<Search className="h-4 w-4" />} aria-label={t('market.searchCity')} />
+          <ul className="max-h-[60vh] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800" aria-label={t('market.chooseCity')}>
+            {!needle && (
+              <li><button type="button" onClick={() => choose('')} aria-pressed={!city} className={clsx('flex w-full items-center justify-between gap-3 px-1 py-3 text-left text-sm font-semibold', !city && 'text-brand-700 dark:text-brand-400')}>
+                {t('market.allCameroon')}{!city && <span aria-hidden="true">✓</span>}</button></li>
+            )}
+            {list.map((c) => (
+              <li key={c}><button type="button" onClick={() => choose(c)} aria-pressed={city === c}
+                className={clsx('flex w-full items-center justify-between gap-3 px-1 py-3 text-left text-sm', city === c ? 'font-bold text-brand-700 dark:text-brand-400' : 'font-medium')}>
+                <span>{c}</span>
+                <span className="flex items-center gap-2 text-xs text-ink-muted">
+                  {shopsIn.get(cityKey(c)) ? t('market.shopsCount', { n: shopsIn.get(cityKey(c))! }) : null}
+                  {city === c && <span aria-hidden="true">✓</span>}
+                </span></button></li>
+            ))}
+            {list.length === 0 && <li className="py-6 text-center text-sm text-ink-muted">{t('market.noCity')}</li>}
+          </ul>
+        </div>
+      </Modal>
+    </>
+  );
+}
+
+/** Bottom tabs on phones, as in the BizPilot Market design: Home, Shops, Categories, Messages, Profile. */
+export function MarketTabBar() {
+  const { t } = useI18n();
+  const unread = useMessagesUnread().data ?? 0;
+  const tabs = [
+    { to: '/market', icon: Home, label: t('market.tabs.home'), end: true, badge: 0 },
+    { to: '/market/shops', icon: Store, label: t('market.tabs.shops'), end: false, badge: 0 },
+    { to: '/market/categories', icon: LayoutGrid, label: t('market.tabs.categories'), end: false, badge: 0 },
+    { to: '/messages', icon: MessageCircle, label: t('market.tabs.messages'), end: false, badge: unread },
+    { to: '/account', icon: UserRound, label: t('market.tabs.profile'), end: false, badge: 0 },
+  ];
+  return (
+    <nav aria-label={t('market.tabs.label')} className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-gray-800 dark:bg-gray-950/95">
+      <ul className="grid grid-cols-5">
+        {tabs.map((x) => (
+          <li key={x.to}>
+            <NavLink to={x.to} end={x.end} className={({ isActive }) => clsx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold', isActive ? 'text-brand-700 dark:text-brand-400' : 'text-ink-muted')}>
+              {({ isActive }) => (<>
+                <span className="relative">
+                  <x.icon className={clsx('h-6 w-6', isActive && 'fill-brand-100 dark:fill-brand-900')} strokeWidth={isActive ? 2.4 : 2} aria-hidden="true" />
+                  {x.badge > 0 && <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">{x.badge > 99 ? '99+' : x.badge}</span>}
+                </span>
+                {x.label}</>)}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }

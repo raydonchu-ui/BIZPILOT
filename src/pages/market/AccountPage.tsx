@@ -1,30 +1,36 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, LayoutDashboard, LogOut, MapPin, Package, Plus, Store, Trash2 } from 'lucide-react';
+import { ChevronLeft, Heart, LayoutDashboard, LogOut, Package, Store } from 'lucide-react';
+import { ShopperDashboard } from './ShopperDashboard';
 import { useI18n } from '../../i18n';
 import { rpc, unwrap } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
-import { formatDate, formatMoney } from '../../lib/format';
+import { formatDate, formatXaf } from '../../lib/format';
 import { guestOrders, ProductCard, StoreCard } from '../../lib/market';
 import { useAction } from '../../lib/useAction';
 import { MarketImage, OrderStatusBadge, PaymentStatusBadge, ProductGrid, StoreTile } from '../../components/market';
-import { Badge, Button, Card, Checkbox, EmptyState, Field, Input, LinkButton, Modal, PageLoader, Tabs } from '../../components/ui';
+import { Button, Card, EmptyState, Field, Input, LinkButton, PageLoader, Tabs } from '../../components/ui';
+import { PushSettings } from '../../components/messaging';
 
-type Tab = 'orders' | 'wishlist' | 'stores' | 'addresses' | 'profile';
+type Tab = 'orders' | 'wishlist' | 'stores' | 'profile';
 
 export default function AccountPage() {
   const { t } = useI18n();
   const { session, ready, context, signOut } = useAuth();
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') as Tab) ?? 'orders';
+  const tabParam = params.get('tab') as Tab | null;
   const nav = useNavigate();
   if (!ready) return <PageLoader />;
   if (!session) return <Navigate to="/login?next=/account" replace />;
+  // The shopper dashboard is the Profile tab; the sections below open from its menu.
+  if (!tabParam) return <ShopperDashboard />;
+  const tab = tabParam;
   const name = context?.profile?.full_name || session.user.email;
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <Link to="/account" className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400"><ChevronLeft className="h-4 w-4" />{t('market.shopper.back')}</Link>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">{t('market.accountTitle')}</h1>
@@ -37,14 +43,12 @@ export default function AccountPage() {
       </div>
       <Tabs value={tab} onChange={(v) => setParams({ tab: v }, { replace: true })} items={[
         { value: 'orders', label: t('market.myOrders') }, { value: 'wishlist', label: t('market.wishlist') },
-        { value: 'stores', label: t('market.favouriteStores') }, { value: 'addresses', label: t('market.addresses') },
-        { value: 'profile', label: t('market.profile') },
+        { value: 'stores', label: t('market.favouriteStores') }, { value: 'profile', label: t('market.profile') },
       ]} />
       <div className="mt-4">
         {tab === 'orders' && <MyOrders />}
         {tab === 'wishlist' && <Wishlist />}
         {tab === 'stores' && <FollowedStores />}
-        {tab === 'addresses' && <Addresses />}
         {tab === 'profile' && <Profile />}
       </div>
     </div>
@@ -76,7 +80,7 @@ function MyOrders() {
                 <p className="text-xs text-ink-muted">{formatDate(o.created_at, lang)} · {t('market.itemsCount', { n: o.items })}</p>
                 <div className="mt-1 flex flex-wrap gap-1.5"><OrderStatusBadge status={o.status} /><PaymentStatusBadge status={o.payment_status} /></div>
               </div>
-              <p className="shrink-0 font-extrabold">{formatMoney(o.total, lang)}</p>
+              <p className="shrink-0 font-extrabold">{formatXaf(o.total, lang)}</p>
             </div>
           </Card>
         </Link>
@@ -112,63 +116,6 @@ function FollowedStores() {
   return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{q.data.map((s) => <StoreTile key={s.business_id} s={s} />)}</div>;
 }
 
-const blankAddr = { id: '', label: '', recipient_name: '', phone: '', city: '', area: '', line: '', landmark: '', is_default: false };
-
-function Addresses() {
-  const { t } = useI18n();
-  const { run, busy } = useAction();
-  const [edit, setEdit] = useState<typeof blankAddr | null>(null);
-  const q = useQuery({ queryKey: ['addresses'], queryFn: async () => unwrap(await supabase.from('customer_addresses').select('*').order('is_default', { ascending: false }).order('created_at')) as any[] });
-  const save = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!edit) return;
-    const { id, ...row } = edit;
-    const r = await run(async () => unwrap(id ? await supabase.from('customer_addresses').update(row).eq('id', id).select() : await supabase.from('customer_addresses').insert(row).select()), t('common.saved'));
-    if (r) setEdit(null);
-  };
-  const set = (k: keyof typeof blankAddr) => (e: { target: { value: string } }) => setEdit((x) => (x ? { ...x, [k]: e.target.value } : x));
-  return (
-    <div>
-      <div className="mb-3 flex justify-end"><Button icon={<Plus className="h-4 w-4" />} onClick={() => setEdit({ ...blankAddr })}>{t('market.addAddress')}</Button></div>
-      {q.isLoading ? <PageLoader /> : !q.data?.length ? <EmptyState icon={<MapPin className="h-6 w-6" />} title={t('market.noAddresses')} body={t('market.noAddressesBody')} /> : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {q.data.map((a) => (
-            <Card key={a.id}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="text-sm">
-                  <p className="font-bold">{a.label || a.recipient_name} {a.is_default && <Badge tone="green">{t('market.default')}</Badge>}</p>
-                  <p>{[a.line, a.area, a.city].filter(Boolean).join(', ')}</p>
-                  {a.landmark && <p className="text-xs text-ink-muted">{a.landmark}</p>}
-                  <p className="text-xs text-ink-muted">{a.recipient_name} · {a.phone}</p>
-                </div>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => setEdit({ ...blankAddr, ...a, label: a.label ?? '', area: a.area ?? '', line: a.line ?? '', landmark: a.landmark ?? '' })}>{t('common.edit')}</Button>
-                  <Button size="sm" variant="ghost" aria-label={t('common.delete')} icon={<Trash2 className="h-4 w-4" />}
-                    onClick={() => run(async () => unwrap(await supabase.from('customer_addresses').delete().eq('id', a.id)), t('common.deleted'))} />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-      <Modal open={Boolean(edit)} onClose={() => setEdit(null)} title={edit?.id ? t('market.editAddress') : t('market.addAddress')}
-        footer={<><Button variant="outline" onClick={() => setEdit(null)}>{t('common.cancel')}</Button><Button type="submit" form="addr-form" loading={busy}>{t('common.save')}</Button></>}>
-        {edit && (
-          <form id="addr-form" onSubmit={save} className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('market.addressLabel')} optional><Input maxLength={40} value={edit.label} onChange={set('label')} placeholder={t('market.addressLabelPlaceholder')} /></Field>
-            <Field label={t('market.fullName')} required><Input required minLength={2} value={edit.recipient_name} onChange={set('recipient_name')} /></Field>
-            <Field label={t('market.phone')} required><Input required type="tel" value={edit.phone} onChange={set('phone')} /></Field>
-            <Field label={t('market.city')} required><Input required minLength={2} value={edit.city} onChange={set('city')} /></Field>
-            <Field label={t('market.area')} optional><Input value={edit.area} onChange={set('area')} /></Field>
-            <Field label={t('market.streetLine')} optional><Input value={edit.line} onChange={set('line')} /></Field>
-            <Field label={t('market.landmark')} optional className="sm:col-span-2"><Input value={edit.landmark} onChange={set('landmark')} /></Field>
-            <div className="sm:col-span-2"><Checkbox label={t('market.makeDefault')} checked={edit.is_default} onChange={(v) => setEdit({ ...edit, is_default: v })} /></div>
-          </form>
-        )}
-      </Modal>
-    </div>
-  );
-}
 
 function Profile() {
   const { t } = useI18n();
@@ -180,7 +127,8 @@ function Profile() {
     await run(async () => { unwrap(await supabase.from('profiles').update(f).eq('id', session!.user.id).select()); await refreshContext(); }, t('common.saved'));
   };
   return (
-    <Card className="max-w-xl">
+    <div className="max-w-xl space-y-4">
+    <Card>
       <form onSubmit={save} className="space-y-4">
         <Field label={t('market.email')}><Input value={session?.user.email ?? ''} disabled /></Field>
         <Field label={t('market.fullName')}><Input value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} /></Field>
@@ -195,5 +143,7 @@ function Profile() {
         </div>
       )}
     </Card>
+    <PushSettings />
+    </div>
   );
 }

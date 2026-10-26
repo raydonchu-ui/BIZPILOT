@@ -1,4 +1,4 @@
--- BizPilot setup PART 11 of 19. Run parts in order.
+-- BizPilot setup PART 11 of 20. Run parts in order.
 begin;
 revoke execute on function public.reorder_categories(uuid, uuid[]) from anon;
 revoke execute on function public.add_product_variants(uuid, uuid, jsonb) from anon;

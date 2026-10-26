@@ -3,15 +3,15 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
-  Blocks, BookOpen, Car, CupSoda, Dumbbell, Filter, Footprints, Gem, Gift, Hammer, Home, MapPin, Package, PawPrint, PenLine,
+  ArrowRight, Blocks, BookOpen, Car, CupSoda, Dumbbell, Filter, Footprints, Gem, Gift, Hammer, Home, LayoutGrid, Package, PawPrint, PenLine,
   Search, Shirt, ShoppingBasket, Smartphone, Sofa, Sparkles, Sprout, Store, X,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { rpc } from '../../lib/api';
 import { BUSINESS_TYPES } from '../../lib/catalogTemplates';
-import { ProductCard, recentlyViewed, StoreCard } from '../../lib/market';
+import { ProductCard, recentlyViewed, StoreCard, useCity } from '../../lib/market';
 import { useAuth } from '../../lib/auth';
-import { ProductGrid, StoreTile } from '../../components/market';
+import { CitySelector, ProductGrid, StoreTile } from '../../components/market';
 import { Button, Checkbox, EmptyState, ErrorState, Field, Input, LinkButton, PageLoader, Select } from '../../components/ui';
 
 export const TYPE_ICONS: Record<string, typeof Store> = {
@@ -23,90 +23,114 @@ export const TYPE_ICONS: Record<string, typeof Store> = {
 export default function MarketHome() {
   const { t } = useI18n();
   const { session } = useAuth();
-  const [city, setCityState] = useState<string>(() => { try { return localStorage.getItem('bizpilot.city') ?? ''; } catch { return ''; } });
-  const setCity = (c: string) => { setCityState(c); try { localStorage.setItem('bizpilot.city', c); } catch { /* private mode */ } };
-  const viewedIds = useMemo(() => recentlyViewed(), []);
-  const viewed = useQuery({
-    queryKey: ['market-viewed', viewedIds], enabled: viewedIds.length > 0,
-    queryFn: () => rpc<ProductCard[]>('market_products_by_ids', { p_ids: viewedIds }),
-  });
+  const [city] = useCity();
   const q = useQuery({
     queryKey: ['market-home', city],
-    queryFn: () => rpc<{ types: { type: string; products: number }[]; stores: StoreCard[]; cities: string[]; latest: ProductCard[] }>('market_home', { p_city: city || null }),
+    queryFn: () => rpc<{ types: { type: string; products: number }[]; stores: StoreCard[]; cities: { city: string; shops: number }[];
+      latest: ProductCard[]; city_shops: number; city_products: number }>('market_home', { p_city: city || null }),
   });
   const counts = Object.fromEntries((q.data?.types ?? []).map((x) => [x.type, x.products]));
   const types = [...BUSINESS_TYPES].sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0));
+  const place = city || t('market.cityCameroon');
   return (
-    <div>
-      <section className="bg-gradient-to-b from-brand-50 to-transparent dark:from-brand-950/40">
-        <div className="mx-auto max-w-7xl px-4 pb-6 pt-8 sm:px-6 sm:pt-12">
-          <h1 className="max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">{t('market.heroTitle')}</h1>
-          <p className="mt-2 max-w-2xl text-ink-soft dark:text-gray-300">{t('market.heroBody')}</p>
-          {(q.data?.cities.length ?? 0) > 0 && (
-            <div className="mt-5 flex flex-wrap items-center gap-2" aria-label={t('market.city')}>
-              <MapPin className="h-4 w-4 text-ink-muted" />
-              {['', ...(q.data?.cities ?? [])].map((c) => (
-                <button key={c || 'all'} onClick={() => setCity(c)} aria-pressed={city === c}
-                  className={clsx('rounded-full px-3 py-1 text-sm font-semibold ring-1', city === c ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-ink-soft ring-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800')}>
-                  {c || t('market.allCities')}
-                </button>
-              ))}
-            </div>
-          )}
+    <div className="mx-auto max-w-7xl space-y-7 px-4 pb-12 pt-4 sm:px-6 sm:pt-8">
+      <h1 className="sr-only">{t('market.title')}</h1>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <CitySelector />
+        <Link to="/market/search" className="flex min-h-12 flex-1 items-center gap-2 rounded-2xl bg-white px-4 text-sm text-ink-muted shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800" aria-label={t('market.searchLabel')}>
+          <Search className="h-4 w-4" />{t('market.searchPlaceholder')}
+        </Link>
+      </div>
+
+      <CityBanner place={place} shops={q.data?.city_shops ?? 0} products={q.data?.city_products ?? 0} />
+
+      <section aria-labelledby="cats">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <h2 id="cats" className="text-lg font-bold">{t('market.shopByCategory')}</h2>
+          <Link to="/market/categories" className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('common.viewAll')}</Link>
+        </div>
+        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-8">
+          {types.slice(0, 7).map((ty) => {
+            const Icon = TYPE_ICONS[ty] ?? Package;
+            return (
+              <Link key={ty} to={`/market/search?type=${ty}`} className="flex w-[4.75rem] shrink-0 flex-col items-center gap-2 text-center sm:w-auto">
+                <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-brand-700 shadow-card ring-1 ring-gray-100 dark:bg-gray-900 dark:text-brand-300 dark:ring-gray-800"><Icon className="h-7 w-7" /></span>
+                <span className="text-xs font-semibold leading-tight">{t(`businessCategories.${ty}`)}</span>
+              </Link>
+            );
+          })}
+          <Link to="/market/categories" className="flex w-[4.75rem] shrink-0 flex-col items-center gap-2 text-center sm:w-auto">
+            <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-ink-soft shadow-card ring-1 ring-gray-100 dark:bg-gray-900 dark:ring-gray-800"><LayoutGrid className="h-7 w-7" /></span>
+            <span className="text-xs font-semibold">{t('market.more')}</span>
+          </Link>
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl space-y-10 px-4 pb-12 sm:px-6">
-        <section aria-labelledby="cats">
-          <h2 id="cats" className="mb-3 text-lg font-bold">{t('market.shopByCategory')}</h2>
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6 xl:grid-cols-8">
-            {types.map((ty) => {
-              const Icon = TYPE_ICONS[ty] ?? Package;
-              return (
-                <Link key={ty} to={`/market/search?type=${ty}${city ? `&city=${encodeURIComponent(city)}` : ''}`}
-                  className="flex w-28 shrink-0 flex-col items-center gap-2 rounded-2xl border border-gray-200/80 bg-white p-3 text-center shadow-card transition hover:border-brand-300 dark:border-gray-800 dark:bg-gray-900 sm:w-auto">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300"><Icon className="h-5 w-5" /></span>
-                  <span className="text-xs font-semibold leading-tight">{t(`businessCategories.${ty}`)}</span>
-                  {counts[ty] ? <span className="text-[11px] text-ink-muted">{t('market.productsCount', { n: counts[ty] })}</span> : null}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-
-        {q.isLoading ? <PageLoader /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : (
-          <>
-            {(q.data?.stores.length ?? 0) > 0 && (
-              <section aria-labelledby="stores">
-                <h2 id="stores" className="mb-3 text-lg font-bold">{t('market.featuredStores')}</h2>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{q.data!.stores.map((s) => <StoreTile key={s.business_id} s={s} />)}</div>
-              </section>
-            )}
-            {(viewed.data?.length ?? 0) > 0 && (
-              <section aria-labelledby="viewed">
-                <h2 id="viewed" className="mb-3 text-lg font-bold">{t('market.recentlyViewed')}</h2>
-                <ProductGrid items={[...viewed.data!].sort((a, b) => viewedIds.indexOf(a.id) - viewedIds.indexOf(b.id)).slice(0, 8)} />
-              </section>
-            )}
-            <section aria-labelledby="latest">
+      {q.isLoading ? <PageLoader /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : (
+        <>
+          {(q.data?.stores.length ?? 0) > 0 && (
+            <section aria-labelledby="stores">
               <div className="mb-3 flex items-end justify-between gap-3">
-                <h2 id="latest" className="text-lg font-bold">{t('market.newArrivals')}</h2>
-                <Link to="/market/search?sort=newest" className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('common.viewAll')}</Link>
+                <h2 id="stores" className="text-lg font-bold">{city ? t('market.shopsIn', { city }) : t('market.featuredStores')}</h2>
+                <Link to="/market/shops" className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('common.viewAll')}</Link>
               </div>
-              <ProductGrid items={q.data?.latest ?? []} empty={<EmptyState icon={<Store className="h-6 w-6" />} title={t('market.emptyTitle')} body={t('market.emptyBody')} />} />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{q.data!.stores.map((x) => <StoreTile key={x.business_id} s={x} />)}</div>
             </section>
-          </>
-        )}
+          )}
+          <section aria-labelledby="latest">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <h2 id="latest" className="text-lg font-bold">{t('market.newArrivals')}</h2>
+              <Link to="/market/search?sort=newest" className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('common.viewAll')}</Link>
+            </div>
+            <ProductGrid dense items={q.data?.latest ?? []} empty={<EmptyState icon={<Store className="h-6 w-6" />} title={city ? t('market.noShopsInCity', { city }) : t('market.emptyTitle')} body={t('market.emptyBody')} />} />
+          </section>
+        </>
+      )}
+      <RecentlyViewed />
 
-        <section className="flex flex-col items-start gap-4 rounded-3xl bg-brand-950 p-6 text-white sm:flex-row sm:items-center sm:p-8">
-          <div className="flex-1">
-            <h2 className="text-xl font-extrabold">{t('market.sellTitle')}</h2>
-            <p className="mt-1 text-sm text-gray-300">{t('market.sellBody')}</p>
-          </div>
-          <LinkButton to={session ? '/app/store' : '/signup?next=/app/store'} size="lg" className="bg-white !text-brand-900 hover:bg-gray-100">{t('market.sellCta')}</LinkButton>
-        </section>
-      </div>
+      <section className="flex flex-col items-start gap-4 rounded-3xl bg-brand-950 p-6 text-white sm:flex-row sm:items-center sm:p-8">
+        <div className="flex-1">
+          <h2 className="text-xl font-extrabold">{t('market.sellTitle')}</h2>
+          <p className="mt-1 text-sm text-gray-300">{t('market.sellBody')}</p>
+        </div>
+        <LinkButton to={session ? '/app/store' : '/signup?next=/app/store'} size="lg" className="bg-white !text-brand-900 hover:bg-gray-100">{t('market.sellCta')}</LinkButton>
+      </section>
     </div>
+  );
+}
+
+/** The city banner with the real number of shops and products there. Used on the home and the shopper dashboard. */
+export function CityBanner({ place, shops, products }: { place: string; shops: number; products: number }) {
+  const { t } = useI18n();
+  return (
+    <section aria-labelledby="banner" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-800 to-brand-950 p-5 text-white shadow-md sm:p-8">
+      <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10" />
+      <span aria-hidden="true" className="pointer-events-none absolute -bottom-12 right-10 h-32 w-32 rounded-full bg-white/10" />
+      <p className="text-xs font-bold uppercase tracking-widest text-brand-100">{t('market.bannerKicker')}</p>
+      <h2 id="banner" className="mt-2 max-w-md text-2xl font-extrabold leading-tight sm:text-3xl">{t('market.bannerTitle', { place })}</h2>
+      <p className="mt-2 text-sm text-brand-50">{t('market.bannerStats', { shops, products })}</p>
+      <Link to="/market/shops" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-brand-800 shadow-sm hover:bg-brand-50">
+        {t('market.shopNow')}<ArrowRight className="h-4 w-4" />
+      </Link>
+    </section>
+  );
+}
+
+/** Products the shopper looked at on this device, newest first. */
+function RecentlyViewed() {
+  const { t } = useI18n();
+  const ids = useMemo(() => recentlyViewed(), []);
+  const viewed = useQuery({
+    queryKey: ['market-viewed', ids], enabled: ids.length > 0,
+    queryFn: () => rpc<ProductCard[]>('market_products_by_ids', { p_ids: ids }),
+  });
+  if (!viewed.data?.length) return null;
+  const ordered = [...viewed.data].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)).slice(0, 8);
+  return (
+    <section aria-labelledby="viewed">
+      <h2 id="viewed" className="mb-3 text-lg font-bold">{t('market.recentlyViewed')}</h2>
+      <ProductGrid dense items={ordered} />
+    </section>
   );
 }
 
@@ -117,7 +141,8 @@ export function SearchPage() {
   const [showFilters, setShowFilters] = useState(false);
   const get = (k: string) => params.get(k) ?? '';
   const page = Math.max(1, Number(params.get('page') ?? 1));
-  const filters = { q: get('q'), type: get('type'), category: get('category'), city: get('city'), min_price: get('min'), max_price: get('max'),
+  const [city] = useCity();
+  const filters = { q: get('q'), type: get('type'), category: get('category'), city, min_price: get('min'), max_price: get('max'),
     in_stock: params.get('stock') === '1', sort: get('sort') || (get('q') ? 'relevance' : 'newest'), page, page_size: 24,
     min_rating: get('rating'), delivery: params.get('delivery') === '1', condition: get('condition') };
   const res = useQuery({
@@ -137,7 +162,7 @@ export function SearchPage() {
   const pages = Math.ceil(total / 24);
   const title = filters.q ? t('market.resultsFor', { q: filters.q }) : filters.type ? t(`businessCategories.${filters.type}`) : t('market.allProducts');
   const active = [filters.type && { k: 'type', label: t(`businessCategories.${filters.type}`) }, filters.category && { k: 'category', label: filters.category },
-    filters.city && { k: 'city', label: filters.city }, (filters.min_price || filters.max_price) && { k: 'price', label: `${filters.min_price || 0} – ${filters.max_price || '∞'} FCFA` },
+    (filters.min_price || filters.max_price) && { k: 'price', label: `${filters.min_price || 0} – ${filters.max_price || '∞'} FCFA` },
     filters.in_stock && { k: 'stock', label: t('market.inStockOnly') }, filters.min_rating && { k: 'rating', label: `★ ${filters.min_rating}+` },
     filters.delivery && { k: 'delivery', label: t('market.deliversOnly') }, filters.condition && { k: 'condition', label: t(`market.condition.${filters.condition}`) }].filter(Boolean) as { k: string; label: string }[];
 
@@ -149,8 +174,8 @@ export function SearchPage() {
           {BUSINESS_TYPES.map((ty) => <option key={ty} value={ty}>{t(`businessCategories.${ty}`)}</option>)}
         </Select>
       </Field>
-      <Field label={t('market.city')}>
-        <Input value={filters.city} placeholder={t('market.cityPlaceholder')} onChange={(e) => set({ city: e.target.value || null })} />
+      <Field label={t('market.city')} hint={t('market.cityFilterHint')}>
+        <CitySelector block />
       </Field>
       <form onSubmit={applyPrice}>
         <p className="mb-1.5 text-sm font-medium text-ink-soft dark:text-gray-300">{t('market.priceRange')}</p>

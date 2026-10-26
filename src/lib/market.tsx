@@ -9,7 +9,7 @@ export const STOREFRONT_BUCKET = 'storefront';
 
 export interface StoreRef { slug: string; name: string; city?: string | null; verified?: boolean; logo_path?: string | null }
 export interface ProductCard {
-  id: string; name: string; brand: string | null; image: string | null; unit: string; price: number; max_price: number;
+  id: string; name: string; brand: string | null; image: string | null; unit: string; price: number; max_price: number; stock?: 'in' | 'low' | 'out';
   compare_at_price: number | null; available: number; options: number; category: string | null; subcategory: string | null;
   rating_avg: number | null; rating_count: number; store: StoreRef; condition?: string | null; sold?: boolean;
 }
@@ -209,6 +209,27 @@ export function useDirectTrade() {
     queryKey: ['direct-trade-db'], staleTime: Infinity, retry: false,
     queryFn: async () => !(await supabase.from('products').select('condition').limit(1)).error,
   }).data === true;
+}
+
+// The buyer's chosen city ('' = all of Cameroon). Kept on the device; every marketplace page reads it
+// through this hook, and a change on one place updates all the others at once.
+const CITY_KEY = 'bizpilot.city';
+const CITY_EVENT = 'bizpilot:city';
+function readCity(): string {
+  try { return localStorage.getItem(CITY_KEY) ?? ''; } catch { return ''; }
+}
+export function useCity(): [string, (city: string) => void] {
+  const [city, setCityState] = useState<string>(readCity);
+  useEffect(() => {
+    const sync = () => setCityState(readCity());
+    window.addEventListener(CITY_EVENT, sync);
+    return () => window.removeEventListener(CITY_EVENT, sync);
+  }, []);
+  const setCity = useCallback((next: string) => {
+    try { localStorage.setItem(CITY_KEY, next); } catch { /* private mode: keep it for this page only */ }
+    window.dispatchEvent(new Event(CITY_EVENT));
+  }, []);
+  return [city, setCity];
 }
 
 // Recently viewed listings, kept on this device only.

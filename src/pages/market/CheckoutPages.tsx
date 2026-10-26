@@ -4,15 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { Banknote, Info, Lock, MessageCircle, ShoppingBag, Smartphone, Store, Trash2, Truck } from 'lucide-react';
 import { useI18n } from '../../i18n';
-import { rpc, unwrap } from '../../lib/api';
-import { supabase } from '../../lib/supabase';
+import { rpc } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { errorKey, errorMessage } from '../../lib/errors';
-import { formatMoney } from '../../lib/format';
+import { formatXaf } from '../../lib/format';
 import { newId } from '../../lib/ids';
 import { newAccessToken, rememberGuestOrder, storeUrl, useCart, useMarketConfig, waLink } from '../../lib/market';
 import { MarketImage, QtyStepper } from '../../components/market';
-import { Alert, Button, Card, Checkbox, EmptyState, Field, Input, LinkButton, PageLoader, Select, Textarea } from '../../components/ui';
+import { Alert, Button, Card, EmptyState, Field, Input, LinkButton, PageLoader, Select, Textarea } from '../../components/ui';
 import { useStore } from './StorePages';
 
 interface Quote {
@@ -31,7 +30,7 @@ function useQuote(items: { product_id: string; quantity: number }[], extra: Reco
 }
 
 export function problemText(e: Quote['errors'][number], t: (k: string, p?: any) => string, lang: 'en' | 'fr') {
-  const p = { name: e.name ?? '', available: e.available ?? 0, amount: e.min_order !== undefined ? formatMoney(e.min_order, lang) : '' };
+  const p = { name: e.name ?? '', available: e.available ?? 0, amount: e.min_order !== undefined ? formatXaf(e.min_order, lang) : '' };
   return t(`market.problems.${e.code}`, p);
 }
 
@@ -67,13 +66,13 @@ export function CartPage() {
                   <div className="min-w-0 flex-1">
                     <Link to={`/s/${cart.store_slug}/p/${i.listing_id}`} className="line-clamp-2 font-semibold hover:underline">{i.name}</Link>
                     {i.variant_label && <p className="text-xs text-ink-muted">{i.variant_label}</p>}
-                    <p className="mt-1 text-sm font-bold">{formatMoney(price, lang)}</p>
+                    <p className="mt-1 text-sm font-bold">{formatXaf(price, lang)}</p>
                     <div className="mt-2 flex items-center gap-3">
                       <QtyStepper value={i.quantity} onChange={(v) => setQty(i.product_id, v)} max={max} label={t('market.quantityFor', { name: i.name })} />
                       <button onClick={() => remove(i.product_id)} className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"><Trash2 className="h-3.5 w-3.5" />{t('market.remove')}</button>
                     </div>
                   </div>
-                  <p className="hidden text-right font-bold sm:block">{formatMoney(price * i.quantity, lang)}</p>
+                  <p className="hidden text-right font-bold sm:block">{formatXaf(price * i.quantity, lang)}</p>
                 </li>
               );
             })}
@@ -81,7 +80,7 @@ export function CartPage() {
         </Card>
         <div className="space-y-3">
           <Card>
-            <div className="flex justify-between text-sm"><span>{t('market.subtotal')}</span><b>{formatMoney(q.data?.subtotal ?? cart.items.reduce((s, i) => s + i.price * i.quantity, 0), lang)}</b></div>
+            <div className="flex justify-between text-sm"><span>{t('market.subtotal')}</span><b>{formatXaf(q.data?.subtotal ?? cart.items.reduce((s, i) => s + i.price * i.quantity, 0), lang)}</b></div>
             <p className="mt-1 text-xs text-ink-muted">{t('market.deliveryAtCheckout')}</p>
             {changed && <div className="mt-3"><Alert tone="amber">{t('market.pricesUpdated')}</Alert></div>}
             {problems.length > 0 && <div className="mt-3"><Alert tone="red">{problems.map((e, i) => <p key={i}>{problemText(e, t, lang)}</p>)}</Alert></div>}
@@ -104,14 +103,10 @@ export function CheckoutPage() {
   const st = useStore(cart.store_slug ?? undefined);
   const clientRef = useRef(newId());
   const tokenRef = useRef(newAccessToken());
-  const addresses = useQuery({
-    queryKey: ['addresses', session?.user.id], enabled: Boolean(session),
-    queryFn: async () => unwrap(await supabase.from('customer_addresses').select('*').order('is_default', { ascending: false }).order('created_at')) as any[],
-  });
   const [f, setF] = useState({
     name: context?.profile?.full_name ?? '', phone: context?.profile?.phone ?? '', email: context?.email ?? '',
     method: 'delivery' as 'delivery' | 'pickup', zone_id: '', city: '', area: '', line: '', landmark: '', notes: '',
-    payment: 'cod' as 'cod' | 'momo_direct', promo: '', save_address: true,
+    payment: 'cod' as 'cod' | 'momo_direct', promo: '',
   });
   const [promoApplied, setPromoApplied] = useState('');
   const [busy, setBusy] = useState(false);
@@ -129,10 +124,6 @@ export function CheckoutPage() {
       payment: s.cod_enabled ? x.payment : 'momo_direct',
     }));
   }, [s]);
-  useEffect(() => {
-    const a = addresses.data?.[0];
-    if (a) setF((x) => ({ ...x, city: x.city || a.city, area: x.area || (a.area ?? ''), line: x.line || (a.line ?? ''), landmark: x.landmark || (a.landmark ?? ''), phone: x.phone || a.phone, name: x.name || a.recipient_name }));
-  }, [addresses.data]);
   const items = useMemo(() => cart.items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })), [cart.items]);
   const q = useQuote(items, { delivery_method: f.method, zone_id: f.method === 'delivery' ? f.zone_id || null : null, promo_code: promoApplied || null });
   if (!cart.items.length) return <Navigate to="/cart" replace />;
@@ -159,7 +150,6 @@ export function CheckoutPage() {
         payment_method: f.payment, notes: f.notes,
         customer: { name: f.name, phone: f.phone, email: f.email },
         address: f.method === 'delivery' ? { city: f.city, area: f.area, line: f.line, landmark: f.landmark } : null,
-        save_address: Boolean(session) && f.save_address,
       } });
       rememberGuestOrder({ id: res.order_id, token: tokenRef.current, number: res.number, store_name: s.name, created_at: new Date().toISOString() });
       clear();
@@ -204,22 +194,13 @@ export function CheckoutPage() {
                 <Field label={t('market.deliveryZone')} required className="sm:col-span-2">
                   <Select required value={f.zone_id} onChange={set('zone_id')}>
                     <option value="">{t('market.selectZone')}</option>
-                    {s.zones.map((z: any) => <option key={z.id} value={z.id}>{z.name} — {Number(z.fee) ? formatMoney(z.fee, lang) : t('market.free')}{z.eta ? ` · ${z.eta}` : ''}</option>)}
+                    {s.zones.map((z: any) => <option key={z.id} value={z.id}>{z.name} — {Number(z.fee) ? formatXaf(z.fee, lang) : t('market.free')}{z.eta ? ` · ${z.eta}` : ''}</option>)}
                   </Select>
                 </Field>
-                {(addresses.data?.length ?? 0) > 1 && (
-                  <Field label={t('market.savedAddress')} className="sm:col-span-2">
-                    <Select onChange={(e) => { const a = addresses.data!.find((x) => x.id === e.target.value); if (a) setF({ ...f, city: a.city, area: a.area ?? '', line: a.line ?? '', landmark: a.landmark ?? '' }); }}>
-                      <option value="">{t('market.chooseSaved')}</option>
-                      {addresses.data!.map((a) => <option key={a.id} value={a.id}>{[a.label, a.line, a.area, a.city].filter(Boolean).join(', ')}</option>)}
-                    </Select>
-                  </Field>
-                )}
                 <Field label={t('market.city')} required><Input required value={f.city} onChange={set('city')} autoComplete="address-level2" /></Field>
                 <Field label={t('market.area')} optional><Input value={f.area} onChange={set('area')} placeholder={t('market.areaPlaceholder')} /></Field>
                 <Field label={t('market.streetLine')} required className="sm:col-span-2"><Input required value={f.line} onChange={set('line')} autoComplete="street-address" /></Field>
                 <Field label={t('market.landmark')} optional className="sm:col-span-2"><Input value={f.landmark} onChange={set('landmark')} placeholder={t('market.landmarkPlaceholder')} /></Field>
-                {session && <div className="sm:col-span-2"><Checkbox label={t('market.saveAddress')} checked={f.save_address} onChange={(v) => setF({ ...f, save_address: v })} /></div>}
               </div>
             )}
             {s.delivery_note && <p className="mt-3 flex gap-2 text-xs text-ink-muted"><Info className="h-4 w-4 shrink-0" />{s.delivery_note}</p>}
@@ -254,7 +235,7 @@ export function CheckoutPage() {
               {(q.data?.lines ?? []).map((l) => (
                 <li key={l.product_id} className="flex justify-between gap-3">
                   <span className="min-w-0"><span className="line-clamp-1">{l.quantity} × {l.name}</span>{l.variant_label && <span className="block text-xs text-ink-muted">{l.variant_label}</span>}</span>
-                  <span className="shrink-0 font-semibold">{formatMoney(l.line_total, lang)}</span>
+                  <span className="shrink-0 font-semibold">{formatXaf(l.line_total, lang)}</span>
                 </li>
               ))}
             </ul>
@@ -265,10 +246,10 @@ export function CheckoutPage() {
             {promoApplied && promoError && <p className="mt-1 text-xs text-red-600">{problemText(promoError, t, lang)}</p>}
             {promoApplied && !promoError && Number(q.data?.discount) > 0 && <p className="mt-1 text-xs text-brand-700">{t('market.promoApplied', { code: promoApplied })}</p>}
             <dl className="mt-4 space-y-1.5 border-t border-gray-100 pt-3 text-sm dark:border-gray-800">
-              <Row label={t('market.subtotal')} value={formatMoney(q.data?.subtotal, lang)} />
-              {Number(q.data?.discount) > 0 && <Row label={t('market.discount')} value={`− ${formatMoney(q.data?.discount, lang)}`} />}
-              <Row label={f.method === 'pickup' ? t('market.pickupInStore') : t('market.deliveryFee')} value={f.method === 'delivery' && !f.zone_id ? t('market.selectZoneShort') : Number(q.data?.delivery_fee) ? formatMoney(q.data?.delivery_fee, lang) : t('market.free')} />
-              <div className="flex justify-between border-t border-gray-100 pt-2 text-base dark:border-gray-800"><dt className="font-bold">{t('market.total')}</dt><dd className="font-extrabold">{formatMoney(q.data?.total, lang)}</dd></div>
+              <Row label={t('market.subtotal')} value={formatXaf(q.data?.subtotal, lang)} />
+              {Number(q.data?.discount) > 0 && <Row label={t('market.discount')} value={`− ${formatXaf(q.data?.discount, lang)}`} />}
+              <Row label={f.method === 'pickup' ? t('market.pickupInStore') : t('market.deliveryFee')} value={f.method === 'delivery' && !f.zone_id ? t('market.selectZoneShort') : Number(q.data?.delivery_fee) ? formatXaf(q.data?.delivery_fee, lang) : t('market.free')} />
+              <div className="flex justify-between border-t border-gray-100 pt-2 text-base dark:border-gray-800"><dt className="font-bold">{t('market.total')}</dt><dd className="font-extrabold">{formatXaf(q.data?.total, lang)}</dd></div>
               <Row label={t('market.paymentMethod')} value={f.payment === 'cod' ? t('market.cod') : t('market.momoDirect')} />
             </dl>
             {blocking.length > 0 && <div className="mt-3"><Alert tone="red">{blocking.map((e, i) => <p key={i}>{problemText(e, t, lang)}</p>)}</Alert></div>}

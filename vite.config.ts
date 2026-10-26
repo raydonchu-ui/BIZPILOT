@@ -46,6 +46,8 @@ export default defineConfig({
         // previous version. PwaPrompt decides when the page itself reloads.
         skipWaiting: true,
         clientsClaim: true,
+        // Shows message notifications when push arrives while the app is closed (public/push-sw.js).
+        importScripts: ['push-sw.js'],
         cleanupOutdatedCaches: true,
         // Only the application shell and static assets are cached. Business data
         // (Supabase API responses) is never cached by the service worker.
