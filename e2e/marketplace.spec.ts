@@ -362,7 +362,8 @@ test('an administrator verifies the store and can hide a listing', async ({ brow
   await page.getByRole('dialog').getByRole('button', { name: 'Hide' }).click();
   await expect(page.getByRole('row', { name: new RegExp(product) }).getByText('Hidden by BizPilot')).toBeVisible();
   await page.goto(`/s/${slug}`);
-  await expect(page.getByText('Verified').first()).toBeVisible();
+  // The verified mark is an icon with an accessible name (as in the storefront design), not visible text.
+  await expect(page.getByLabel('Verified').first()).toBeVisible();
   await expect(page.getByText('No products in this category yet.')).toBeVisible();
   // Mobile Money: payments confirmed with Fapshi appear on the admin dashboard by themselves.
   await page.goto('/admin');
