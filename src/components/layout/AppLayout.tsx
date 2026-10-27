@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
-  BadgePercent, BarChart3, Bell, Bot, Boxes, ChevronDown, ClipboardCheck, CreditCard, ExternalLink, FolderTree, HelpCircle, Home, LayoutDashboard, Lock, Sparkles,
+  BadgePercent, BarChart3, Bell, Bot, Boxes, ChevronDown, ClipboardCheck, CreditCard, ExternalLink, FolderTree, HelpCircle, Home, LayoutDashboard, Lock, Sparkles, Zap,
   LogOut, Menu, MessageSquare, Moon, MoreHorizontal, Package, PackageCheck, Plus, Receipt, Search, Settings, ShieldCheck, ShoppingBag,
   ShoppingCart, Sun, Truck, Upload, UserCog, Users, Wallet, WifiOff, X, Megaphone, Store,
 } from 'lucide-react';
@@ -61,6 +61,7 @@ export const NAV: NavItem[] = [
   { to: '/app/reports', key: 'reports', icon: BarChart3, perm: 'reports.view', group: 'insights' },
   { to: '/app/advisor', key: 'advisor', icon: Bot, perm: 'reports.view', badge: 'new', group: 'insights' },
   { to: '/app/manager', key: 'manager', icon: Sparkles, perm: 'reports.view', feature: 'ai_business_manager', badge: 'premium', group: 'insights' },
+  { to: '/app/automations', key: 'automations', icon: Zap, perm: 'reports.view', feature: 'premium_automations', badge: 'premium', group: 'insights' },
   { to: '/app/staff', key: 'staff', icon: UserCog, perm: 'staff.manage', group: 'business' },
   { to: '/app/settings', key: 'settings', icon: Settings, perm: 'settings.manage', group: 'business' },
 ];

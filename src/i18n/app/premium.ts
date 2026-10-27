@@ -1,5 +1,23 @@
 // Verified Premium, verification, and the premium tools. Keys are namespaced under `premium` so they never collide.
 export const en = {
+  automations: {
+    title: 'Premium automations', subtitle: 'Less repetitive work: alerts, summaries and drafts. Each one can be switched off. Automations never change your stock, prices, sales or money.',
+    noAccess: 'You do not have access to the business reports.', listTitle: 'Your automations', listSub: 'Turn on what helps. A run tells you what it did.',
+    on: 'On', frequency: 'How often', daily: 'Every day', weekly: 'Every week', runNow: 'Run now', ran: 'Done. See the history below.',
+    lastRun: 'Last run {date}', neverRun: 'Never run', historyTitle: 'Run history', historySub: 'Failed runs can be retried up to three times.',
+    noHistory: 'No runs yet.', retry: 'Retry', retried: 'Retried.', reportsNote: 'Downloadable reports are in Reports.',
+    status: { succeeded: 'Done', failed: 'Failed', running: 'Running', skipped: 'Skipped', retried: 'Retried' },
+    trigger: { manual: 'by you', schedule: 'scheduled', retry: 'retry' },
+    kinds: {
+      low_stock_alert: { title: 'Low and out-of-stock alerts', body: 'A notice when products reach their minimum or run out. Once a day.' },
+      weekly_summary: { title: 'Sales summary', body: 'Revenue, sales, open orders and stock problems for the last 7 days.' },
+      restock_list: { title: 'Restock draft', body: 'Saves a draft list of products below their minimum. You decide what to order.' },
+      listing_gaps: { title: 'Listing suggestions', body: 'Tells you which online products need a photo or a description.' },
+      pending_order_reminder: { title: 'Pending order reminder', body: 'A reminder for online orders waiting more than 24 hours.' },
+      customer_followup: { title: 'Customer follow-up reminder', body: 'Lists how many recent customers have not come back. Nothing is sent to them.' },
+      marketing_draft: { title: 'Marketing draft', body: 'Records your best seller of the last 30 days, to write a post about it in the AI Business Manager.' },
+    },
+  },
   manager: {
     title: 'AI Business Manager', subtitle: 'Ask about your own recorded sales, stock, orders and profit. It answers from your records and drafts text for you. It never changes your business without your confirmation.',
     noAccess: 'You do not have access to the business reports.', newChat: 'New chat', history: 'Conversations', noHistory: 'No conversations yet.',
@@ -51,6 +69,24 @@ export const en = {
 };
 
 export const fr: typeof en = {
+  automations: {
+    title: 'Automatisations premium', subtitle: 'Moins de travail répétitif : alertes, récapitulatifs et brouillons. Chacune peut être désactivée. Les automatisations ne modifient jamais votre stock, vos prix, vos ventes ni votre argent.',
+    noAccess: 'Vous n’avez pas accès aux rapports de l’entreprise.', listTitle: 'Vos automatisations', listSub: 'Activez ce qui vous aide. Chaque exécution indique ce qu’elle a fait.',
+    on: 'Activée', frequency: 'Fréquence', daily: 'Chaque jour', weekly: 'Chaque semaine', runNow: 'Lancer maintenant', ran: 'Terminé. Voir l’historique ci-dessous.',
+    lastRun: 'Dernière exécution {date}', neverRun: 'Jamais exécutée', historyTitle: 'Historique des exécutions', historySub: 'Une exécution en échec peut être relancée jusqu’à trois fois.',
+    noHistory: 'Aucune exécution pour l’instant.', retry: 'Relancer', retried: 'Relancé.', reportsNote: 'Les rapports téléchargeables se trouvent dans Rapports.',
+    status: { succeeded: 'Terminée', failed: 'Échec', running: 'En cours', skipped: 'Ignorée', retried: 'Relancée' },
+    trigger: { manual: 'par vous', schedule: 'programmée', retry: 'relance' },
+    kinds: {
+      low_stock_alert: { title: 'Alertes de stock bas et de rupture', body: 'Un avis quand des produits atteignent leur minimum ou sont épuisés. Une fois par jour.' },
+      weekly_summary: { title: 'Récapitulatif des ventes', body: 'Chiffre d’affaires, ventes, commandes ouvertes et problèmes de stock des 7 derniers jours.' },
+      restock_list: { title: 'Brouillon de réapprovisionnement', body: 'Enregistre une liste brouillon des produits sous leur minimum. Vous décidez de ce que vous commandez.' },
+      listing_gaps: { title: 'Suggestions d’annonces', body: 'Indique les produits en ligne qui ont besoin d’une photo ou d’une description.' },
+      pending_order_reminder: { title: 'Rappel des commandes en attente', body: 'Un rappel pour les commandes en ligne qui attendent depuis plus de 24 heures.' },
+      customer_followup: { title: 'Rappel de relance client', body: 'Indique combien de clients récents ne sont pas revenus. Rien ne leur est envoyé.' },
+      marketing_draft: { title: 'Brouillon marketing', body: 'Note votre meilleure vente des 30 derniers jours, pour rédiger une publication dans le Gestionnaire IA.' },
+    },
+  },
   manager: {
     title: 'Gestionnaire IA', subtitle: 'Posez vos questions sur vos ventes, stocks, commandes et bénéfices enregistrés. Il répond à partir de vos données et rédige des brouillons. Il ne modifie rien sans votre confirmation.',
     noAccess: 'Vous n’avez pas accès aux rapports de l’entreprise.', newChat: 'Nouvelle discussion', history: 'Discussions', noHistory: 'Aucune discussion pour l’instant.',
