@@ -15,9 +15,10 @@ import { useAuth } from '../../../lib/auth';
 import { PictureEditor } from '../../../components/PictureEditor';
 import { ShareBar, Stars } from '../../../components/market';
 import { DeliveryAreaPicker } from '../../../components/DeliveryAreaPicker';
+import { VerificationPanel } from './VerificationPanel';
 import { Alert, Badge, Button, Card, CardHeader, Checkbox, EmptyState, ErrorState, Field, Input, PageHeader, PageLoader, Tabs, Textarea, UpgradeNotice } from '../../../components/ui';
 
-type Tab = 'profile' | 'contact' | 'delivery' | 'payments' | 'appearance' | 'reviews';
+type Tab = 'profile' | 'contact' | 'delivery' | 'payments' | 'appearance' | 'reviews' | 'verification';
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 export function useStoreRow(id: string, enabled = true) {
@@ -108,6 +109,7 @@ export default function MyStorePage() {
         { value: 'profile', label: t('seller.store.tabProfile') }, { value: 'contact', label: t('seller.store.tabContact') },
         { value: 'delivery', label: t('seller.store.tabDelivery') }, { value: 'payments', label: t('seller.store.tabPayments') },
         { value: 'appearance', label: t('seller.store.tabAppearance') }, { value: 'reviews', label: t('seller.store.tabReviews') },
+        { value: 'verification', label: t('premium.verify.tabLabel') },
       ]} />
       <div className="mt-4">
         {tab === 'profile' && <ProfileTab s={s} />}
@@ -116,6 +118,7 @@ export default function MyStorePage() {
         {tab === 'payments' && <PaymentsTab s={s} />}
         {tab === 'appearance' && <AppearanceTab s={s} />}
         {tab === 'reviews' && <ReviewsTab />}
+        {tab === 'verification' && <VerificationPanel />}
       </div>
     </div>
   );

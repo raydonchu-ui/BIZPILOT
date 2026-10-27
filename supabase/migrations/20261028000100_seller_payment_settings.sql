@@ -38,7 +38,7 @@ declare
   ora text := nullif(right(regexp_replace(coalesce(p ->> 'momo_orange_number', ''), '\D', '', 'g'), 9), '');
   mtn_on boolean := coalesce((p ->> 'momo_mtn_enabled')::boolean, mtn is not null);
   ora_on boolean := coalesce((p ->> 'momo_orange_enabled')::boolean, ora is not null);
-  wanted boolean := coalesce((p ->> 'momo_direct_enabled')::boolean, true);
+  wanted boolean := coalesce((p ->> 'momo_direct_enabled')::boolean, false);
   mtn_ins text := nullif(left(btrim(coalesce(p ->> 'momo_mtn_instructions', '')), 300), '');
   ora_ins text := nullif(left(btrim(coalesce(p ->> 'momo_orange_instructions', '')), 300), '');
   enabled boolean;

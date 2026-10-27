@@ -44,6 +44,7 @@ export default function BillingPage() {
   const returned = params.get('payment');
   const planName = lang === 'fr' ? biz.plan.name_fr : biz.plan.name_en;
   const planLabel = (code: string) => { const p = plans.data?.find((x) => x.code === code); return p ? (lang === 'fr' ? p.name_fr : p.name_en) : code; };
+  const premium = plans.data?.find((p) => p.code === 'verified_premium');
   const configured = ['mtn_momo', 'orange_money'].filter((m) => instr.data?.[m]?.enabled && instr.data?.[m]?.number);
   return (
     <div>
@@ -87,6 +88,19 @@ export default function BillingPage() {
           <p className="mt-3 text-xs text-ink-muted">{t('billing.verificationNote')}</p>
         </Card>
       </div>
+      {premium && s.plan_code !== 'verified_premium' && (
+        <Card className="mt-4 border-sky-200 dark:border-sky-900">
+          <CardHeader title={t('premium.upgrade.title')} />
+          <p className="text-sm">{t('premium.upgrade.body', { amount: formatMoney(premium.price_monthly, lang) })}</p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink-muted">
+            <li>{t('premium.upgrade.replaces', { plan: planName })}</li>
+            <li>{t('premium.upgrade.noCredit')}</li>
+            <li>{t('premium.upgrade.pending')}</li>
+            <li>{t('premium.upgrade.renewsAfter')}</li>
+          </ul>
+          <div className="mt-4"><Button size="sm" onClick={() => setChoice({ plan: premium, period: 'monthly' })}>{t('premium.upgrade.cta')}</Button></div>
+        </Card>
+      )}
       <Card className="mt-4">
         <CardHeader title={t('billing.choosePlan')} />
         <PlanCards currentPlan={s.state === 'active' || s.state === 'renewal_due' ? s.plan_code : undefined} chooseLabel={t('billing.payForPlan')}
@@ -99,8 +113,11 @@ export default function BillingPage() {
           { key: 'p', header: t('billing.plan'), render: (r) => `${planLabel(r.plan_code)} · ${t(`site.pricing.${r.billing_period}`)}` },
           { key: 'm', header: t('common.method'), render: (r) => <div><p>{t(`methods.${r.method}`)}</p><p className="font-mono text-xs text-ink-muted">{r.transaction_ref}</p></div> },
           { key: 'a', header: t('common.amount'), align: 'right', render: (r) => formatMoney(r.amount, lang) },
-          { key: 's', header: t('common.status'), render: (r) => <div><Badge tone={r.status === 'verified' ? 'green' : r.status === 'rejected' ? 'red' : 'amber'}>{t(`billing.paymentStatus.${r.status}`)}</Badge>{r.review_note && <p className="mt-1 text-xs text-ink-muted">{r.review_note}</p>}</div> },
+          { key: 's', header: t('common.status'), render: (r) => <div><Badge tone={r.status === 'verified' ? 'green' : r.status === 'rejected' || r.status === 'refunded' ? 'red' : r.status === 'cancelled' ? 'gray' : 'amber'}>{t(`billing.paymentStatus.${r.status}`)}</Badge>{r.review_note && <p className="mt-1 text-xs text-ink-muted">{r.review_note}</p>}</div> },
           { key: 'e', header: t('billing.periodEnds'), hideOnMobile: true, render: (r) => r.period_end ? formatDate(r.period_end, lang) : '' },
+          { key: 'c', header: '', render: (r) => r.status === 'pending' ? (
+            <Button variant="outline" size="sm" loading={busy} onClick={async () => { const ok = await run(() => rpc('billing_payment_cancel', { p_payment: r.id }), t('premium.billing.cancelDone')); if (ok !== undefined) history.refetch(); }}>{t('premium.billing.cancelPending')}</Button>
+          ) : null },
         ]} />
       </Card>
       {choice && <SubmitPaymentModal plan={choice.plan} period={choice.period} methods={configured} onClose={() => setChoice(null)} />}

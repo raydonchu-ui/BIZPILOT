@@ -1,4 +1,4 @@
--- BizPilot setup PART 14 of 21. Run parts in order.
+-- BizPilot setup PART 14 of 23. Run parts in order.
 begin;
 create or replace function app.refresh_store_rating(bid uuid) returns void
 language sql security definer set search_path = public as $$

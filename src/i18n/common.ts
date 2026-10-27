@@ -53,6 +53,7 @@ export const en = {
     'orders.manage': 'Handle online orders', 'store.manage': 'Manage the online store and promotions',
   },
   features: {
+    verified_badge: 'Verified blue tick', premium_automations: 'Premium automations and alerts', ai_business_manager: 'AI Business Manager',
     stocktaking: 'Stocktaking & adjustments', purchases: 'Wholesale purchases & receiving', suppliers: 'Supplier management',
     expenses: 'Expense tracking', customers_credit: 'Customer credit & balances', staff: 'Staff accounts & permissions',
     import: 'CSV import', cash_reconciliation: 'Cash reconciliation', basic_analytics: 'Sales & profit analytics',
@@ -154,7 +155,7 @@ export const en = {
     cannot_modify_owner: 'The owner cannot be modified here.', cannot_modify_self: 'You cannot change your own access.',
     invalid_member: 'Invalid member.', invalid_plan: 'Invalid plan.', invalid_billing_period: 'Invalid billing period.',
     too_many_pending_payments: 'You already have payments waiting for verification.',
-    duplicate_transaction_reference: 'This transaction reference has already been submitted.', already_reviewed: 'Already reviewed.', receipt_already_confirmed: 'You already confirmed receipt of this order.', review_requires_receipt: 'Confirm receipt first; then you can rate the products.', review_blocked_by_problem: 'Reviews wait until the problem on this order is settled.', review_edit_closed: 'This review can no longer be edited.',
+    duplicate_transaction_reference: 'This transaction reference has already been submitted.', already_reviewed: 'Already reviewed.', verification_not_eligible: 'You do not meet the requirements to apply yet.', verification_already_open: 'An application is already waiting for review.', invalid_document: 'Upload the document first, in this store’s folder.', not_verified: 'This store is not verified.', payment_secret_not_allowed: 'Do not ask buyers for a PIN, password or code. Remove that text.', receipt_already_confirmed: 'You already confirmed receipt of this order.', review_requires_receipt: 'Confirm receipt first; then you can rate the products.', review_blocked_by_problem: 'Reviews wait until the problem on this order is settled.', review_edit_closed: 'This review can no longer be edited.',
     invalid_config_key: 'Invalid setting.', user_not_found: 'No verified user with this email.',
     no_support_access: 'The business owner has not granted support access.', invalid_question: 'Please type a question (max 1000 characters).',
     invalid_file: 'The file could not be read.', too_many_rows: 'Too many rows (maximum 2,000 per import).',
@@ -258,6 +259,7 @@ export const fr: typeof en = {
     'billing.manage': 'Abonnement et facturation', 'orders.manage': 'Traiter les commandes en ligne', 'store.manage': 'Gérer la boutique en ligne et les promotions', 'audit.view': 'Voir le journal d’audit',
   },
   features: {
+    verified_badge: 'Badge bleu vérifié', premium_automations: 'Automatisations et alertes premium', ai_business_manager: 'Gestionnaire IA',
     stocktaking: 'Inventaires et ajustements', purchases: 'Achats en gros et réception', suppliers: 'Gestion des fournisseurs',
     expenses: 'Suivi des dépenses', customers_credit: 'Crédit et soldes clients', staff: 'Comptes du personnel et droits',
     import: 'Import CSV', cash_reconciliation: 'Rapprochement de caisse', basic_analytics: 'Analyses des ventes et bénéfices',
@@ -359,7 +361,7 @@ export const fr: typeof en = {
     cannot_modify_owner: 'Le propriétaire ne peut pas être modifié ici.', cannot_modify_self: 'Vous ne pouvez pas modifier votre propre accès.',
     invalid_member: 'Membre invalide.', invalid_plan: 'Plan invalide.', invalid_billing_period: 'Période de facturation invalide.',
     too_many_pending_payments: 'Vous avez déjà des paiements en attente de vérification.',
-    duplicate_transaction_reference: 'Cette référence de transaction a déjà été soumise.', already_reviewed: 'Déjà traité.', receipt_already_confirmed: 'Vous avez déjà confirmé la réception de cette commande.', review_requires_receipt: 'Confirmez d’abord la réception ; vous pourrez ensuite noter les produits.', review_blocked_by_problem: 'Les avis attendent que le problème de cette commande soit réglé.', review_edit_closed: 'Cet avis ne peut plus être modifié.',
+    duplicate_transaction_reference: 'Cette référence de transaction a déjà été soumise.', already_reviewed: 'Déjà traité.', verification_not_eligible: 'Vous ne remplissez pas encore les conditions pour postuler.', verification_already_open: 'Une demande est déjà en attente de vérification.', invalid_document: 'Envoyez d’abord le document, dans le dossier de cette boutique.', not_verified: 'Cette boutique n’est pas vérifiée.', payment_secret_not_allowed: 'Ne demandez pas de code PIN, mot de passe ou code aux acheteurs. Retirez ce texte.', receipt_already_confirmed: 'Vous avez déjà confirmé la réception de cette commande.', review_requires_receipt: 'Confirmez d’abord la réception ; vous pourrez ensuite noter les produits.', review_blocked_by_problem: 'Les avis attendent que le problème de cette commande soit réglé.', review_edit_closed: 'Cet avis ne peut plus être modifié.',
     invalid_config_key: 'Paramètre invalide.', user_not_found: 'Aucun utilisateur vérifié avec cet e-mail.',
     no_support_access: 'Le propriétaire n’a pas autorisé l’accès du support.', invalid_question: 'Saisissez une question (1000 caractères max).',
     invalid_file: 'Le fichier n’a pas pu être lu.', too_many_rows: 'Trop de lignes (2 000 maximum par import).',

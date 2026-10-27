@@ -1,4 +1,4 @@
--- BizPilot setup PART 2 of 21. Run parts in order.
+-- BizPilot setup PART 2 of 23. Run parts in order.
 begin;
 create table public.categories (
   id uuid primary key default gen_random_uuid(),
