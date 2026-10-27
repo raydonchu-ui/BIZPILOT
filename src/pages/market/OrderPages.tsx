@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { CheckCircle2, Copy, Loader2, MapPin, MessageCircle, Phone, Send, ShieldCheck, Smartphone, Star, Store, XCircle } from 'lucide-react';
+import { CheckCircle2, Copy, Info, Loader2, MapPin, MessageCircle, Phone, Send, ShieldCheck, Smartphone, Star, Store, XCircle } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { rpc } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -311,9 +311,9 @@ function DirectMomoCard({ order: o, token, onDone }: { order: any; token: string
     return <div className="mt-4"><Alert tone="green" title={t('market.sellerConfirmedTitle')}>{t('market.sellerConfirmedMomo', { method: t(`methods.${o.paid_with ?? 'mtn_momo'}`) })}</Alert></div>;
   }
   const accounts = [
-    m.mtn_number && { key: 'mtn', label: 'MTN Mobile Money', number: m.mtn_number, name: m.mtn_name, tone: 'bg-yellow-400 text-gray-900' },
-    m.orange_number && { key: 'orange', label: 'Orange Money', number: m.orange_number, name: m.orange_name, tone: 'bg-orange-500 text-white' },
-  ].filter(Boolean) as { key: string; label: string; number: string; name?: string; tone: string }[];
+    m.mtn && { key: 'mtn', label: 'MTN Mobile Money', number: m.mtn.number, name: m.mtn.name, instructions: m.mtn.instructions, tone: 'bg-yellow-400 text-gray-900' },
+    m.orange && { key: 'orange', label: 'Orange Money', number: m.orange.number, name: m.orange.name, instructions: m.orange.instructions, tone: 'bg-orange-500 text-white' },
+  ].filter(Boolean) as { key: string; label: string; number: string; name?: string | null; instructions?: string | null; tone: string }[];
   return (
     <Card className="mt-4 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40">
       <div className="flex items-start gap-3">
@@ -330,11 +330,14 @@ function DirectMomoCard({ order: o, token, onDone }: { order: any; token: string
             <p className="mt-2 flex items-center gap-2 text-lg font-extrabold tracking-wide">{a.number}
               <button type="button" onClick={() => copy(a.number)} aria-label={t('market.copyNumber')} className="text-ink-muted hover:text-ink"><Copy className="h-4 w-4" /></button></p>
             {a.name && <p className="text-sm text-ink-muted">{t('market.accountName', { name: a.name })}</p>}
+            {a.instructions && <p className="mt-2 whitespace-pre-line text-sm">{a.instructions}</p>}
             <p className="mt-1 text-xs text-ink-muted">{a.key === 'mtn' ? t('market.ussdMtn') : t('market.ussdOrange')}</p>
           </div>
         ))}
       </div>
       {m.note && <p className="mt-2 text-sm">{m.note}</p>}
+      <p className="mt-2 flex gap-2 text-xs text-ink-muted"><Info className="h-4 w-4 shrink-0" />{t('market.sellerEnteredNote')}</p>
+      {m.proof_required && <p className="mt-1 text-sm font-semibold">{t('market.proofRequired')}</p>}
       <p className="mt-3 flex gap-2 text-xs text-ink-muted"><ShieldCheck className="h-4 w-4 shrink-0" />{t('market.directPayDisclaimer')}</p>
       {o.buyer_payment_reported_at ? (
         <div className="mt-3"><Alert tone="blue" title={t('market.reportedTitle')}>{t('market.reportedBody', { ref: o.buyer_payment_ref })}</Alert></div>

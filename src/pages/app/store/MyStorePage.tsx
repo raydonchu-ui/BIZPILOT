@@ -329,6 +329,29 @@ function DeliveryTab({ s }: { s: any }) {
   );
 }
 
+/** One Mobile Money account the seller receives on. What is typed here is the seller's own statement, not a provider check. */
+function MomoMethod({ label, tone, placeholder, enabled, onEnabled, number, onNumber, name, onName, instructions, onInstructions }: {
+  label: string; tone: string; placeholder: string; enabled: boolean; onEnabled: (v: boolean) => void;
+  number: string; onNumber: (e: { target: { value: string } }) => void; name: string; onName: (e: { target: { value: string } }) => void;
+  instructions: string; onInstructions: (e: { target: { value: string } }) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className={clsx('space-y-3 rounded-xl border p-3', enabled ? tone : 'border-gray-200 dark:border-gray-800')}>
+      <Checkbox label={label} checked={enabled} onChange={onEnabled} />
+      {enabled && (
+        <>
+          <Field label={t('seller.store.momoNumber')} required><Input type="tel" inputMode="tel" autoComplete="off" placeholder={placeholder} value={number} onChange={onNumber} /></Field>
+          <Field label={t('seller.store.momoName')} optional hint={t('seller.store.momoNameHint')}><Input maxLength={80} value={name} onChange={onName} /></Field>
+          <Field label={t('seller.store.momoInstructions')} optional hint={t('seller.store.momoInstructionsHint')}>
+            <Textarea rows={2} maxLength={300} value={instructions} onChange={onInstructions} />
+          </Field>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** How buyers pay: cash on delivery and/or Mobile Money sent straight to the seller's own number.
  *  BizPilot never collects marketplace payments. Also the store's policies and service area. */
 function PaymentsTab({ s }: { s: any }) {
@@ -340,6 +363,9 @@ function PaymentsTab({ s }: { s: any }) {
     cod_enabled: Boolean(s.cod_enabled), momo_direct_enabled: Boolean(s.momo_direct_enabled),
     momo_mtn_number: s.momo_mtn_number ?? '', momo_mtn_name: s.momo_mtn_name ?? '',
     momo_orange_number: s.momo_orange_number ?? '', momo_orange_name: s.momo_orange_name ?? '',
+    momo_mtn_enabled: Boolean(s.momo_mtn_enabled), momo_orange_enabled: Boolean(s.momo_orange_enabled),
+    momo_mtn_instructions: s.momo_mtn_instructions ?? '', momo_orange_instructions: s.momo_orange_instructions ?? '',
+    momo_proof_required: Boolean(s.momo_proof_required),
     payment_note: s.payment_note ?? '', return_policy: s.return_policy ?? '', neighborhood: s.neighborhood ?? '', service_area: s.service_area ?? '',
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
@@ -348,7 +374,8 @@ function PaymentsTab({ s }: { s: any }) {
     await run(() => rpc('store_save_payments', { p_business: id, p: f }), t('common.saved'));
     qc.invalidateQueries({ queryKey: ['store-row', id] });
   };
-  const noNumber = f.momo_direct_enabled && !f.momo_mtn_number.trim() && !f.momo_orange_number.trim();
+  const noNumber = f.momo_direct_enabled && ((f.momo_mtn_enabled && !f.momo_mtn_number.trim()) || (f.momo_orange_enabled && !f.momo_orange_number.trim())
+    || (!f.momo_mtn_enabled && !f.momo_orange_enabled));
   return (
     <Card>
       <form onSubmit={save} className="space-y-6">
@@ -357,19 +384,21 @@ function PaymentsTab({ s }: { s: any }) {
         <div>
           <Checkbox label={t('market.momoDirect')} hint={t('seller.store.momoHint')} checked={f.momo_direct_enabled} onChange={(v) => setF({ ...f, momo_direct_enabled: v })} />
           {f.momo_direct_enabled && (
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 rounded-xl border border-yellow-300 p-3">
-                <p className="text-sm font-bold">MTN Mobile Money</p>
-                <Field label={t('seller.store.momoNumber')} optional><Input type="tel" inputMode="tel" placeholder="67X XX XX XX" value={f.momo_mtn_number} onChange={set('momo_mtn_number')} /></Field>
-                <Field label={t('seller.store.momoName')} optional hint={t('seller.store.momoNameHint')}><Input maxLength={80} value={f.momo_mtn_name} onChange={set('momo_mtn_name')} /></Field>
+            <div className="mt-3 space-y-4">
+              <Alert tone="blue">{t('seller.store.momoVerifyNote')}</Alert>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <MomoMethod label="MTN Mobile Money" tone="border-yellow-300 dark:border-yellow-700" placeholder="67X XX XX XX"
+                  enabled={f.momo_mtn_enabled} onEnabled={(v) => setF({ ...f, momo_mtn_enabled: v })}
+                  number={f.momo_mtn_number} onNumber={set('momo_mtn_number')} name={f.momo_mtn_name} onName={set('momo_mtn_name')}
+                  instructions={f.momo_mtn_instructions} onInstructions={set('momo_mtn_instructions')} />
+                <MomoMethod label="Orange Money" tone="border-orange-300 dark:border-orange-700" placeholder="69X XX XX XX"
+                  enabled={f.momo_orange_enabled} onEnabled={(v) => setF({ ...f, momo_orange_enabled: v })}
+                  number={f.momo_orange_number} onNumber={set('momo_orange_number')} name={f.momo_orange_name} onName={set('momo_orange_name')}
+                  instructions={f.momo_orange_instructions} onInstructions={set('momo_orange_instructions')} />
               </div>
-              <div className="space-y-2 rounded-xl border border-orange-300 p-3">
-                <p className="text-sm font-bold">Orange Money</p>
-                <Field label={t('seller.store.momoNumber')} optional><Input type="tel" inputMode="tel" placeholder="69X XX XX XX" value={f.momo_orange_number} onChange={set('momo_orange_number')} /></Field>
-                <Field label={t('seller.store.momoName')} optional hint={t('seller.store.momoNameHint')}><Input maxLength={80} value={f.momo_orange_name} onChange={set('momo_orange_name')} /></Field>
-              </div>
-              <Field className="sm:col-span-2" label={t('seller.store.paymentNote')} optional hint={t('seller.store.paymentNoteHint')}><Input maxLength={300} value={f.payment_note} onChange={set('payment_note')} /></Field>
-              {noNumber && <div className="sm:col-span-2"><Alert tone="amber">{t('errors.momo_number_required')}</Alert></div>}
+              <Checkbox label={t('seller.store.momoProof')} hint={t('seller.store.momoProofHint')} checked={f.momo_proof_required} onChange={(v) => setF({ ...f, momo_proof_required: v })} />
+              <Field label={t('seller.store.paymentNote')} optional hint={t('seller.store.paymentNoteHint')}><Input maxLength={300} value={f.payment_note} onChange={set('payment_note')} /></Field>
+              {noNumber && <Alert tone="amber">{t('errors.momo_number_required')}</Alert>}
             </div>
           )}
         </div>

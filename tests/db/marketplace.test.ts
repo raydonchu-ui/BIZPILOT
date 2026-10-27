@@ -236,7 +236,8 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
     const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 1 }], { payment_method: 'momo_direct' }), access_token: tk } });
     expect(o.payment_status).toBe('cod_pending');
     let view = await rpc(guest, 'market_order_view', { p_order: o.order_id, p_token: tk });
-    expect(view.store.momo).toMatchObject({ mtn_number: '677123456', mtn_name: 'Awa Mode', orange_number: null });
+    expect(view.store.momo.mtn).toMatchObject({ number: '677123456', name: 'Awa Mode' });
+    expect(view.store.momo.orange).toBeNull();
     expect(view).toMatchObject({ can_pay: false, can_report_payment: true });
     // The buyer reports the transfer: evidence only, the order stays unpaid.
     await expectError(rpc(guest, 'market_order_report_payment', { p_order: o.order_id, p_token: token(), p_reference: 'MP2410.1234' }), 'not_found');
