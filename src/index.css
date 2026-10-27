@@ -1,8 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@config '../tailwind.config.js';
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  /* Tailwind 4 defaults borders to currentColor and placeholders to a faded text colour; keep the v3 look. */
+  *, ::before, ::after { border-color: var(--color-gray-200); }
+  input::placeholder, textarea::placeholder { color: var(--color-gray-400); opacity: 1; }
   html { -webkit-tap-highlight-color: transparent; }
   body { @apply bg-white font-sans antialiased; font-feature-settings: 'tnum' 0; }
   .dark body { @apply bg-gray-950; }

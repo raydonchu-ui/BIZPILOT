@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ArrowLeft, Banknote, CheckCircle2, CloudOff, Facebook, Instagram, Landmark, MessageCircle, Minus, MoreHorizontal, Phone, Plus, Printer, Smartphone, Store, Trash2, Truck, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Banknote, CheckCircle2, CloudOff, Landmark, MessageCircle, Minus, MoreHorizontal, Phone, Plus, Printer, Smartphone, Store, Trash2, Truck, UserPlus, X } from 'lucide-react';
+import { Facebook, Instagram } from '../../../components/BrandIcons';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { supabase } from '../../../lib/supabase';
@@ -26,7 +27,7 @@ const METHODS: { key: string; icon: typeof Banknote; tone: string }[] = [
 ];
 
 /** Where the sale was made. Marketplace sales come from delivered orders, never typed in. */
-export const CHANNELS: { key: string; icon: typeof Store }[] = [
+export const CHANNELS: { key: string; icon: ComponentType<{ className?: string }> }[] = [
   { key: 'in_person', icon: Store }, { key: 'whatsapp', icon: MessageCircle }, { key: 'facebook', icon: Facebook },
   { key: 'phone', icon: Phone }, { key: 'instagram', icon: Instagram }, { key: 'other', icon: MoreHorizontal },
 ];

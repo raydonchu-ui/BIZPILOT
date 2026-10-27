@@ -3,8 +3,9 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
-  BadgeCheck, Banknote, Clock, CreditCard, Facebook, Heart, Instagram, Link2, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Store, Truck, Undo2,
+  BadgeCheck, Banknote, Clock, CreditCard, Heart, Link2, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Store, Truck, Undo2,
 } from 'lucide-react';
+import { Facebook, Instagram } from '../../components/BrandIcons';
 import { useI18n } from '../../i18n';
 import { rpc, unwrap } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -108,7 +109,7 @@ function StoreSocials({ s }: { s: any }) {
       {items.map((x) => (
         <li key={x.key}>
           <a href={x.href} target="_blank" rel="noopener noreferrer nofollow" className="flex w-20 flex-col items-center gap-1.5 text-xs font-semibold text-ink-soft dark:text-gray-300">
-            <span className={clsx('flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800', x.cls)}>{x.icon}</span>{x.label}
+            <span className={clsx('flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-xs ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800', x.cls)}>{x.icon}</span>{x.label}
           </a>
         </li>
       ))}

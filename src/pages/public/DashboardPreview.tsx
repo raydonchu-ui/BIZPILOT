@@ -36,7 +36,7 @@ export function DashboardPreview() {
           <div className="mt-3 rounded-xl border border-gray-100 p-3 dark:border-gray-800">
             <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-ink dark:text-white"><BarChart3 className="h-3.5 w-3.5 text-brand-600" />{t('dashboard.salesOverview')}</p>
             <div className="flex h-24 items-end gap-1">
-              {bars.map((h, i) => <div key={i} className="flex-1 rounded-t bg-gradient-to-t from-brand-400 to-brand-300" style={{ height: `${h}%` }} />)}
+              {bars.map((h, i) => <div key={i} className="flex-1 rounded-t bg-linear-to-t from-brand-400 to-brand-300" style={{ height: `${h}%` }} />)}
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 p-2.5 text-[11px] text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">

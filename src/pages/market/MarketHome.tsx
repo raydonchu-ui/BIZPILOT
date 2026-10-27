@@ -37,7 +37,7 @@ export default function MarketHome() {
       <h1 className="sr-only">{t('market.title')}</h1>
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <CitySelector />
-        <Link to="/market/search" className="flex min-h-12 flex-1 items-center gap-2 rounded-2xl bg-white px-4 text-sm text-ink-muted shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800" aria-label={t('market.searchLabel')}>
+        <Link to="/market/search" className="flex min-h-12 flex-1 items-center gap-2 rounded-2xl bg-white px-4 text-sm text-ink-muted shadow-xs ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800" aria-label={t('market.searchLabel')}>
           <Search className="h-4 w-4" />{t('market.searchPlaceholder')}
         </Link>
       </div>
@@ -103,13 +103,13 @@ export default function MarketHome() {
 export function CityBanner({ place, shops, products }: { place: string; shops: number; products: number }) {
   const { t } = useI18n();
   return (
-    <section aria-labelledby="banner" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-800 to-brand-950 p-5 text-white shadow-md sm:p-8">
+    <section aria-labelledby="banner" className="relative overflow-hidden rounded-3xl bg-linear-to-br from-brand-700 via-brand-800 to-brand-950 p-5 text-white shadow-md sm:p-8">
       <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10" />
       <span aria-hidden="true" className="pointer-events-none absolute -bottom-12 right-10 h-32 w-32 rounded-full bg-white/10" />
       <p className="text-xs font-bold uppercase tracking-widest text-brand-100">{t('market.bannerKicker')}</p>
       <h2 id="banner" className="mt-2 max-w-md text-2xl font-extrabold leading-tight sm:text-3xl">{t('market.bannerTitle', { place })}</h2>
       <p className="mt-2 text-sm text-brand-50">{t('market.bannerStats', { shops, products })}</p>
-      <Link to="/market/shops" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-brand-800 shadow-sm hover:bg-brand-50">
+      <Link to="/market/shops" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-brand-800 shadow-xs hover:bg-brand-50">
         {t('market.shopNow')}<ArrowRight className="h-4 w-4" />
       </Link>
     </section>

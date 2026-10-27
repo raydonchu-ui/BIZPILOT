@@ -406,7 +406,7 @@ export default function ProductForm() {
                       <img src={publicUrl(p) ?? ''} alt={t('seller.product.photoN', { n: i + 1 })} className="h-full w-full object-cover" />
                       {i === 0 && <span className="absolute left-1 top-1 rounded bg-brand-700 px-1.5 text-[10px] font-bold text-white">{t('seller.product.main')}</span>}
                       <button type="button" aria-label={t('seller.product.removePhoto', { n: i + 1 })} onClick={() => setF((x) => ({ ...x, online_images: x.online_images.filter((y) => y !== p) }))}
-                        className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 shadow"><Trash2 className="h-3.5 w-3.5" /></button>
+                        className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 shadow-sm"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   ))}
                   {f.online_images.length < 8 && (

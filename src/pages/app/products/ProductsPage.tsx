@@ -167,7 +167,7 @@ export default function ProductsPage() {
                     <button type="button" role="switch" aria-checked={Boolean(p.online_published)} aria-label={t('seller.product.onlineToggle', { name: p.name })}
                       onClick={(e) => { e.stopPropagation(); setOnline([p.id], !p.online_published); }}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${p.online_published ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${p.online_published ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition ${p.online_published ? 'translate-x-5' : 'translate-x-0.5'}`} />
                     </button>
                   ) : p.online_published ? <Badge tone="green">{t('seller.product.online')}</Badge> : null }] : []),
               ]} />

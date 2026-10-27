@@ -14,7 +14,7 @@ type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'subtl
 type Size = 'sm' | 'md' | 'lg';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-800 focus-visible:ring-brand-500 shadow-sm',
+  primary: 'bg-brand-700 text-white hover:bg-brand-800 focus-visible:ring-brand-500 shadow-xs',
   secondary: 'bg-brand-50 text-brand-800 hover:bg-brand-100 dark:bg-brand-900/40 dark:text-brand-100 dark:hover:bg-brand-900/70',
   outline: 'border border-gray-300 bg-white text-ink hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800',
   ghost: 'text-ink-soft hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800',
@@ -33,7 +33,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   { variant = 'primary', size = 'md', loading, icon, block, className, children, disabled, type = 'button', ...rest }, ref) {
   return (
     <button ref={ref} type={type} disabled={disabled || loading}
-      className={clsx('inline-flex select-none items-center justify-center whitespace-nowrap rounded-lg font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-gray-950',
+      className={clsx('inline-flex select-none items-center justify-center whitespace-nowrap rounded-lg font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-gray-950',
         variants[variant], sizes[size], block && 'w-full', className)} {...rest}>
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
       {children}
@@ -44,7 +44,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 export function LinkButton({ to, variant = 'primary', size = 'md', icon, className, children, block }:
   { to: string; variant?: Variant; size?: Size; icon?: ReactNode; className?: string; children: ReactNode; block?: boolean }) {
   return (
-    <Link to={to} className={clsx('inline-flex items-center justify-center rounded-lg font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
+    <Link to={to} className={clsx('inline-flex items-center justify-center rounded-lg font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-500',
       variants[variant], sizes[size], block && 'w-full', className)}>
       {icon}{children}
     </Link>
@@ -54,7 +54,7 @@ export function LinkButton({ to, variant = 'primary', size = 'md', icon, classNa
 // ---------------------------------------------------------------------------
 // Form fields
 // ---------------------------------------------------------------------------
-const inputBase = 'block w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-ink placeholder:text-gray-400 shadow-sm transition focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:bg-gray-50 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-gray-800';
+const inputBase = 'block w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-ink placeholder:text-gray-400 shadow-xs transition focus:border-brand-600 focus:outline-hidden focus:ring-2 focus:ring-brand-600/20 disabled:bg-gray-50 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-gray-800';
 
 export function Field({ label, hint, error, children, required, optional, className, htmlFor }:
   { label?: ReactNode; hint?: ReactNode; error?: ReactNode; children: ReactNode; required?: boolean; optional?: boolean; className?: string; htmlFor?: string }) {
@@ -107,7 +107,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttribut
         <input ref={ref} type={visible ? 'text' : 'password'} className={clsx(inputBase, 'h-10 pr-11', className)} {...rest} />
         <button type="button" onClick={() => setVisible((v) => !v)} aria-pressed={visible}
           aria-label={visible ? t('auth.hidePassword') : t('auth.showPassword')} title={visible ? t('auth.hidePassword') : t('auth.showPassword')}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-gray-500 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 dark:text-gray-400 dark:hover:text-white">
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-gray-500 hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-600 dark:text-gray-400 dark:hover:text-white">
           {visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
         </button>
       </div>
@@ -353,7 +353,7 @@ export function Tabs<T extends string>({ items, value, onChange, className }:
       {items.filter((i) => !i.hidden).map((i) => (
         <button key={i.value} role="tab" aria-selected={value === i.value} onClick={() => onChange(i.value)}
           className={clsx('whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold transition',
-            value === i.value ? 'bg-brand-700 text-white shadow-sm' : 'bg-white text-ink-soft ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800 dark:hover:bg-gray-800')}>
+            value === i.value ? 'bg-brand-700 text-white shadow-xs' : 'bg-white text-ink-soft ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800 dark:hover:bg-gray-800')}>
           {i.label}
         </button>
       ))}

@@ -80,7 +80,7 @@ function OwnerDashboard() {
         {can('expenses.manage') && has('expenses') && <LinkButton to="/app/expenses?new=1" variant="outline">{t('nav.recordExpense')}</LinkButton>}</div>} />
 
       {growing && (
-        <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand-700 to-brand-600 px-4 py-3 text-white">
+        <div className="mb-4 flex items-center gap-3 rounded-2xl bg-linear-to-r from-brand-700 to-brand-600 px-4 py-3 text-white">
           <TrendingUp className="h-6 w-6 shrink-0" />
           <div className="text-sm"><p className="font-bold">{t('dashboard.growingTitle')}</p><p className="text-brand-50">{t('dashboard.growingBody', { pct: formatPct(pctChange(Number(cur.net_sales), Number(prev.net_sales)), lang, 0) })}</p></div>
         </div>
@@ -133,7 +133,7 @@ function OwnerDashboard() {
         </Card>
 
         <div className="space-y-4 xl:col-span-3">
-          <Card className="bg-gradient-to-br from-brand-50 to-white dark:from-brand-950/50 dark:to-gray-900">
+          <Card className="bg-linear-to-br from-brand-50 to-white dark:from-brand-950/50 dark:to-gray-900">
             <div className="flex items-start gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-700 text-white"><Bot className="h-7 w-7" /></span>
               <div><p className="font-extrabold">{t('advisor.cardTitle')}</p><p className="mt-1 text-xs text-ink-muted dark:text-gray-400">{t('advisor.cardBody')}</p></div>
@@ -350,7 +350,7 @@ function PremiumBanner() {
   const renews = biz.subscription?.current_period_end;
   if (has('verified_badge')) {
     return (
-      <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-sky-600 to-sky-500 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-linear-to-r from-sky-600 to-sky-500 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <BadgeCheck className="h-6 w-6 shrink-0" />
           <div className="text-sm">

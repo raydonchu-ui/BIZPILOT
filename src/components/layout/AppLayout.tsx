@@ -180,7 +180,7 @@ function SidebarContent() {
                 return (
                   <Link key={n.to} to={n.to} aria-current={active ? 'page' : undefined}
                     className={clsx('flex items-center gap-3 rounded-xl px-3 py-[7px] text-[15px] font-medium transition',
-                      active ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-200 hover:bg-white/10 hover:text-white')}>
+                      active ? 'bg-brand-600 text-white shadow-xs' : 'text-gray-200 hover:bg-white/10 hover:text-white')}>
                     <n.icon className="h-5 w-5 shrink-0" />
                     <span className="flex-1 truncate">{t(`nav.${n.key}`)}</span>
                     {n.key === 'orders' && toConfirm > 0 ? <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-gray-900" aria-label={t('orders.toConfirmCount', { n: toConfirm })}>{toConfirm}</span>
@@ -367,7 +367,7 @@ function UserMenu() {
               <div className="inline-flex rounded-lg bg-gray-100 p-0.5 dark:bg-gray-800">
                 {(['light', 'dark', 'system'] as Theme[]).map((th) => (
                   <button key={th} onClick={() => setThemeAndSave(th)} aria-pressed={theme === th} title={t(`common.${th}`)}
-                    className={clsx('rounded-md px-2 py-1', theme === th ? 'bg-white shadow-sm dark:bg-gray-900' : 'text-gray-500')}>
+                    className={clsx('rounded-md px-2 py-1', theme === th ? 'bg-white shadow-xs dark:bg-gray-900' : 'text-gray-500')}>
                     {th === 'light' ? <Sun className="h-3.5 w-3.5" /> : th === 'dark' ? <Moon className="h-3.5 w-3.5" /> : <span className="text-[10px] font-bold">A</span>}
                   </button>
                 ))}

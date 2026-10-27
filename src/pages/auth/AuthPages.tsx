@@ -17,7 +17,7 @@ function AuthShell({ title, subtitle, children, footer }: { title: string; subti
   const { t } = useI18n();
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="relative hidden w-[44%] flex-col justify-between bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 p-10 text-white lg:flex">
+      <div className="relative hidden w-[44%] flex-col justify-between bg-linear-to-br from-brand-800 via-brand-900 to-brand-950 p-10 text-white lg:flex">
         <Logo inverse />
         <div>
           <p className="text-3xl font-extrabold leading-tight">{t('brand.promise')}</p>

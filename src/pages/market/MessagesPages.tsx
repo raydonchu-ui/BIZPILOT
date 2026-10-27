@@ -218,7 +218,7 @@ export function ThreadPage() {
           const mine = m.side === meta.side;
           return (
             <li key={m.id} className={clsx('flex', mine ? 'justify-end' : 'justify-start')}>
-              <div className={clsx('max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm',
+              <div className={clsx('max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-xs',
                 mine ? 'rounded-br-md bg-brand-700 text-white' : 'rounded-bl-md bg-white text-ink ring-1 ring-gray-100 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-800')}>
                 <p className="whitespace-pre-wrap break-words">{m.body}</p>
                 <p className={clsx('mt-1 text-right text-[10px] tabular-nums', mine ? 'text-brand-100' : 'text-ink-muted')}>

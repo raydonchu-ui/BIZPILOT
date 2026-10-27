@@ -25,7 +25,7 @@ export function SalesProfitChart({ data, grain = 'day', height = 280 }:
           <CartesianGrid vertical={false} stroke="#e5e7eb" strokeDasharray="3 3" />
           <XAxis dataKey="bucket" {...axisProps} tickFormatter={(d) => shortLabel(d, lang, grain)} minTickGap={16} />
           <YAxis {...axisProps} tickFormatter={(v) => formatCompact(v, lang)} width={56} />
-          <Tooltip formatter={(v: number, name) => [formatMoney(v, lang), name]} labelFormatter={(d) => formatDate(d as string, lang)}
+          <Tooltip formatter={(v, name) => [formatMoney(Number(v), lang), name ?? '']} labelFormatter={(d) => formatDate(d as string, lang)}
             contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12 }} />
           <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
           <Bar isAnimationActive={ANIMATE} dataKey="net_sales" name={t('dashboard.netSales')} fill="#47bd6f" radius={[4, 4, 0, 0]} maxBarSize={22} />
@@ -48,7 +48,7 @@ export function ValueTrendChart({ data, height = 220 }: { data: { day: string; v
           <CartesianGrid vertical={false} stroke="#e5e7eb" strokeDasharray="3 3" />
           <XAxis dataKey="day" {...axisProps} tickFormatter={(d) => shortLabel(d, lang, 'day')} minTickGap={20} />
           <YAxis {...axisProps} tickFormatter={(v) => formatCompact(v, lang)} width={56} />
-          <Tooltip formatter={(v: number) => [formatMoney(v, lang), t('dashboard.inventoryValue')]} labelFormatter={(d) => formatDate(d as string, lang)}
+          <Tooltip formatter={(v) => [formatMoney(Number(v), lang), t('dashboard.inventoryValue')]} labelFormatter={(d) => formatDate(d as string, lang)}
             contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12 }} />
           <Area isAnimationActive={ANIMATE} dataKey="value" stroke="#18813e" strokeWidth={2} fill="url(#invFill)" type="monotone" />
         </AreaChart>
@@ -67,7 +67,7 @@ export function DonutChart({ data, centerLabel, centerValue, height = 220 }:
           <Pie isAnimationActive={ANIMATE} data={data} dataKey="value" nameKey="name" innerRadius="62%" outerRadius="95%" paddingAngle={1.5} stroke="none">
             {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
           </Pie>
-          <Tooltip formatter={(v: number, n) => [formatMoney(v, lang), n]} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
+          <Tooltip formatter={(v, n) => [formatMoney(Number(v), lang), n ?? '']} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>
       {centerValue && (

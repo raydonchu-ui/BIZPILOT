@@ -47,7 +47,7 @@ export function PlanCards({ onChoose, currentPlan, chooseLabel }:
         <div className="inline-flex rounded-xl bg-gray-100 p-1 dark:bg-gray-800" role="group">
           {(['monthly', 'annual'] as const).map((p) => (
             <button key={p} onClick={() => setPeriod(p)} aria-pressed={period === p}
-              className={clsx('rounded-lg px-4 py-1.5 text-sm font-semibold', period === p ? 'bg-white text-brand-800 shadow dark:bg-gray-900 dark:text-brand-300' : 'text-gray-600 dark:text-gray-300')}>
+              className={clsx('rounded-lg px-4 py-1.5 text-sm font-semibold', period === p ? 'bg-white text-brand-800 shadow-sm dark:bg-gray-900 dark:text-brand-300' : 'text-gray-600 dark:text-gray-300')}>
               {t(`site.pricing.${p}`)}
             </button>
           ))}

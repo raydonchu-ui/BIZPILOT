@@ -9,7 +9,7 @@ import { useAuth } from '../../lib/auth';
 
 function Hero({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <section className="bg-gradient-to-b from-brand-50/70 to-white dark:from-brand-950/40 dark:to-gray-950">
+    <section className="bg-linear-to-b from-brand-50/70 to-white dark:from-brand-950/40 dark:to-gray-950">
       <div className="mx-auto max-w-4xl px-4 py-14 text-center sm:px-6">
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{title}</h1>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-ink-soft dark:text-gray-300">{subtitle}</p>

@@ -10,7 +10,7 @@ export function pushConfigured(): boolean {
 }
 
 /** A VAPID public key, as the browser needs it (base64url in, bytes out). */
-export function urlBase64ToUint8Array(value: string): Uint8Array {
+export function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   const pad = '='.repeat((4 - (value.length % 4)) % 4);
   const raw = atob((value + pad).replace(/-/g, '+').replace(/_/g, '/'));
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));

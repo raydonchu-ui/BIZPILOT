@@ -32,7 +32,7 @@ export function PeriodPicker({ value, onChange }: { value: Period; onChange: (p:
   const [from, setFrom] = useState(value.from);
   const [to, setTo] = useState(value.to);
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
       <CalendarDays className="h-5 w-5 shrink-0 text-ink-soft dark:text-gray-300" />
       <div className="min-w-0">
         <Select aria-label={t('common.period')} value={value.key} className="!h-7 border-0 !px-0 !pr-6 font-semibold shadow-none focus:ring-0 dark:bg-gray-900"

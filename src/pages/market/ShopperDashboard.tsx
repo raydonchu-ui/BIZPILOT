@@ -55,10 +55,10 @@ export function ShopperDashboard() {
       <CitySelector block />
 
       <div className="flex items-center gap-2">
-        <Link to="/market/search" className="flex min-h-12 flex-1 items-center gap-2 rounded-2xl bg-white px-4 text-sm text-ink-muted shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800" aria-label={t('market.searchLabel')}>
+        <Link to="/market/search" className="flex min-h-12 flex-1 items-center gap-2 rounded-2xl bg-white px-4 text-sm text-ink-muted shadow-xs ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800" aria-label={t('market.searchLabel')}>
           <Search className="h-4 w-4" />{t('market.shopper.searchPlaceholder')}
         </Link>
-        <Link to="/market/search" aria-label={t('market.shopper.filters')} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-ink shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-800">
+        <Link to="/market/search" aria-label={t('market.shopper.filters')} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-ink shadow-xs ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-800">
           <SlidersHorizontal className="h-5 w-5" />
         </Link>
       </div>

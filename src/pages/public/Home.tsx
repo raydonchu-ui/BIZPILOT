@@ -18,7 +18,7 @@ export function Home() {
   const faqs = tv<{ q: string; a: string }[]>('site.faq.items').slice(0, 5);
   return (
     <>
-      <section className="relative overflow-hidden bg-gradient-to-b from-brand-50/70 via-white to-white dark:from-brand-950/40 dark:via-gray-950 dark:to-gray-950">
+      <section className="relative overflow-hidden bg-linear-to-b from-brand-50/70 via-white to-white dark:from-brand-950/40 dark:via-gray-950 dark:to-gray-950">
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-2 lg:pb-24 lg:pt-20">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-800 ring-1 ring-brand-200 dark:bg-gray-900 dark:text-brand-300 dark:ring-brand-900">
@@ -113,7 +113,7 @@ export function Home() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-        <div className="rounded-3xl bg-gradient-to-br from-brand-800 to-brand-950 px-6 py-12 text-center text-white sm:px-12">
+        <div className="rounded-3xl bg-linear-to-br from-brand-800 to-brand-950 px-6 py-12 text-center text-white sm:px-12">
           <h2 className="text-3xl font-extrabold">{t('site.home.finalTitle')}</h2>
           <p className="mx-auto mt-3 max-w-xl text-brand-100">{t('site.home.finalBody')}</p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">

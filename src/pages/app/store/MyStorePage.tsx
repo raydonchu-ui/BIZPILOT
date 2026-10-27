@@ -491,7 +491,7 @@ export function StoreSetupCard({ compact }: { compact?: boolean }) {
   const steps = ['store_created', 'profile', 'products', 'delivery', 'payment'] as const;
   const done = steps.filter((k) => r.data[k]).length;
   return (
-    <Card className={compact ? '' : 'border-brand-200 bg-gradient-to-br from-brand-50 to-white dark:border-brand-900 dark:from-brand-950/40 dark:to-gray-900'}>
+    <Card className={compact ? '' : 'border-brand-200 bg-linear-to-br from-brand-50 to-white dark:border-brand-900 dark:from-brand-950/40 dark:to-gray-900'}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1">
           <p className="font-bold">{t('seller.store.dashTitle')}</p>

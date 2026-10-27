@@ -17,7 +17,7 @@ export function LanguageSwitch({ className, persist }: { className?: string; per
       <Globe className="ml-1.5 h-3.5 w-3.5 text-gray-500" aria-hidden />
       {(['fr', 'en'] as const).map((l) => (
         <button key={l} onClick={() => choose(l)} aria-pressed={lang === l}
-          className={clsx('rounded-md px-2 py-1 uppercase', lang === l ? 'bg-white text-brand-800 shadow-sm dark:bg-gray-900 dark:text-brand-300' : 'text-gray-500 hover:text-ink dark:hover:text-white')}>
+          className={clsx('rounded-md px-2 py-1 uppercase', lang === l ? 'bg-white text-brand-800 shadow-xs dark:bg-gray-900 dark:text-brand-300' : 'text-gray-500 hover:text-ink dark:hover:text-white')}>
           {l}
         </button>
       ))}

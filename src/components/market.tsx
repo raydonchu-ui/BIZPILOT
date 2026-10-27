@@ -2,8 +2,9 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { BadgeCheck, ChevronDown, Copy, Facebook, Flag, Heart, Home, LayoutGrid, MapPin, MessageCircle, Minus, Package, Plus, Search, Share2, Star, Store, UserRound } from 'lucide-react';
+import { BadgeCheck, ChevronDown, Copy, Flag, Heart, Home, LayoutGrid, MapPin, MessageCircle, Minus, Package, Plus, Search, Share2, Star, Store, UserRound } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { Facebook } from './BrandIcons';
 import { useAuth } from '../lib/auth';
 import { CAMEROON_CITIES, cityKey } from '../lib/cities';
 import { supabase } from '../lib/supabase';
@@ -27,7 +28,7 @@ export function MarketImage({ path, alt, className, iconClassName, rounded = 'ro
   const src = publicUrl(useThumb ? thumbPath(path!) : path);
   if (!src || broken) {
     return (
-      <div className={clsx('flex items-center justify-center bg-gradient-to-br from-brand-50 to-gray-100 text-brand-700/60 dark:from-gray-800 dark:to-gray-900', rounded, className)} aria-label={alt} role="img">
+      <div className={clsx('flex items-center justify-center bg-linear-to-br from-brand-50 to-gray-100 text-brand-700/60 dark:from-gray-800 dark:to-gray-900', rounded, className)} aria-label={alt} role="img">
         <Package className={clsx('h-1/3 w-1/3', iconClassName)} />
       </div>
     );
@@ -100,7 +101,7 @@ export function FavoriteHeart({ productId }: { productId: string }) {
   };
   return (
     <button type="button" onClick={toggle} aria-pressed={on} aria-label={on ? t('market.removeFromWishlist') : t('market.addToWishlist')}
-      className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-ink shadow-sm ring-1 ring-black/5 hover:bg-white dark:bg-gray-900/95 dark:text-gray-100">
+      className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-ink shadow-xs ring-1 ring-black/5 hover:bg-white dark:bg-gray-900/95 dark:text-gray-100">
       <Heart className={clsx('h-4 w-4', on && 'fill-red-500 text-red-500')} />
     </button>
   );
