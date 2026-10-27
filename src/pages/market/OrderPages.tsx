@@ -10,7 +10,7 @@ import { formatDateTime, formatXaf } from '../../lib/format';
 import { guestOrders, guestToken, rememberGuestOrder, siteOrigin, verifyPayment, waLink } from '../../lib/market';
 import { useAction } from '../../lib/useAction';
 import { useToast } from '../../lib/toast';
-import { MarketImage, OrderStatusBadge, OrderTimeline, PaymentStatusBadge, ReportButton } from '../../components/market';
+import { MarketImage, OrderStatusBadge, OrderTimeline, PaymentStatusBadge, ReceiptBadge, ReportButton } from '../../components/market';
 import { Alert, Button, Card, ConfirmDialog, EmptyState, Field, Input, LinkButton, PageLoader, Textarea } from '../../components/ui';
 
 export function OrderPage() {
@@ -33,6 +33,7 @@ export function OrderPage() {
   const { run, busy } = useAction();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [msg, setMsg] = useState('');
+  const [editing, setEditing] = useState<string | null>(null);
   if (q.isLoading) return <PageLoader />;
   if (q.error || !q.data) {
     return <div className="mx-auto max-w-xl px-4 py-16"><h1 className="sr-only">{t('market.orderNotFound')}</h1><EmptyState icon={<Store className="h-6 w-6" />} title={t('market.orderNotFound')} body={session ? t('market.orderNotFoundBody') : t('market.orderNotFoundGuest')}
@@ -79,6 +80,7 @@ export function OrderPage() {
       {o.status === 'refunded' && <div className="mt-4"><Alert tone="blue">{o.payment_status === 'refund_pending' ? t('market.refundPending') : t('market.refunded', { amount: formatXaf(o.refund_amount ?? o.total, lang) })}</Alert></div>}
 
       {!['cancelled'].includes(o.status) && <Card className="mt-4"><OrderTimeline status={o.status} events={o.events} /></Card>}
+      <ReceiptCard order={o} token={token} />
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
@@ -96,7 +98,16 @@ export function OrderPage() {
                     <p className="font-bold">{formatXaf(l.line_total, lang)}</p>
                   </div>
                   {o.can_review && !l.reviewed && <ReviewForm orderId={o.id} token={token} productId={l.product_id} onDone={() => q.refetch()} />}
-                  {l.reviewed && <p className="mt-2 flex items-center gap-1 text-xs text-brand-700"><CheckCircle2 className="h-3.5 w-3.5" />{t('market.reviewThanks')}</p>}
+                  {l.reviewed && editing !== l.product_id && (
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-brand-700">
+                      <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" />{t('market.reviewThanks')}</span>
+                      {l.review?.edited_at && <span className="text-ink-muted">{t('market.reviewEdited')}</span>}
+                      {l.review?.can_edit && <button type="button" className="font-semibold underline" onClick={() => setEditing(l.product_id)}>{t('market.editReview')}</button>}
+                    </div>
+                  )}
+                  {l.reviewed && editing === l.product_id && l.review && (
+                    <ReviewForm orderId={o.id} token={token} productId={l.product_id} initial={l.review} onDone={() => setEditing(null)} />
+                  )}
                 </li>
               ))}
             </ul>
@@ -112,10 +123,10 @@ export function OrderPage() {
           <Card>
             <h2 className="mb-3 font-bold">{t('market.messages')}</h2>
             <ul className="space-y-2">
-              {o.events.filter((e: any) => e.kind === 'message' || e.kind === 'dispute' || (e.kind === 'status' && e.message && !['reopened_for_payment'].includes(e.message))).map((e: any, i: number) => (
+              {o.events.filter((e: any) => e.kind === 'message' || e.kind === 'dispute' || e.kind === 'receipt' || (e.kind === 'status' && e.message && !['reopened_for_payment'].includes(e.message))).map((e: any, i: number) => (
                 <li key={i} className={clsx('max-w-[85%] rounded-xl px-3 py-2 text-sm', e.actor === 'customer' ? 'ml-auto bg-brand-50 dark:bg-brand-900/40' : 'bg-gray-100 dark:bg-gray-800')}>
                   <p className="text-[11px] font-semibold text-ink-muted">{t(`market.actor.${e.actor}`)} · {formatDateTime(e.created_at, lang)}</p>
-                  <p>{e.kind === 'dispute' ? t('market.disputeOpened', { reason: t(`market.reasons.${e.message}`) }) : e.message === 'cancelled_by_customer' ? t('market.cancelReasons.cancelled_by_customer') : e.message}</p>
+                  <p>{e.kind === 'dispute' ? t('market.disputeOpened', { reason: t(`market.reasons.${e.message}`) }) : e.kind === 'receipt' ? t('market.receipt.eventConfirmed') : e.message === 'cancelled_by_customer' ? t('market.cancelReasons.cancelled_by_customer') : e.message}</p>
                 </li>
               ))}
             </ul>
@@ -150,7 +161,7 @@ export function OrderPage() {
             <p className="flex gap-2 text-xs text-ink-muted"><ShieldCheck className="h-4 w-4 shrink-0 text-brand-600" />{o.payment_method === 'online' ? t('market.protectionOnline') : o.payment_method === 'momo_direct' ? t('market.directPayDisclaimer') : t('market.protectionCod')}</p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               {o.can_cancel && <Button size="sm" variant="outline" icon={<XCircle className="h-4 w-4" />} onClick={() => setCancelOpen(true)}>{t('market.cancelOrder')}</Button>}
-              <ReportButton targetType="order" targetId={o.id} token={token} signedIn={Boolean(session)} label={t('market.reportProblem')} />
+              {o.can_report_problem && o.receipt_status !== 'disputed' && <ReportButton targetType="order" targetId={o.id} token={token} signedIn={Boolean(session)} label={t('market.reportProblem')} />}
             </div>
           </Card>
         </div>
@@ -161,18 +172,22 @@ export function OrderPage() {
   );
 }
 
-function ReviewForm({ orderId, token, productId, onDone }: { orderId: string; token: string | null; productId: string; onDone: () => void }) {
+function ReviewForm({ orderId, token, productId, initial, onDone }: {
+  orderId: string; token: string | null; productId: string; initial?: { rating: number; comment: string | null }; onDone: () => void;
+}) {
   const { t } = useI18n();
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
+  const [rating, setRating] = useState(initial?.rating ?? 0);
+  const [comment, setComment] = useState(initial?.comment ?? '');
   const { run, busy } = useAction();
   const submit = async () => {
-    const r = await run(() => rpc('market_submit_review', { p_order: orderId, p_token: token, p_product: productId, p_rating: rating, p_comment: comment }), t('market.reviewThanks'));
+    const r = await run(() => rpc('market_submit_review', { p_order: orderId, p_token: token, p_product: productId, p_rating: rating, p_comment: comment }),
+      t(initial ? 'market.reviewUpdated' : 'market.reviewThanks'));
     if (r) onDone();
   };
   return (
     <div className="mt-3 rounded-xl bg-gray-50 p-3 dark:bg-gray-800/60">
-      <p className="text-sm font-semibold">{t('market.rateProduct')}</p>
+      <p className="text-sm font-semibold">{t(initial ? 'market.editReview' : 'market.rateProduct')}</p>
+      {initial && <p className="text-xs text-ink-muted">{t('market.editWindow')}</p>}
       <div className="mt-1 flex gap-1" role="radiogroup" aria-label={t('market.rating')}>
         {[1, 2, 3, 4, 5].map((i) => (
           <button key={i} type="button" role="radio" aria-checked={rating === i} aria-label={t('market.starsN', { n: i })} onClick={() => setRating(i)}>
@@ -183,10 +198,49 @@ function ReviewForm({ orderId, token, productId, onDone }: { orderId: string; to
       {rating > 0 && (
         <>
           <Field label={t('market.reviewComment')} optional className="mt-2"><Textarea maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} /></Field>
-          <Button size="sm" className="mt-2" loading={busy} onClick={submit}>{t('market.submitReview')}</Button>
+          <Button size="sm" className="mt-2" loading={busy} onClick={submit}>{t(initial ? 'market.updateReview' : 'market.submitReview')}</Button>
         </>
       )}
     </div>
+  );
+}
+
+// Receipt: the buyer confirms the order arrived, or sees that a problem is open on it.
+function ReceiptCard({ order, token }: { order: any; token: string | null }) {
+  const { t, lang } = useI18n();
+  const { run, busy } = useAction();
+  if (order.receipt_status === 'none') return null;
+  const due = order.receipt_due_at && new Date(order.receipt_due_at) > new Date();
+  const confirm = () => run(() => rpc('market_order_customer_action', { p_order: order.id, p_token: token, p_action: 'received' }), t('market.receipt.thanks'));
+  return (
+    <Card className="mt-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-bold">{t('market.receipt.title')}</h2>
+        <ReceiptBadge status={order.receipt_status} />
+      </div>
+      {order.receipt_status === 'awaiting' && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold">{t('market.receipt.ask')}</p>
+            {due && <p className="text-sm text-ink-muted">{t('market.receipt.dueBy', { date: formatDateTime(order.receipt_due_at, lang) })}</p>}
+            <p className="mt-1 text-xs text-ink-muted">{t('market.receipt.reviewLocked')}</p>
+          </div>
+          <Button loading={busy} icon={<CheckCircle2 className="h-4 w-4" />} onClick={confirm}>{t('market.receipt.confirm')}</Button>
+        </div>
+      )}
+      {order.receipt_status === 'resolved' && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm">{t('market.receipt.resolved')}</p>
+          <Button loading={busy} icon={<CheckCircle2 className="h-4 w-4" />} onClick={confirm}>{t('market.receipt.confirm')}</Button>
+        </div>
+      )}
+      {order.receipt_status === 'confirmed' && (
+        <p className="mt-2 flex items-center gap-1 text-sm text-brand-700"><CheckCircle2 className="h-4 w-4" />{t('market.receipt.confirmedAt', { date: formatDateTime(order.receipt_confirmed_at, lang) })}</p>
+      )}
+      {order.receipt_status === 'disputed' && (
+        <div className="mt-3 space-y-2"><Alert tone="red">{t('market.receipt.disputed')}</Alert><p className="text-xs text-ink-muted">{t('market.receipt.reviewBlocked')}</p></div>
+      )}
+    </Card>
   );
 }
 

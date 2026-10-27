@@ -250,6 +250,17 @@ export function PaymentStatusBadge({ status }: { status: string }) {
   return <span className={clsx('inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset', tone)}>{t(`orders.payment.${status}`)}</span>;
 }
 
+// Where the buyer stands on receiving the order. Nothing is shown for orders delivered before receipts existed.
+export function ReceiptBadge({ status }: { status: string }) {
+  const { t } = useI18n();
+  if (status === 'none') return null;
+  const tone = status === 'disputed' ? 'bg-red-50 text-red-700 ring-red-600/20'
+    : status === 'confirmed' || status === 'resolved' ? 'bg-brand-50 text-brand-800 ring-brand-600/20' : 'bg-amber-50 text-amber-800 ring-amber-600/20';
+  const label = status === 'awaiting' ? 'market.receipt.badgeAwaiting' : status === 'disputed' ? 'market.receipt.badgeDisputed'
+    : status === 'confirmed' ? 'market.receipt.badgeConfirmed' : 'market.receipt.badgeResolved';
+  return <span className={clsx('inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset', tone)}>{t(label)}</span>;
+}
+
 export function OrderTimeline({ status, events }: { status: string; events: { status?: string | null; created_at: string }[] }) {
   const { t } = useI18n();
   const cancelled = status === 'cancelled' || status === 'refunded';

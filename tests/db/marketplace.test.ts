@@ -171,13 +171,17 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
     expect(n(fee.amount)).toBe(1000);
     const [res] = await sql('select count(*)::int n from stock_reservations where order_id = $1 and consumed_at is not null', [o.order_id]);
     expect(res.n).toBe(1);
-    // Customer sees the timeline, and can review only delivered products, once.
+    // Customer sees the timeline; a review opens once the buyer has confirmed receipt. One product, one review, one edit.
     const view = await rpc(guest, 'market_order_view', { p_order: o.order_id, p_token: tk });
     expect(view.events.map((e: any) => e.status).filter(Boolean)).toEqual(['pending', 'confirmed', 'dispatched', 'delivered']);
+    await expectError(rpc(guest, 'market_submit_review', { p_order: o.order_id, p_token: tk, p_product: p.id, p_rating: 5 }), 'review_requires_receipt');
+    await rpc(guest, 'market_order_customer_action', { p_order: o.order_id, p_token: tk, p_action: 'received' });
     await rpc(guest, 'market_submit_review', { p_order: o.order_id, p_token: tk, p_product: p.id, p_rating: 5, p_comment: 'Great fit' });
-    await expectError(rpc(guest, 'market_submit_review', { p_order: o.order_id, p_token: tk, p_product: p.id, p_rating: 4 }), 'already_reviewed');
+    await rpc(guest, 'market_submit_review', { p_order: o.order_id, p_token: tk, p_product: p.id, p_rating: 4, p_comment: 'Good fit' });
+    await expectError(rpc(guest, 'market_submit_review', { p_order: o.order_id, p_token: tk, p_product: p.id, p_rating: 3 }), 'already_reviewed');
     const card = await rpc(guest, 'market_product', { p_id: p.id });
-    expect(card.reviews[0].comment).toBe('Great fit');
+    expect(card.reviews).toHaveLength(1);
+    expect(card.reviews[0]).toMatchObject({ rating: 4, comment: 'Good fit' });
     // Refund after delivery: stock comes back through a sale return.
     await rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'refund', p: { reason: 'Wrong size', restock: true } });
     expect(n((await product(owner, p.id)).qty_on_hand)).toBe(3);

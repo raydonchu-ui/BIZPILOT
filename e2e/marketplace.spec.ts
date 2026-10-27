@@ -192,6 +192,10 @@ test('the buyer sees the delivery and leaves a verified review', async ({ browse
   await page.goto(`${orderUrl}?t=${orderToken}`);
   await expect(page.getByText('Delivered').first()).toBeVisible();
   await expect(page.getByText('Our rider is on the way')).toBeVisible();
+  // Reviews open once the buyer confirms the order arrived.
+  await expect(page.getByText('Did you receive your order?')).toBeVisible();
+  await page.getByRole('button', { name: 'Yes, I received it' }).click();
+  await expect(page.getByText('You confirmed receipt on', { exact: false })).toBeVisible();
   await page.getByRole('radio', { name: '5 stars' }).click();
   await page.getByLabel(/^Your review/).fill('Beautiful shirt, fast delivery');
   await page.getByRole('button', { name: 'Publish review' }).click();

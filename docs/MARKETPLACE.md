@@ -159,7 +159,22 @@ New projects: `01_bizpilot_setup.sql` already includes everything. Existing proj
 
    It checks that 06 is installed (`scripts/sql/check_before_07.sql`). Each statement only creates or replaces functions and adds new tables; it changes no existing business, product, stock, sale or payment.
 
+5. `08_upgrade_profile_photos.sql` adds profile photos and checked, cropped store logos and covers. Pictures are stored privately to their owner (`scripts/sql/check_before_08.sql`).
+6. `09_upgrade_locations_delivery.sql` adds the ten regions of Cameroon, a maintained list of towns, and delivery areas by region and town. Existing delivery zones keep their behaviour (`scripts/sql/check_before_09.sql`).
+7. `10_upgrade_order_lifecycle.sql` adds the buyer's receipt step, problems on orders, and review rules (`scripts/sql/check_before_10.sql`). It also fixes an access check: a signed-in account could act on a guest order with any token. Existing orders keep receipt status "none" and behave as before.
 Each file checks that it is run in the right order and only once. They add tables and functions and do not change existing businesses, products, stock, sales, payments or customers (verified on a copy with data). Until they are run, the app keeps working: the market says "opening soon" and seller pages explain the update.
+
+
+## Order lifecycle: delivery, receipt and reviews
+
+- The seller marks an order delivered as before: the sale, stock and cash are recorded at that point.
+- The buyer then confirms receipt, or reports a problem, in the receipt card on the order page. The receipt window is 3 days from delivery (`app.order_receipt_start`).
+- A problem reported on an order holds the receipt ("Problem reported") until support resolves or dismisses it. Resolving releases it for the buyer to confirm; dismissing returns it to the buyer.
+- A review opens once the buyer has confirmed receipt, or the window has passed with no problem reported. It does not open while a problem is open. A buyer can edit a review once, within 48 hours of posting; the edit is marked.
+- Reviews and order problems can be reported. Reports about a review go to the same list as other reports, for moderation.
+- Nothing is confirmed on the buyer's behalf. When the window passes, the receipt stays open for the buyer, and only the review rule above changes.
+
+Decisions to confirm with the business: the 3-day window, that reviews open after the window without a problem, and the 48-hour edit window. Each is one value in the migration (`20261027000600_order_lifecycle.sql`).
 
 ## Messages and background notifications
 
@@ -180,4 +195,5 @@ Each file checks that it is run in the right order and only once. They add table
   node e2e/fapshiMock.mjs &
   supabase functions serve fapshi --no-verify-jwt --env-file <file with FAPSHI_API_USER=e2e-user, FAPSHI_API_KEY=e2e-key, FAPSHI_WEBHOOK_SECRET=e2e-webhook-secret, FAPSHI_BASE_URL=http://<docker gateway>:4999, SITE_URL=http://localhost:5173>
   ```
+- **Order lifecycle:** `tests/db/order_lifecycle.test.ts` (14 tests: receipt window, confirmation once, disputes holding and releasing the receipt, review gating, one edit, review reports, and access to guest orders).
 - **Old database:** `e2e/legacy-db.spec.ts` (run with `LEGACY_DB=1`) checks the app on a database without the upgrades.

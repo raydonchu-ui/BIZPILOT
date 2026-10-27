@@ -11,7 +11,7 @@ import { uploadFile } from '../../../lib/hooks';
 import { useAction } from '../../../lib/useAction';
 import { formatDateTime, formatMoney, formatRelative } from '../../../lib/format';
 import { storeUrl, useMarketConfig, waLink } from '../../../lib/market';
-import { MarketImage, OrderStatusBadge, OrderTimeline, PaymentStatusBadge, ShareBar } from '../../../components/market';
+import { MarketImage, OrderStatusBadge, OrderTimeline, PaymentStatusBadge, ReceiptBadge, ShareBar } from '../../../components/market';
 import { Alert, Button, Card, CardHeader, Checkbox, DataTable, EmptyState, ErrorState, Field, Input, Modal, PageHeader, PageLoader, Pagination, Select, Tabs, Textarea } from '../../../components/ui';
 import { useStoreRow } from './MyStorePage';
 
@@ -120,7 +120,7 @@ export function OrderDetailPage() {
     <div>
       <PageHeader title={o.number}
         back={<Link to="/app/orders" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"><ArrowLeft className="h-4 w-4" />{t('nav.orders')}</Link>}
-        subtitle={<span className="flex flex-wrap items-center gap-2"><OrderStatusBadge status={o.status} /><PaymentStatusBadge status={o.payment_status} />{formatDateTime(o.created_at, lang)}</span>} />
+        subtitle={<span className="flex flex-wrap items-center gap-2"><OrderStatusBadge status={o.status} /><PaymentStatusBadge status={o.payment_status} /><ReceiptBadge status={o.receipt_status} />{formatDateTime(o.created_at, lang)}</span>} />
       {o.flagged && <div className="mb-4"><Alert tone="red" title={t('orders.flagged')}>{t(`orders.flags.${o.flag_reason}`, { reason: o.flag_reason })}</Alert></div>}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -137,6 +137,15 @@ export function OrderDetailPage() {
               </div>
             )}
             {sellerConfirmed && open && <div className="mb-3"><Alert tone="green">{t('orders.youConfirmed', { method: t(`methods.${o.cod_method}`) })}</Alert></div>}
+            {o.receipt_status !== 'none' && (
+              <div className="mb-3"><Alert tone={o.receipt_status === 'disputed' ? 'red' : o.receipt_status === 'confirmed' ? 'green' : 'blue'}>
+                {o.receipt_status === 'awaiting' && (o.receipt_due_at && new Date(o.receipt_due_at) > new Date()
+                  ? t('orders.receiptDue', { date: formatDateTime(o.receipt_due_at, lang) }) : t('orders.receiptAwaiting'))}
+                {o.receipt_status === 'disputed' && t('orders.receiptDisputed')}
+                {o.receipt_status === 'resolved' && t('orders.receiptResolved')}
+                {o.receipt_status === 'confirmed' && t('orders.receiptConfirmed', { date: formatDateTime(o.receipt_confirmed_at, lang) })}
+              </Alert></div>
+            )}
             {o.status === 'pending' && !unpaidOnline && (
               <div className="flex flex-wrap gap-2">
                 <Button icon={<CheckCircle2 className="h-4 w-4" />} loading={busy} onClick={() => act('confirm')}>{t('orders.confirm')}</Button>
