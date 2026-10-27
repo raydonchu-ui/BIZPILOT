@@ -44,6 +44,7 @@ const ReportsPage = lazy(() => import('./pages/app/reports/ReportsPage'));
 const AdvisorPage = lazy(() => import('./pages/app/reports/AdvisorPage'));
 const ManagerPage = lazy(() => import('./pages/app/manager/ManagerPage'));
 const AutomationsPage = lazy(() => import('./pages/app/manager/AutomationsPage'));
+const CreatorPage = lazy(() => import('./pages/market/CreatorPage'));
 const StaffPage = lazy(() => import('./pages/app/settings/StaffPage'));
 const SettingsPage = lazy(() => import('./pages/app/settings/SettingsPage'));
 const BillingPage = lazy(() => import('./pages/app/settings/BillingPage'));
@@ -122,6 +123,7 @@ export function App() {
           <Route path="order/:id" element={<OrderPage />} />
           <Route path="pay/return" element={<PayReturnPage />} />
           <Route path="account" element={<AccountPage />} />
+          <Route path="creator" element={<RequireAuth requirePin={false}><CreatorPage /></RequireAuth>} />
           <Route path="messages" element={<RequireAuth requirePin={false}><MessagesPage /></RequireAuth>} />
           <Route path="messages/:id" element={<RequireAuth requirePin={false}><ThreadPage /></RequireAuth>} />
           <Route path="notifications" element={<RequireAuth requirePin={false}><InboxPage /></RequireAuth>} />

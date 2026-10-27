@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ArrowLeft, BadgeCheck, Banknote, Bot, Building2, CreditCard, FileClock, Flag, Gauge, HandCoins, LifeBuoy, Megaphone, PackageCheck, Settings2, ShoppingBasket, Store, Tags } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Banknote, Bot, Users, Building2, CreditCard, FileClock, Flag, Gauge, HandCoins, LifeBuoy, Megaphone, PackageCheck, Settings2, ShoppingBasket, Store, Tags } from 'lucide-react';
 import { FapshiAdmin, FapshiTodayStat } from './FapshiAdmin';
 import { ListingsAdmin, MarketOverview, OrdersAdmin, ReportsAdmin, SettlementsAdmin, StoresAdmin } from './MarketAdmin';
 import { VerificationAdmin } from './VerificationAdmin';
+import { CreatorsAdmin } from './CreatorsAdmin';
 import { useMarketConfig } from '../../lib/market';
 import { useI18n } from '../../i18n';
 import { supabase } from '../../lib/supabase';
@@ -28,6 +29,7 @@ const MARKET_NAV: { to: string; key: string; icon: typeof Store; end?: boolean }
   { to: '/admin/listings', key: 'listings', icon: Tags }, { to: '/admin/reports', key: 'reports', icon: Flag },
   { to: '/admin/orders', key: 'orders', icon: PackageCheck }, { to: '/admin/settlements', key: 'settlements', icon: HandCoins },
   { to: '/admin/verification', key: 'verification', icon: BadgeCheck },
+  { to: '/admin/creators', key: 'creators', icon: Users },
 ];
 const FEATURES = ['stocktaking', 'purchases', 'suppliers', 'expenses', 'customers_credit', 'staff', 'import', 'cash_reconciliation', 'basic_analytics', 'advanced_analytics', 'restock', 'reports_export', 'batch_tracking', 'ai_advisor', 'promotions', 'store_customization'];
 const LIMITS = ['max_products', 'max_sales_per_month', 'max_staff', 'history_days', 'ai_queries_per_month', 'max_online_products'];
@@ -61,6 +63,7 @@ export default function AdminApp() {
             <Route path="ai" element={<AiUsage />} />
             <Route path="audit" element={<Audit />} />
             <Route path="verification" element={<VerificationAdmin />} />
+            <Route path="creators" element={<CreatorsAdmin />} />
             {market && <>
               <Route path="fapshi" element={<FapshiAdmin />} />
               <Route path="market" element={<MarketOverview />} />

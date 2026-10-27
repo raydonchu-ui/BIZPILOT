@@ -1,4 +1,4 @@
--- BizPilot setup PART 22 of 24. Run parts in order.
+-- BizPilot setup PART 22 of 26. Run parts in order.
 begin;
 insert into public.plans (code, name_en, name_fr, description_en, description_fr, price_monthly, price_annual,
                           features, limits, highlight, sort)

@@ -1,4 +1,4 @@
--- BizPilot setup PART 23 of 24. Run parts in order.
+-- BizPilot setup PART 23 of 26. Run parts in order.
 begin;
 create or replace function public.market_store(p_slug text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$

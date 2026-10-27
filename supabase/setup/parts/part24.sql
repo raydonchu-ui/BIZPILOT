@@ -1,4 +1,4 @@
--- BizPilot setup PART 24 of 24. Run parts in order.
+-- BizPilot setup PART 24 of 26. Run parts in order.
 begin;
 create or replace function public.ai_send_message(p_business uuid, p_conversation uuid, p_text text, p_lang text default 'en',
   p_from date default null, p_to date default null)
@@ -335,4 +335,50 @@ revoke all on function public.automation_list(uuid), public.automation_set(uuid,
   public.automation_retry(uuid), public.automation_history(uuid) from public, anon;
 grant execute on function public.automation_list(uuid), public.automation_set(uuid, text, boolean, text), public.automation_run(uuid, text),
   public.automation_retry(uuid), public.automation_history(uuid) to authenticated;
+insert into public.app_config (key, value, is_public) values
+  ('creator_program', '{"enabled": false, "default_rate": 5, "min_rate": 2, "max_rate": 10, "applies_to": "both",
+    "attribution_days": 30, "attribution_months": 12, "hold_days": 7, "payout_minimum": 5000}', false)
+on conflict (key) do nothing;
+create or replace function app.creator_cfg() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce((select value from public.app_config where key = 'creator_program'), '{}'::jsonb)
+$$;
+alter table public.inbox_notifications drop constraint if exists inbox_notifications_kind_check;
+alter table public.inbox_notifications add constraint inbox_notifications_kind_check
+  check (kind in ('message', 'creator_commission', 'creator_payout', 'creator_decision'));
+create table if not exists public.creator_profiles (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'suspended')),
+  display_name text not null check (length(btrim(display_name)) between 2 and 60),
+  bio text check (length(bio) <= 300),
+  channels jsonb not null default '[]'::jsonb check (jsonb_typeof(channels) = 'array' and jsonb_array_length(channels) <= 5),
+  contact_phone text check (contact_phone ~ '^6[0-9]{8}$'),
+  payout_provider text check (payout_provider in ('mtn_momo', 'orange_money')),
+  payout_phone text check (payout_phone ~ '^6[0-9]{8}$'),
+  payout_name text check (length(payout_name) <= 80),
+  referral_code text not null unique check (referral_code ~ '^[A-Z0-9]{6,10}$'),
+  commission_rate numeric(4, 2) check (commission_rate is null or commission_rate between 2 and 10),
+  applies_to text check (applies_to in ('initial', 'renewal', 'both')),
+  decision_reason text check (length(decision_reason) <= 500),
+  reviewed_by uuid,
+  reviewed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.creator_clicks (
+  id bigserial primary key,
+  code text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists creator_clicks_code on public.creator_clicks (code, created_at);
+create table if not exists public.referrals (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null unique references public.businesses (id) on delete cascade,
+  creator_id uuid not null references auth.users (id) on delete cascade,
+  referred_user_id uuid references auth.users (id) on delete set null,
+  code text not null,
+  status text not null default 'attributed' check (status in ('attributed', 'refused')),
+  attributed_at timestamptz not null default now(),
+  window_ends_at timestamptz not null
+);
 commit;

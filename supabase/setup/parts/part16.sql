@@ -1,4 +1,4 @@
--- BizPilot setup PART 16 of 24. Run parts in order.
+-- BizPilot setup PART 16 of 26. Run parts in order.
 begin;
 create or replace function public.admin_set_config(p_key text, p_value jsonb)
 returns void language plpgsql security definer set search_path = public as $$

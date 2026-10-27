@@ -1,4 +1,4 @@
--- BizPilot setup PART 6 of 24. Run parts in order.
+-- BizPilot setup PART 6 of 26. Run parts in order.
 begin;
 create or replace function public.create_business(p jsonb)
 returns uuid language plpgsql security definer set search_path = public as $$
