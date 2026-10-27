@@ -77,6 +77,7 @@ test('a seller opens an online store, lists a product and publishes', async ({ p
   await page.getByRole('tab', { name: 'Payments & policies' }).click();
   await expect(page.getByText('Buyers pay you directly')).toBeVisible();
   await page.getByText('Mobile Money to the seller').click();
+  await page.getByLabel('MTN Mobile Money', { exact: true }).check();
   await page.getByLabel(/^Mobile Money number/).first().fill('677 99 88 77');
   await page.getByLabel(/^Name on the account/).first().fill('Awa Mode');
   await page.getByLabel(/^Returns and exchanges policy/).fill('Exchange within 3 days.');
