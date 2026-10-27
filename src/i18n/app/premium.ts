@@ -1,5 +1,11 @@
 // Verified Premium, verification, and the premium tools. Keys are namespaced under `premium` so they never collide.
 export const en = {
+  roles: {
+    title: 'Your roles', subtitle: 'One login. Each role below is granted by a record in your account.',
+    buyer: 'Buyer', seller: '{name}: {role}', owner: 'owner', manager: 'manager', cashier: 'cashier', premium: 'Verified Premium',
+    blueTick: 'Blue tick', creator: 'Creator', creatorPending: 'Creator application pending', admin: 'Platform administrator',
+    noSeller: 'You do not run a shop yet. Create one from Sell on BizPilot when you are ready.',
+  },
   notifPrefs: {
     title: 'Notifications', subtitle: 'Choose which notices reach your inbox. Turning a kind off stops it being stored.',
     messages: 'Messages', messagesHint: 'When someone writes to you.', orders: 'Orders', ordersHint: 'Dispatch, delivery and receipt steps.',
@@ -149,6 +155,12 @@ export const en = {
 };
 
 export const fr: typeof en = {
+  roles: {
+    title: 'Vos rôles', subtitle: 'Un seul compte. Chaque rôle ci-dessous est accordé par un enregistrement de votre compte.',
+    buyer: 'Acheteur', seller: '{name} : {role}', owner: 'propriétaire', manager: 'gérant', cashier: 'caissier', premium: 'Premium vérifié',
+    blueTick: 'Badge bleu', creator: 'Créateur', creatorPending: 'Demande créateur en attente', admin: 'Administrateur de la plateforme',
+    noSeller: 'Vous n’avez pas encore de boutique. Créez-en une depuis Vendre sur BizPilot quand vous serez prêt.',
+  },
   notifPrefs: {
     title: 'Notifications', subtitle: 'Choisissez les avis qui arrivent dans votre boîte. Désactiver un type empêche de le conserver.',
     messages: 'Messages', messagesHint: 'Quand quelqu’un vous écrit.', orders: 'Commandes', ordersHint: 'Expédition, livraison et réception.',

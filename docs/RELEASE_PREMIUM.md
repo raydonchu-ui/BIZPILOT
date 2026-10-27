@@ -13,6 +13,7 @@ already documented in `MARKETPLACE.md`). Each file starts with a check that the 
 | 15 | `15_upgrade_admin_finance.sql` | Finance overview, drill-down, platform health, location maintenance |
 | 16 | `16_upgrade_notifications_support.sql` | Notification preferences, buyer order notices, support replies, renewal reminders |
 | 17 | `17_upgrade_security_hardening.sql` | Anonymous access closed to private functions |
+| 18 | `18_upgrade_account_roles.sql` | Roles shown on one login: buyer, seller, premium, creator, administrator |
 
 Every file was replayed on a database that already had it applied (no errors), and the whole migration chain was
 rebuilt from scratch with `supabase db reset` and tested. Replay from a database that is still at 09 has **not** been
