@@ -34,4 +34,19 @@ revoke all on function app.send_renewal_reminders(), app.prune_notifications(int
   app.inbox_preference_gate(), app.order_buyer_notice(), app.support_reply_notice() from public, anon, authenticated;
 revoke all on function public.my_notification_preferences(), public.set_notification_preference(text, boolean) from public, anon;
 grant execute on function public.my_notification_preferences(), public.set_notification_preference(text, boolean) to authenticated;
+revoke all on function public.admin_refund_billing_payment(uuid, text),
+  public.admin_review_verification(uuid, text, text),
+  public.admin_revoke_verification(uuid, text),
+  public.admin_verification_applications(text),
+  public.billing_payment_cancel(uuid),
+  public.verification_apply(uuid, jsonb),
+  public.verification_status(uuid),
+  public.verification_withdraw(uuid)
+from public, anon;
+grant execute on function public.billing_payment_cancel(uuid), public.verification_apply(uuid, jsonb),
+  public.verification_status(uuid), public.verification_withdraw(uuid) to authenticated;
+grant execute on function public.admin_refund_billing_payment(uuid, text), public.admin_review_verification(uuid, text, text),
+  public.admin_revoke_verification(uuid, text), public.admin_verification_applications(text) to authenticated;
+revoke all on function public.buyer_dashboard() from public, anon;
+grant execute on function public.buyer_dashboard() to authenticated;
 commit;
