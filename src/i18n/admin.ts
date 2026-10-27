@@ -1,7 +1,7 @@
 export const en = {
   admin: {
     badge: 'Admin', backToApp: 'Back to app', privacyNote: 'You see platform metadata and usage counts only. Business records are visible only while an owner has granted support access, and every support session is logged.',
-    nav: { overview: 'Overview', fapshi: 'Mobile Money', market: 'Marketplace', stores: 'Stores', listings: 'Listings', reports: 'Reports', orders: 'Orders', settlements: 'Settlements', verification: 'Blue tick', creators: 'Creators', businesses: 'Businesses', payments: 'Payments', plans: 'Plans', config: 'Settings', announcements: 'Announcements', support: 'Support', ai: 'AI usage', audit: 'Audit log' },
+    nav: { overview: 'Overview', fapshi: 'Mobile Money', market: 'Marketplace', stores: 'Stores', listings: 'Listings', reports: 'Reports', orders: 'Orders', settlements: 'Settlements', verification: 'Blue tick', creators: 'Creators', finance: 'Finance', locations: 'Locations', businesses: 'Businesses', payments: 'Payments', plans: 'Plans', config: 'Settings', announcements: 'Announcements', support: 'Support', ai: 'AI usage', audit: 'Audit log' },
     stats: { businesses: 'Businesses', new30: '{n} new in 30 days', users: 'Users', paid: 'Paid subscriptions', trials: '{n} on trial', revenue30: 'Verified revenue (30 days)',
       pending: 'Payments to verify', support: 'Open support requests', ai30: 'AI questions (30 days)', aiFail: '{n} failed', sales30: 'Sales recorded (30 days)', usageOnly: 'Count only', byPlan: 'Businesses by effective plan' },
     businessesSub: 'Registered businesses, owners and subscription status.', searchBusinesses: 'Name or owner email', subscription: 'Subscription', usage: 'Usage',
@@ -45,7 +45,7 @@ export const en = {
 export const fr: typeof en = {
   admin: {
     badge: 'Admin', backToApp: 'Retour à l’application', privacyNote: 'Vous voyez uniquement les métadonnées et compteurs d’usage. Les données d’un commerce ne sont visibles que si son propriétaire a accordé un accès support, et chaque session support est journalisée.',
-    nav: { overview: 'Vue d’ensemble', fapshi: 'Mobile Money', market: 'Marché', stores: 'Boutiques', listings: 'Annonces', reports: 'Signalements', orders: 'Commandes', settlements: 'Reversements', verification: 'Vérification', creators: 'Créateurs', businesses: 'Commerces', payments: 'Paiements', plans: 'Plans', config: 'Paramètres', announcements: 'Annonces', support: 'Support', ai: 'Usage IA', audit: 'Journal' },
+    nav: { overview: 'Vue d’ensemble', fapshi: 'Mobile Money', market: 'Marché', stores: 'Boutiques', listings: 'Annonces', reports: 'Signalements', orders: 'Commandes', settlements: 'Reversements', verification: 'Vérification', creators: 'Créateurs', finance: 'Finance', locations: 'Locations', businesses: 'Commerces', payments: 'Paiements', plans: 'Plans', config: 'Paramètres', announcements: 'Annonces', support: 'Support', ai: 'Usage IA', audit: 'Journal' },
     stats: { businesses: 'Commerces', new30: '{n} nouveaux en 30 jours', users: 'Utilisateurs', paid: 'Abonnements payants', trials: '{n} en essai', revenue30: 'Revenus vérifiés (30 jours)',
       pending: 'Paiements à vérifier', support: 'Demandes ouvertes', ai30: 'Questions IA (30 jours)', aiFail: '{n} en échec', sales30: 'Ventes enregistrées (30 jours)', usageOnly: 'Comptage uniquement', byPlan: 'Commerces par plan effectif' },
     businessesSub: 'Commerces inscrits, propriétaires et statut d’abonnement.', searchBusinesses: 'Nom ou e-mail du propriétaire', subscription: 'Abonnement', usage: 'Usage',

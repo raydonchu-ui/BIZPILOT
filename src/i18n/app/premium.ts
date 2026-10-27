@@ -1,5 +1,29 @@
 // Verified Premium, verification, and the premium tools. Keys are namespaced under `premium` so they never collide.
 export const en = {
+  finance: {
+    title: 'Financial control centre', subtitle: 'Subscription money, refunds, creator commission and payouts for a period. Figures come from the records behind them.',
+    from: 'From', to: 'To', today: 'Today', last30: 'Last 30 days', badRange: 'The end date must be after the start date.', loadError: 'The figures could not be loaded.',
+    gross: 'Gross collections', grossHint: '{n} verified payment(s)', refunds: 'Refunds', refundsHint: '{n} refund(s)',
+    commission: 'Creator commission', commissionHint: 'On hold: {onHold}', net: 'Net after refunds and commission', netHint: 'Not profit: see below',
+    notProfit: 'Not profit. These costs are not recorded in BizPilot: {items}. Marketplace orders are paid straight to sellers and are not BizPilot revenue.',
+    notRecorded: { hosting: 'hosting', ai_provider_fees: 'AI provider fees', payment_provider_fees: 'payment provider fees', staff_costs: 'staff costs' },
+    byPlan: 'By plan', firstRenewals: 'First payments: {first} · Renewals: {renewals}', none: 'Nothing in this period.',
+    rejected: 'Rejected', pending: 'Waiting for approval', creators: 'Creators and payouts', creatorsSub: 'Commission is recorded when a payment is approved and held before it is available.',
+    accrued: 'Commission recorded', reversed: 'Reversed by refunds', onHold: 'On hold', availableNow: 'Available', paidOut: 'Paid out in period', openPayouts: 'Open requests',
+    balanced: 'The books agree', differences: 'Differences found',
+    checkLine: 'Payments without commission: {missing} · Reversals without refund: {reversals} · Creators paid above balance: {overpaid}',
+    ai: 'AI usage', aiLine: '{answers} answers ({failed} failed) · {tokens} tokens', storageLine: '{files} stored picture(s) · {mb} MB',
+    health: 'Platform health', health_open_support: 'Open support requests', health_open_reports: 'Open reports', health_open_disputes: 'Open disputes',
+    health_stale_pending_payments: 'Payments waiting over 3 days', health_verifications_waiting: 'Verifications waiting over 3 days',
+    health_failed_automation_runs_7d: 'Failed automation runs (7 days)', health_failed_online_payments_7d: 'Failed online payments (7 days)', health_failed_payouts: 'Failed payouts',
+    payments: 'Subscription payments', status: 'Status', all: 'All', business: 'Business', reference: 'Reference',
+  },
+  locations: {
+    title: 'Locations', subtitle: 'The regions and towns buyers and sellers choose from. Keys stay fixed, so saved delivery areas and past orders keep working.',
+    add: 'Add a town or locality', addSub: 'Use the official spelling. If it already exists, it is refused.', region: 'Region', town: 'Town or locality', addButton: 'Add',
+    added: 'Town added.', saved: 'Saved.', count: '{n} town(s)', hidden: 'Hidden', newSpelling: 'Corrected spelling', rename: 'Correct spelling', offered: 'Offered to buyers',
+    note: 'Hiding a town stops it being offered at checkout. Delivery areas and orders that already use it keep working. A correction that would change the key is refused.',
+  },
   creatorAdmin: {
     title: 'Creators and payouts', subtitle: 'Approve creators, check referrals, and record payouts. Every decision is checked on the server and kept in the audit log.',
     program: 'Programme settings', programSub: 'Commission rates must stay between 2% and 10%.', enabled: 'Programme open', enabledHint: 'While closed, no new commission is recorded.',
@@ -113,6 +137,30 @@ export const en = {
 };
 
 export const fr: typeof en = {
+  finance: {
+    title: 'Centre de contrôle financier', subtitle: 'Argent des abonnements, remboursements, commissions créateurs et versements sur une période. Les chiffres viennent des enregistrements qui les fondent.',
+    from: 'Du', to: 'Au', today: 'Aujourd’hui', last30: '30 derniers jours', badRange: 'La date de fin doit être après la date de début.', loadError: 'Les chiffres n’ont pas pu être chargés.',
+    gross: 'Encaissements bruts', grossHint: '{n} paiement(s) vérifié(s)', refunds: 'Remboursements', refundsHint: '{n} remboursement(s)',
+    commission: 'Commissions créateurs', commissionHint: 'Bloquées : {onHold}', net: 'Net après remboursements et commissions', netHint: 'Pas un bénéfice : voir ci-dessous',
+    notProfit: 'Ce n’est pas un bénéfice. Ces coûts ne sont pas enregistrés dans BizPilot : {items}. Les commandes de la marketplace sont payées directement aux vendeurs et ne sont pas du chiffre d’affaires BizPilot.',
+    notRecorded: { hosting: 'l’hébergement', ai_provider_fees: 'les frais du fournisseur d’IA', payment_provider_fees: 'les frais des opérateurs de paiement', staff_costs: 'les salaires' },
+    byPlan: 'Par plan', firstRenewals: 'Premiers paiements : {first} · Renouvellements : {renewals}', none: 'Rien sur cette période.',
+    rejected: 'Refusés', pending: 'En attente d’approbation', creators: 'Créateurs et versements', creatorsSub: 'La commission est enregistrée à l’approbation d’un paiement, puis bloquée avant d’être disponible.',
+    accrued: 'Commissions enregistrées', reversed: 'Annulées par remboursement', onHold: 'Bloquées', availableNow: 'Disponibles', paidOut: 'Versé sur la période', openPayouts: 'Demandes ouvertes',
+    balanced: 'Les comptes concordent', differences: 'Écarts trouvés',
+    checkLine: 'Paiements sans commission : {missing} · Annulations sans remboursement : {reversals} · Créateurs payés au-dessus du solde : {overpaid}',
+    ai: 'Usage de l’IA', aiLine: '{answers} réponses ({failed} en échec) · {tokens} jetons', storageLine: '{files} image(s) stockée(s) · {mb} Mo',
+    health: 'Santé de la plateforme', health_open_support: 'Demandes d’assistance ouvertes', health_open_reports: 'Signalements ouverts', health_open_disputes: 'Litiges ouverts',
+    health_stale_pending_payments: 'Paiements en attente depuis plus de 3 jours', health_verifications_waiting: 'Vérifications en attente depuis plus de 3 jours',
+    health_failed_automation_runs_7d: 'Automatisations en échec (7 jours)', health_failed_online_payments_7d: 'Paiements en ligne en échec (7 jours)', health_failed_payouts: 'Versements en échec',
+    payments: 'Paiements d’abonnement', status: 'Statut', all: 'Tous', business: 'Entreprise', reference: 'Référence',
+  },
+  locations: {
+    title: 'Localisations', subtitle: 'Les régions et villes que les acheteurs et vendeurs choisissent. Les clés restent fixes : les zones de livraison et les commandes passées continuent de fonctionner.',
+    add: 'Ajouter une ville ou localité', addSub: 'Utilisez l’orthographe officielle. Si elle existe déjà, elle est refusée.', region: 'Région', town: 'Ville ou localité', addButton: 'Ajouter',
+    added: 'Ville ajoutée.', saved: 'Enregistré.', count: '{n} ville(s)', hidden: 'Masquée', newSpelling: 'Orthographe corrigée', rename: 'Corriger l’orthographe', offered: 'Proposée aux acheteurs',
+    note: 'Masquer une ville l’empêche d’être proposée au paiement. Les zones de livraison et les commandes qui l’utilisent continuent de fonctionner. Une correction qui changerait la clé est refusée.',
+  },
   creatorAdmin: {
     title: 'Créateurs et versements', subtitle: 'Approuvez les créateurs, vérifiez les recommandations et enregistrez les versements. Chaque décision est contrôlée sur le serveur et gardée dans le journal d’audit.',
     program: 'Paramètres du programme', programSub: 'Les taux de commission restent entre 2 % et 10 %.', enabled: 'Programme ouvert', enabledHint: 'Fermé, aucune nouvelle commission n’est enregistrée.',
