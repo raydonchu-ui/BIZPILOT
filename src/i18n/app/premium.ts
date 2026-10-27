@@ -50,7 +50,7 @@ export const en = {
     reference: 'Provider reference', referenceHint: 'The reference from the provider statement. It cannot be used for another payout.', reason: 'Reason', reasonRequired: 'Write the reason.',
   },
   creator: {
-    title: 'Creator and promoter program', intro: 'Share BizPilot with your audience. When a business you refer subscribes, you earn a commission. BizPilot reviews every application before commission is paid.',
+    open: 'Open my creator space', title: 'Creator and promoter program', intro: 'Share BizPilot with your audience. When a business you refer subscribes, you earn a commission. BizPilot reviews every application before commission is paid.',
     loadError: 'Your creator workspace could not be loaded. Try again shortly.', displayName: 'Name shown to sellers', bio: 'About you (optional)',
     channels: 'Where you share (up to five)', channelKind: 'Channel', channelUrl: 'Link to the channel', addChannel: 'Add a channel',
     channelKinds: { tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', youtube: 'YouTube', whatsapp: 'WhatsApp', other: 'Other' },
@@ -105,6 +105,11 @@ export const en = {
     notEnabled: 'The AI Business Manager needs Verified Premium.',
   },
   premium: {
+  dash: {
+    offerTitle: 'Verified Premium: 5,000 FCFA a month', offerBody: 'The blue tick for your store, the AI Business Manager, and premium automations for alerts, summaries and drafts.',
+    offerCta: 'See Verified Premium', activeTitle: 'Verified Premium is active', renews: 'Renews on {date}',
+    openManager: 'Open AI Manager', openAutomations: 'Automations', openTick: 'Blue tick status',
+  },
     upgrade: {
       title: 'Upgrade to Verified Premium', body: 'Verified Premium costs {amount} for one month. It adds the verified blue tick, premium automations and the AI Business Manager.',
       replaces: 'It replaces your current {plan} plan from the day the payment is approved.',
@@ -194,7 +199,7 @@ export const fr: typeof en = {
     reference: 'Référence du fournisseur', referenceHint: 'La référence du relevé du fournisseur. Elle ne peut servir qu’à un seul versement.', reason: 'Motif', reasonRequired: 'Écrivez le motif.',
   },
   creator: {
-    title: 'Programme créateurs et promoteurs', intro: 'Partagez BizPilot avec votre audience. Quand une entreprise que vous recommandez s’abonne, vous gagnez une commission. BizPilot examine chaque demande avant de verser une commission.',
+    open: 'Ouvrir mon espace créateur', title: 'Programme créateurs et promoteurs', intro: 'Partagez BizPilot avec votre audience. Quand une entreprise que vous recommandez s’abonne, vous gagnez une commission. BizPilot examine chaque demande avant de verser une commission.',
     loadError: 'Votre espace créateur n’a pas pu être chargé. Réessayez plus tard.', displayName: 'Nom affiché aux vendeurs', bio: 'À propos de vous (facultatif)',
     channels: 'Où vous partagez (jusqu’à cinq)', channelKind: 'Canal', channelUrl: 'Lien vers le canal', addChannel: 'Ajouter un canal',
     channelKinds: { tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', youtube: 'YouTube', whatsapp: 'WhatsApp', other: 'Autre' },
@@ -249,6 +254,11 @@ export const fr: typeof en = {
     notEnabled: 'Le Gestionnaire IA nécessite Premium vérifié.',
   },
   premium: {
+  dash: {
+    offerTitle: 'Premium vérifié : 5 000 FCFA par mois', offerBody: 'Le badge bleu pour votre boutique, le Gestionnaire IA, et des automatisations premium pour les alertes, les récapitulatifs et les brouillons.',
+    offerCta: 'Voir Premium vérifié', activeTitle: 'Premium vérifié est actif', renews: 'Renouvellement le {date}',
+    openManager: 'Ouvrir le Gestionnaire IA', openAutomations: 'Automatisations', openTick: 'État du badge bleu',
+  },
     upgrade: {
       title: 'Passer à Premium vérifié', body: 'Premium vérifié coûte {amount} pour un mois. Il ajoute le badge bleu vérifié, les automatisations premium et le Gestionnaire IA.',
       replaces: 'Il remplace votre plan {plan} actuel à partir du jour où le paiement est approuvé.',

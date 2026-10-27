@@ -12,7 +12,7 @@ import { formatDate, formatXaf } from '../../lib/format';
 import { guestOrders, ProductCard, StoreCard } from '../../lib/market';
 import { useAction } from '../../lib/useAction';
 import { MarketImage, OrderStatusBadge, PaymentStatusBadge, ProductGrid, StoreTile } from '../../components/market';
-import { Button, Card, EmptyState, Field, Input, LinkButton, PageLoader, Tabs } from '../../components/ui';
+import { Button, Card, CardHeader, EmptyState, Field, Input, LinkButton, PageLoader, Tabs } from '../../components/ui';
 import { PushSettings } from '../../components/messaging';
 import { PictureEditor } from '../../components/PictureEditor';
 
@@ -154,6 +154,10 @@ function Profile() {
       )}
     </Card>
     <PushSettings />
+    <Card>
+      <CardHeader title={t('creator.title')} subtitle={t('creator.intro')} />
+      <LinkButton to="/creator" variant="outline" size="sm">{t('creator.open')}</LinkButton>
+    </Card>
     <NotificationPrefs />
     </div>
   );

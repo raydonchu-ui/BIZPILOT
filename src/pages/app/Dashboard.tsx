@@ -2,17 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import {
-  AlertTriangle, ArrowRight, Bot, Box, ChevronRight, Coins, Hourglass, MessageSquareText, Package, PackageX, Receipt,
-  Plus, ShoppingBag, ShoppingCart, Sparkles, TrendingUp, UserPlus,
-} from 'lucide-react';
+import { AlertTriangle, ArrowRight, BadgeCheck, Bot, Box, ChevronRight, Coins, Hourglass, MessageSquareText, Package, PackageX, Plus, Receipt, ShoppingBag, ShoppingCart, Sparkles, TrendingUp, UserPlus } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useBiz } from '../../lib/business';
 import { useAuth } from '../../lib/auth';
 import { useRpc, unwrap } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { grainFor } from '../../lib/dates';
-import { formatCompact, formatNumber, formatPct, formatRelative, pctChange } from '../../lib/format';
+import { formatCompact, formatDate, formatNumber, formatPct, formatRelative, pctChange } from '../../lib/format';
 import { Alert, Card, CardHeader, EmptyState, ErrorState, LinkButton, PageLoader, Select, StatCard, useMoney } from '../../components/ui';
 import { PeriodPicker, usePeriod } from '../../components/PeriodPicker';
 import { DonutChart, HBar, SalesProfitChart, ValueTrendChart, CHART_COLORS } from '../../components/charts';
@@ -88,6 +85,7 @@ function OwnerDashboard() {
           <div className="text-sm"><p className="font-bold">{t('dashboard.growingTitle')}</p><p className="text-brand-50">{t('dashboard.growingBody', { pct: formatPct(pctChange(Number(cur.net_sales), Number(prev.net_sales)), lang, 0) })}</p></div>
         </div>
       )}
+      <PremiumBanner />
       {s.history_clamped && <div className="mb-4"><Alert tone="blue">{t('dashboard.historyClamped')}</Alert></div>}
       {noSalesEver && (
         <div className="mb-4"><Alert tone="green" title={t('dashboard.welcomeTitle')} action={<LinkButton to="/app/setup" size="sm">{t('nav.setup')}</LinkButton>}>{t('dashboard.welcomeBody')}</Alert></div>
@@ -340,6 +338,44 @@ function CounterDashboard() {
         </div>
       </Card>
       <div className="mt-6 flex justify-center"><LinkButton to="/app/sales/new" size="lg" icon={<ArrowRight className="h-5 w-5" />}>{t('nav.newSale')}</LinkButton></div>
+    </div>
+  );
+}
+
+/** Verified Premium: what it adds, for sellers without it; its renewal and shortcuts, for sellers with it. */
+function PremiumBanner() {
+  const { t, lang } = useI18n();
+  const { biz, has, can } = useBiz();
+  if (!can('billing.manage')) return null;
+  const renews = biz.subscription?.current_period_end;
+  if (has('verified_badge')) {
+    return (
+      <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-sky-600 to-sky-500 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <BadgeCheck className="h-6 w-6 shrink-0" />
+          <div className="text-sm">
+            <p className="font-bold">{t('premium.dash.activeTitle')}</p>
+            {renews && <p className="text-sky-50">{t('premium.dash.renews', { date: formatDate(renews, lang) })}</p>}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 text-sm">
+          <Link to="/app/manager" className="rounded-lg bg-white/15 px-3 py-1.5 font-semibold hover:bg-white/25">{t('premium.dash.openManager')}</Link>
+          <Link to="/app/automations" className="rounded-lg bg-white/15 px-3 py-1.5 font-semibold hover:bg-white/25">{t('premium.dash.openAutomations')}</Link>
+          <Link to="/app/store?tab=verification" className="rounded-lg bg-white/15 px-3 py-1.5 font-semibold hover:bg-white/25">{t('premium.dash.openTick')}</Link>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-sky-900 dark:bg-sky-950/40">
+      <div className="flex items-start gap-3">
+        <BadgeCheck className="mt-0.5 h-6 w-6 shrink-0 text-sky-600" />
+        <div className="text-sm">
+          <p className="font-bold text-sky-900 dark:text-sky-100">{t('premium.dash.offerTitle')}</p>
+          <p className="text-sky-800 dark:text-sky-200">{t('premium.dash.offerBody')}</p>
+        </div>
+      </div>
+      <Link to="/app/billing" className="shrink-0 rounded-lg bg-sky-600 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-sky-700">{t('premium.dash.offerCta')}</Link>
     </div>
   );
 }
