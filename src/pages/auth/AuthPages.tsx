@@ -6,6 +6,7 @@ import { MailCheck, ShoppingBag, Store } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { fetchAuthProviders, supabase, supabaseConfigured } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
+import { isDuplicateSignup, isInvalidLogin, normalizeEmail } from '../../lib/auth-email';
 import { useAuth } from '../../lib/auth';
 import { createNonce, googleConfig, loadGoogleIdentity, recordGoogleMode, type GoogleCredentialResponse } from '../../lib/googleIdentity';
 import { Alert, Button, Checkbox, Field, Input, PasswordInput, Spinner } from '../../components/ui';
@@ -178,15 +179,18 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginFailed, setLoginFailed] = useState(false);
   const next = safeNext(params.get('next'));
   if (session) return <Navigate to={next ?? '/app'} replace />;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    setLoading(true); setError(null);
-    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    setLoading(true); setError(null); setLoginFailed(false);
+    const { error: err } = await supabase.auth.signInWithPassword({ email: normalizeEmail(email), password });
     setLoading(false);
-    if (err) setError(errorMessage(err, t, has));
-    else nav(next ?? '/app', { replace: true });
+    if (err) {
+      setError(errorMessage(err, t, has));
+      setLoginFailed(isInvalidLogin(err));
+    } else nav(next ?? '/app', { replace: true });
   };
   return (
     <AuthShell title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}
@@ -198,6 +202,14 @@ export function LoginPage() {
         <Field label={t('auth.password')} htmlFor="password"><PasswordInput id="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
         <div className="text-right"><Link to="/forgot-password" className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.forgot')}</Link></div>
         {error && <Alert tone="red">{error}</Alert>}
+        {loginFailed && (
+          <p className="text-center text-sm text-ink-soft dark:text-gray-300">
+            {t('auth.loginHelp')}{' '}
+            <Link to={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'} className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.createAccount')}</Link>
+            {' · '}
+            <Link to="/forgot-password" className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.forgot')}</Link>
+          </p>
+        )}
         <Button type="submit" block size="lg" loading={loading}>{t('auth.login')}</Button>
       </form>
     </AuthShell>
@@ -213,6 +225,7 @@ export function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState(false);
   const [params, setParams] = useSearchParams();
   const rawNext = safeNext(params.get('next'));
   // Buyer: browse, save favourites, follow orders. Seller: set up a business (and can still buy).
@@ -228,14 +241,17 @@ export function SignupPage() {
     if (f.password !== f.confirm) return setError(t('auth.passwordMismatch'));
     if (!accept) return setError(t('auth.mustAccept'));
     setLoading(true);
+    setDuplicate(false);
+    const email = normalizeEmail(f.email);
     const { data, error: err } = await supabase.auth.signUp({
-      email: f.email.trim(), password: f.password,
+      email, password: f.password,
       options: { data: { full_name: f.full_name.trim(), phone: f.phone.trim(), language: lang, account_type: role }, emailRedirectTo: `${window.location.origin}/login?verified=1&next=${encodeURIComponent(next)}` },
     });
     setLoading(false);
+    if (err && isDuplicateSignup(err)) return setDuplicate(true);
     if (err) return setError(errorMessage(err, t, has));
     if (data.session) nav(next, { replace: true });
-    else setSentTo(f.email.trim());
+    else setSentTo(email);
   };
   if (sentTo) {
     return (
@@ -280,6 +296,15 @@ export function SignupPage() {
         <Field label={t('auth.confirmPassword')} htmlFor="pw2" required><PasswordInput id="pw2" required autoComplete="new-password" value={f.confirm} onChange={set('confirm')} /></Field>
         <Checkbox checked={accept} onChange={setAccept} label={<>{before}{termsLink}{middle}{privacyLink}{after}</>} />
         {error && <Alert tone="red">{error}</Alert>}
+        {duplicate && (
+          <Alert tone="amber">
+            <p>{t('auth.duplicateEmail')}</p>
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-semibold">
+              <Link to={`/login${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-brand-700 underline dark:text-brand-400">{t('auth.login')}</Link>
+              <Link to="/forgot-password" className="text-brand-700 underline dark:text-brand-400">{t('auth.forgot')}</Link>
+            </p>
+          </Alert>
+        )}
         <Button type="submit" block size="lg" loading={loading}>{t('auth.signup')}</Button>
       </form>
     </AuthShell>
@@ -295,7 +320,7 @@ export function ForgotPasswordPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true); setError(null);
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/reset-password` });
+    const { error: err } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), { redirectTo: `${window.location.origin}/reset-password` });
     setLoading(false);
     if (err && !/rate/i.test(err.message)) setError(errorMessage(err, t, has)); else setSent(true);
   };

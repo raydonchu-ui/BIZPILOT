@@ -2,7 +2,7 @@ export const en = {
   auth: {
     loginTitle: 'Welcome back', loginSubtitle: 'Log in to manage your store.', email: 'Email address', password: 'Password',
     confirmPassword: 'Confirm password', login: 'Log in', loggingIn: 'Logging in…', forgot: 'Forgot password?',
-    noAccount: 'New to BizPilot?', createAccount: 'Create an account', haveAccount: 'Already have an account?',
+    loginHelp: 'Not registered yet?', duplicateEmail: 'An account already uses this email address. Log in to continue, or reset your password if you have forgotten it.', noAccount: 'New to BizPilot?', createAccount: 'Create an account', haveAccount: 'Already have an account?',
     roleTitle: 'Join BizPilot', roleSubtitle: 'How will you use BizPilot? You can do both with the same account later.',
     role: { buyer: 'I want to buy', buyerSub: 'Browse shops, save favourites, order and follow your orders. Browsing needs no account.',
       seller: 'I sell: manage my business', sellerSub: 'Stock, sales from every channel, expenses, profit, and your own online store.' },
@@ -53,7 +53,7 @@ export const fr: typeof en = {
   auth: {
     loginTitle: 'Bon retour', loginSubtitle: 'Connectez-vous pour gérer votre boutique.', email: 'Adresse e-mail', password: 'Mot de passe',
     confirmPassword: 'Confirmer le mot de passe', login: 'Se connecter', loggingIn: 'Connexion…', forgot: 'Mot de passe oublié ?',
-    noAccount: 'Nouveau sur BizPilot ?', createAccount: 'Créer un compte', haveAccount: 'Vous avez déjà un compte ?',
+    loginHelp: 'Pas encore inscrit ?', duplicateEmail: 'Un compte utilise déjà cette adresse e-mail. Connectez-vous pour continuer, ou réinitialisez votre mot de passe si vous l’avez oublié.', noAccount: 'Nouveau sur BizPilot ?', createAccount: 'Créer un compte', haveAccount: 'Vous avez déjà un compte ?',
     roleTitle: 'Rejoindre BizPilot', roleSubtitle: 'Comment utiliserez-vous BizPilot ? Vous pourrez faire les deux avec le même compte.',
     role: { buyer: 'Je veux acheter', buyerSub: 'Parcourez les boutiques, gardez vos favoris, commandez et suivez vos commandes. Parcourir ne demande pas de compte.',
       seller: 'Je vends : gérer mon commerce', sellerSub: 'Stock, ventes de tous les canaux, dépenses, bénéfice, et votre propre boutique en ligne.' },
