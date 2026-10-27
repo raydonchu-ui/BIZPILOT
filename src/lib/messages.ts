@@ -20,6 +20,7 @@ export interface ConversationRow {
   last_message_preview: string | null;
   side: Side;
   unread: number;
+  counterpart_image: string | null;
 }
 
 export interface ThreadMeta {
@@ -29,6 +30,7 @@ export interface ThreadMeta {
   store_slug: string | null;
   buyer_name: string;
   counterpart: string;
+  counterpart_image: string | null;
   product: { id: string; name: string; image: string | null; price: number | null } | null;
 }
 

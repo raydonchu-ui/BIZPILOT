@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { BadgeCheck, CheckCircle2, Circle, ExternalLink, ImagePlus, Plus, Store, Trash2 } from 'lucide-react';
+import { BadgeCheck, CheckCircle2, Circle, ExternalLink, Plus, Store, Trash2 } from 'lucide-react';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { rpc, unwrap } from '../../../lib/api';
@@ -10,7 +10,9 @@ import { supabase } from '../../../lib/supabase';
 import { useAction } from '../../../lib/useAction';
 import { errorKey } from '../../../lib/errors';
 import { formatDate, formatMoney } from '../../../lib/format';
-import { publicUrl, storeUrl, uploadStorefrontImage, useMarketConfig } from '../../../lib/market';
+import { storeUrl, useMarketConfig } from '../../../lib/market';
+import { useAuth } from '../../../lib/auth';
+import { PictureEditor } from '../../../components/PictureEditor';
 import { ShareBar, Stars } from '../../../components/market';
 import { Alert, Badge, Button, Card, CardHeader, Checkbox, EmptyState, ErrorState, Field, Input, PageHeader, PageLoader, Tabs, Textarea, UpgradeNotice } from '../../../components/ui';
 
@@ -172,33 +174,8 @@ function useSave(id: string) {
   return { save, busy };
 }
 
-function ImagePick({ label, path, onPath, folder, wide }: { label: string; path: string | null; onPath: (p: string | null) => void; folder: 'store'; wide?: boolean }) {
-  const { t } = useI18n();
-  const { id } = useBiz();
-  const { run } = useAction();
-  const [busy, setBusy] = useState(false);
-  const pick = async (file?: File) => {
-    if (!file) return;
-    setBusy(true);
-    const p = await run(() => uploadStorefrontImage(id, folder, file, file.name));
-    setBusy(false);
-    if (p) onPath(p);
-  };
-  return (
-    <div>
-      <p className="mb-1.5 text-sm font-medium text-ink-soft dark:text-gray-300">{label}</p>
-      <div className="flex items-center gap-3">
-        <label className={clsx('flex cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border-2 border-dashed border-gray-300 text-xs text-ink-muted hover:border-brand-500 dark:border-gray-700', wide ? 'h-24 w-48' : 'h-24 w-24')}>
-          {path ? <img src={publicUrl(path) ?? ''} alt="" className="h-full w-full object-cover" /> : <><ImagePlus className="h-6 w-6" />{busy ? t('common.loading') : t('products.addImage')}</>}
-          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} aria-label={label} />
-        </label>
-        {path && <Button size="sm" variant="ghost" onClick={() => onPath(null)}>{t('products.removeImage')}</Button>}
-      </div>
-    </div>
-  );
-}
-
 function ProfileTab({ s }: { s: any }) {
+  const { session } = useAuth();
   const { t } = useI18n();
   const { id } = useBiz();
   const { save, busy } = useSave(id);
@@ -221,7 +198,8 @@ function ProfileTab({ s }: { s: any }) {
         <Field label={t('market.city')} optional><Input maxLength={80} value={f.city} onChange={set('city')} /></Field>
         <Field label={t('seller.store.region')} optional><Input maxLength={80} value={f.region} onChange={set('region')} /></Field>
         <Field label={t('seller.store.address')} optional className="sm:col-span-2"><Input maxLength={200} value={f.address} onChange={set('address')} /></Field>
-        <div className="sm:col-span-2"><ImagePick label={t('seller.store.logo')} path={f.logo_path} onPath={(p) => setF({ ...f, logo_path: p })} folder="store" /></div>
+        <div className="sm:col-span-2"><PictureEditor kind="logo" ownerId={session!.user.id} folder={`${id}/store`} currentPath={f.logo_path} title={t('seller.store.logo')}
+          onSaved={(p) => setF({ ...f, logo_path: p })} onRemove={() => setF({ ...f, logo_path: null })} /></div>
         <div className="sm:col-span-2 flex justify-end"><Button type="submit" loading={busy} disabled={f.slug !== s.slug && slugOk.data === false}>{t('common.save')}</Button></div>
       </form>
     </Card>
@@ -394,6 +372,7 @@ function PaymentsTab({ s }: { s: any }) {
 }
 
 function AppearanceTab({ s }: { s: any }) {
+  const { session } = useAuth();
   const { t } = useI18n();
   const { id, has } = useBiz();
   const { save, busy } = useSave(id);
@@ -402,7 +381,8 @@ function AppearanceTab({ s }: { s: any }) {
   return (
     <Card>
       <form onSubmit={(e) => { e.preventDefault(); save(f); }} className="space-y-5">
-        <ImagePick label={t('seller.store.cover')} path={f.cover_path} onPath={(p) => setF({ ...f, cover_path: p })} folder="store" wide />
+        <PictureEditor kind="cover" ownerId={session!.user.id} folder={`${id}/store`} currentPath={f.cover_path} title={t('seller.store.cover')}
+          onSaved={(p) => setF({ ...f, cover_path: p })} onRemove={() => setF({ ...f, cover_path: null })} />
         <Field label={t('seller.store.brandColor')} optional>
           <div className="flex items-center gap-3"><input type="color" aria-label={t('seller.store.brandColor')} value={f.brand_color} onChange={(e) => setF({ ...f, brand_color: e.target.value })} className="h-10 w-16 rounded border border-gray-300" />
             <span className="text-sm text-ink-muted">{f.brand_color}</span></div>

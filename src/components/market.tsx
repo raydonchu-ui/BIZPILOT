@@ -16,11 +16,15 @@ import { useAction } from '../lib/useAction';
 import { useToast } from '../lib/toast';
 import { useMessagesUnread } from '../lib/messages';
 import { Button, Field, Input, Modal, Select, Textarea } from './ui';
+import { thumbPath } from '../lib/imageProcess';
 
-export function MarketImage({ path, alt, className, iconClassName, rounded = 'rounded-xl' }:
-  { path: string | null | undefined; alt: string; className?: string; iconClassName?: string; rounded?: string }) {
+/** A picture from the storefront bucket. `size="thumb"` shows the small copy in lists; if it is missing, the full picture is used. */
+export function MarketImage({ path, alt, className, iconClassName, rounded = 'rounded-xl', size }:
+  { path: string | null | undefined; alt: string; className?: string; iconClassName?: string; rounded?: string; size?: 'thumb' }) {
   const [broken, setBroken] = useState(false);
-  const src = publicUrl(path);
+  const [fullInstead, setFullInstead] = useState(false);
+  const useThumb = size === 'thumb' && !fullInstead && !!path;
+  const src = publicUrl(useThumb ? thumbPath(path!) : path);
   if (!src || broken) {
     return (
       <div className={clsx('flex items-center justify-center bg-gradient-to-br from-brand-50 to-gray-100 text-brand-700/60 dark:from-gray-800 dark:to-gray-900', rounded, className)} aria-label={alt} role="img">
@@ -28,7 +32,7 @@ export function MarketImage({ path, alt, className, iconClassName, rounded = 'ro
       </div>
     );
   }
-  return <img src={src} alt={alt} loading="lazy" onError={() => setBroken(true)} className={clsx('object-cover', rounded, className)} />;
+  return <img src={src} alt={alt} loading="lazy" onError={() => (useThumb ? setFullInstead(true) : setBroken(true))} className={clsx('object-cover', rounded, className)} />;
 }
 
 export function Price({ value, compareAt, from, className }: { value: number; compareAt?: number | null; from?: boolean; className?: string }) {

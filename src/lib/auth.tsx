@@ -17,7 +17,7 @@ export interface BusinessCtx {
 
 export interface MyContext {
   user_id: string; email: string; email_confirmed: boolean; is_platform_admin: boolean; pending_invites: number;
-  profile: { full_name: string | null; phone: string | null; language: 'en' | 'fr'; theme: string } | null;
+  profile: { full_name: string | null; phone: string | null; language: 'en' | 'fr'; theme: string; avatar_path?: string | null } | null;
   businesses: BusinessCtx[];
 }
 

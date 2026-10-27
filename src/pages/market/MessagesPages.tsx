@@ -82,9 +82,13 @@ export function MessagesPage() {
             return (
               <li key={r.id}>
                 <Link to={`${base}/${r.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60">
-                  <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-extrabold text-brand-800 dark:bg-brand-900 dark:text-brand-200">
-                    {initial(name)}
-                  </span>
+                  {r.counterpart_image ? (
+                    <MarketImage path={r.counterpart_image} alt="" size="thumb" className="h-12 w-12 shrink-0" rounded="rounded-full" />
+                  ) : (
+                    <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-extrabold text-brand-800 dark:bg-brand-900 dark:text-brand-200">
+                      {initial(name)}
+                    </span>
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
                       <span className={clsx('truncate', r.unread > 0 ? 'font-extrabold' : 'font-semibold')}>{name}</span>
@@ -186,7 +190,11 @@ export function ThreadPage() {
         <Link to={base} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800" aria-label={t('market.msg.backToMessages')}>
           <ChevronLeft className="h-6 w-6" />
         </Link>
-        <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 font-extrabold text-brand-800 dark:bg-brand-900 dark:text-brand-200">{initial(meta.counterpart)}</span>
+        {meta.counterpart_image ? (
+          <MarketImage path={meta.counterpart_image} alt="" className="h-10 w-10 shrink-0" rounded="rounded-full" />
+        ) : (
+          <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 font-extrabold text-brand-800 dark:bg-brand-900 dark:text-brand-200">{initial(meta.counterpart)}</span>
+        )}
         <span className="min-w-0 flex-1">
           <span className="block truncate font-bold">{meta.counterpart}</span>
           <span className="block truncate text-xs text-ink-muted">{meta.side === 'buyer' ? t('market.msg.storeChat') : t('market.msg.customerChat')}</span>

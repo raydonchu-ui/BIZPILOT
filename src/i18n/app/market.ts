@@ -124,6 +124,13 @@ export const en = {
     shopper: { back: 'Back', hello: 'Hello, {name}', helloPlain: 'Hello there', happy: 'Happy Shopping!', searchPlaceholder: 'Search products or shops…',
       filters: 'Filters', pending: 'Pending', processing: 'Processing', shipped: 'Shipped', delivered: 'Delivered', myOrders: 'My orders', viewAll: 'View all',
       noOrders: 'No orders yet.', account: 'Account', favorites: 'My favourites', help: 'Help & support', settings: 'Settings' },
+    pic: {
+      choose: 'Choose a photo', change: 'Choose another photo', hint: 'PNG, JPEG or WebP, up to 5 MB. The photo is cropped and resized, and camera location data is removed.',
+      none: 'No photo yet', current: 'Current photo', preview: 'Preview of the photo', zoom: 'Zoom', moveX: 'Move left or right', moveY: 'Move up or down',
+      save: 'Save photo', remove: 'Remove photo', saved: 'Photo saved.', profileTitle: 'Profile photo',
+      err: { file_type_not_allowed: 'Choose a PNG, JPEG or WebP picture.', file_too_large: 'The picture is larger than 5 MB. Choose a smaller one.',
+        image_invalid: 'This file could not be read as a picture.', failed: 'The photo could not be saved. Please try again.' },
+    },
     msg: {
       title: 'Messages', searchPlaceholder: 'Search conversations…', all: 'All', unread: 'Unread', customers: 'Customers',
       emptyTitle: 'No messages yet', emptyBody: 'Ask a store about a product and your conversation appears here.', noMatch: 'No conversation matches your search.',
@@ -425,6 +432,13 @@ export const fr: typeof en = {
     shopper: { back: 'Retour', hello: 'Bonjour, {name}', helloPlain: 'Bonjour', happy: 'Bon shopping !', searchPlaceholder: 'Rechercher produits ou boutiques…',
       filters: 'Filtres', pending: 'En attente', processing: 'En préparation', shipped: 'Expédiées', delivered: 'Livrées', myOrders: 'Mes commandes', viewAll: 'Tout voir',
       noOrders: 'Pas encore de commandes.', account: 'Compte', favorites: 'Mes favoris', help: 'Aide & assistance', settings: 'Paramètres' },
+    pic: {
+      choose: 'Choisir une photo', change: 'Choisir une autre photo', hint: 'PNG, JPEG ou WebP, 5 Mo maximum. La photo est recadrée et redimensionnée, et les données de localisation de l’appareil sont supprimées.',
+      none: 'Pas encore de photo', current: 'Photo actuelle', preview: 'Aperçu de la photo', zoom: 'Zoom', moveX: 'Déplacer à gauche ou à droite', moveY: 'Déplacer en haut ou en bas',
+      save: 'Enregistrer la photo', remove: 'Supprimer la photo', saved: 'Photo enregistrée.', profileTitle: 'Photo de profil',
+      err: { file_type_not_allowed: 'Choisissez une image PNG, JPEG ou WebP.', file_too_large: 'L’image dépasse 5 Mo. Choisissez-en une plus petite.',
+        image_invalid: 'Ce fichier ne peut pas être lu comme une image.', failed: 'La photo n’a pas pu être enregistrée. Réessayez.' },
+    },
     msg: {
       title: 'Messages', searchPlaceholder: 'Rechercher des conversations…', all: 'Tous', unread: 'Non lus', customers: 'Clients',
       emptyTitle: 'Pas encore de messages', emptyBody: 'Demandez à une boutique des précisions sur un produit : la conversation apparaîtra ici.',

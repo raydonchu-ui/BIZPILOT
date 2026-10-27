@@ -13,6 +13,7 @@ import { useAction } from '../../lib/useAction';
 import { MarketImage, OrderStatusBadge, PaymentStatusBadge, ProductGrid, StoreTile } from '../../components/market';
 import { Button, Card, EmptyState, Field, Input, LinkButton, PageLoader, Tabs } from '../../components/ui';
 import { PushSettings } from '../../components/messaging';
+import { PictureEditor } from '../../components/PictureEditor';
 
 type Tab = 'orders' | 'wishlist' | 'stores' | 'profile';
 
@@ -126,8 +127,16 @@ function Profile() {
     e.preventDefault();
     await run(async () => { unwrap(await supabase.from('profiles').update(f).eq('id', session!.user.id).select()); await refreshContext(); }, t('common.saved'));
   };
+  const setAvatar = async (avatar_path: string | null) => {
+    unwrap(await supabase.from('profiles').update({ avatar_path }).eq('id', session!.user.id).select());
+    await refreshContext();
+  };
   return (
     <div className="max-w-xl space-y-4">
+    <Card>
+      <PictureEditor kind="avatar" ownerId={session!.user.id} folder={`users/${session!.user.id}`} currentPath={context?.profile?.avatar_path ?? null}
+        title={t('market.pic.profileTitle')} onSaved={(path) => setAvatar(path)} onRemove={() => setAvatar(null)} />
+    </Card>
     <Card>
       <form onSubmit={save} className="space-y-4">
         <Field label={t('market.email')}><Input value={session?.user.email ?? ''} disabled /></Field>
