@@ -1,4 +1,4 @@
--- BizPilot setup PART 13 of 20. Run parts in order.
+-- BizPilot setup PART 13 of 21. Run parts in order.
 begin;
 create or replace function public.market_product(p_id uuid) returns jsonb
 language plpgsql stable security definer set search_path = public as $$

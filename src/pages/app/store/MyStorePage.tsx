@@ -14,6 +14,7 @@ import { storeUrl, useMarketConfig } from '../../../lib/market';
 import { useAuth } from '../../../lib/auth';
 import { PictureEditor } from '../../../components/PictureEditor';
 import { ShareBar, Stars } from '../../../components/market';
+import { DeliveryAreaPicker } from '../../../components/DeliveryAreaPicker';
 import { Alert, Badge, Button, Card, CardHeader, Checkbox, EmptyState, ErrorState, Field, Input, PageHeader, PageLoader, Tabs, Textarea, UpgradeNotice } from '../../../components/ui';
 
 type Tab = 'profile' | 'contact' | 'delivery' | 'payments' | 'appearance' | 'reviews';
@@ -274,11 +275,16 @@ function DeliveryTab({ s }: { s: any }) {
   const { save, busy } = useSave(id);
   const { run, busy: zBusy } = useAction();
   const zones = useQuery({ queryKey: ['zones', id], queryFn: async () => unwrap(await supabase.from('store_delivery_zones').select('*').eq('business_id', id).order('sort')) as any[] });
-  const [rows, setRows] = useState<{ id?: string; name: string; fee: string; eta: string; active: boolean }[]>([]);
-  useEffect(() => { if (zones.data) setRows(zones.data.map((z) => ({ id: z.id, name: z.name, fee: String(z.fee), eta: z.eta ?? '', active: z.active }))); }, [zones.data]);
+  const [rows, setRows] = useState<{ id?: string; name: string; fee: string; eta: string; active: boolean; regions: string[]; localities: string[] }[]>([]);
+  const [areaError, setAreaError] = useState<string | null>(null);
+  useEffect(() => { if (zones.data) setRows(zones.data.map((z) => ({ id: z.id, name: z.name, fee: String(z.fee), eta: z.eta ?? '', active: z.active, regions: z.regions ?? [], localities: z.localities ?? [] }))); }, [zones.data]);
   const [f, setF] = useState({ pickup_enabled: s.pickup_enabled, pickup_note: s.pickup_note ?? '', delivery_note: s.delivery_note ?? '', min_order_amount: String(s.min_order_amount ?? 0) });
   const saveAll = async (e: FormEvent) => {
     e.preventDefault();
+    // An active area must say where it delivers: a zone with no region and no town would look like it delivers anywhere.
+    const unset = rows.find((r) => r.name.trim() && r.active && r.regions.length === 0 && r.localities.length === 0);
+    if (unset) { setAreaError(t('seller.store.areaRequired', { zone: unset.name.trim() })); return; }
+    setAreaError(null);
     const ok = await run(() => rpc('store_save_zones', { p_business: id, p_zones: rows.filter((r) => r.name.trim()).map((r) => ({ ...r, fee: Number(r.fee || 0) })) }));
     if (ok !== undefined) await save(f);
   };
@@ -290,16 +296,23 @@ function DeliveryTab({ s }: { s: any }) {
           <p className="mb-3 text-sm text-ink-muted">{t('seller.store.zonesSub')}</p>
           <div className="space-y-2">
             {rows.map((r, i) => (
-              <div key={r.id ?? `n${i}`} className="grid items-end gap-2 rounded-xl border border-gray-200 p-3 dark:border-gray-800 sm:grid-cols-[2fr_1fr_1.5fr_auto_auto]">
+              <div key={r.id ?? `n${i}`} className="space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+              <div className="grid items-end gap-2 sm:grid-cols-[2fr_1fr_1.5fr_auto_auto]">
                 <Field label={t('seller.store.zoneName')}><Input required value={r.name} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} placeholder="Akwa, Bonapriso…" /></Field>
                 <Field label={t('seller.store.zoneFee')}><Input type="number" min="0" value={r.fee} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, fee: e.target.value } : x)))} suffix="FCFA" /></Field>
                 <Field label={t('seller.store.zoneEta')} optional><Input maxLength={60} value={r.eta} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, eta: e.target.value } : x)))} placeholder={t('seller.store.zoneEtaPlaceholder')} /></Field>
                 <div className="pb-2"><Checkbox label={t('common.active')} checked={r.active} onChange={(v) => setRows(rows.map((x, j) => (j === i ? { ...x, active: v } : x)))} /></div>
                 <Button variant="ghost" aria-label={t('common.delete')} icon={<Trash2 className="h-4 w-4" />} onClick={() => setRows(rows.filter((_, j) => j !== i))} />
               </div>
+              <div>
+                <p className="mb-2 text-sm font-semibold">{t('seller.store.areaTitle')}</p>
+                <DeliveryAreaPicker regions={r.regions} localities={r.localities}
+                  onChange={(v) => setRows(rows.map((x, j) => (j === i ? { ...x, regions: v.regions, localities: v.localities } : x)))} />
+              </div>
+              </div>
             ))}
           </div>
-          <Button size="sm" variant="secondary" className="mt-2" icon={<Plus className="h-4 w-4" />} onClick={() => setRows([...rows, { name: '', fee: '', eta: '', active: true }])}>{t('seller.store.addZone')}</Button>
+          <Button size="sm" variant="secondary" className="mt-2" icon={<Plus className="h-4 w-4" />} onClick={() => setRows([...rows, { name: '', fee: '', eta: '', active: true, regions: [], localities: [] }])}>{t('seller.store.addZone')}</Button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
@@ -309,6 +322,7 @@ function DeliveryTab({ s }: { s: any }) {
           <Field label={t('seller.store.deliveryNote')} optional className="sm:col-span-2" hint={t('seller.store.deliveryNoteHint')}><Textarea maxLength={1000} value={f.delivery_note} onChange={(e) => setF({ ...f, delivery_note: e.target.value })} /></Field>
           <Field label={t('seller.store.minOrder')} optional hint={Number(f.min_order_amount) > 0 ? formatMoney(f.min_order_amount, lang) : t('seller.store.minOrderNone')}><Input type="number" min="0" value={f.min_order_amount} onChange={(e) => setF({ ...f, min_order_amount: e.target.value })} suffix="FCFA" /></Field>
         </div>
+        {areaError && <Alert tone="red">{areaError}</Alert>}
         <div className="flex justify-end"><Button type="submit" loading={busy || zBusy}>{t('common.save')}</Button></div>
       </form>
     </Card>

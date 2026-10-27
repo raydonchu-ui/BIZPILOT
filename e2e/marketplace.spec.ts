@@ -88,6 +88,8 @@ test('a seller opens an online store, lists a product and publishes', async ({ p
   await page.getByLabel(/^Area/).fill('Akwa');
   await page.getByLabel(/^Fee/).fill('1000');
   await page.getByLabel(/^Delivery time/).fill('Same day');
+  // A delivery area says where it delivers: here the whole Littoral region.
+  await page.getByLabel('Littoral', { exact: true }).check();
   await page.getByText('Customers can pick up at the store').click();
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Saved').first()).toBeVisible();
@@ -137,8 +139,10 @@ test('a guest finds the product, checks out with cash on delivery and can follow
   await expect(page).toHaveURL(/\/checkout/);
   await page.getByLabel(/^Full name/).fill('Boris Buyer');
   await page.getByLabel(/^Phone number/).fill('699445566');
+  // Region and town first: the delivery areas offered depend on the location.
+  await page.getByLabel(/^Region/).selectOption('littoral');
+  await page.getByLabel(/^Town or locality/).fill('Douala');
   await page.getByLabel(/^Delivery area/).selectOption({ index: 1 });
-  await page.getByLabel(/^City/).fill('Douala');
   await page.getByLabel(/^Street \/ directions/).fill('Rue Joss, near the bakery');
   await expect(page.getByText(/^17.000 XAF$/)).toBeVisible(); // 2 × 8 000 + 1 000 delivery, computed by the server
   await page.getByRole('button', { name: 'Place order' }).click();

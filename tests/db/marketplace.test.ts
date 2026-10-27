@@ -138,7 +138,7 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
 
   it('order tracking needs the access token or the buyer account; other sellers see nothing', async () => {
     const tk = token();
-    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: tee.id, quantity: 1 }], { delivery_method: 'delivery', zone_id: zoneAkwa, address: { city: 'Douala', area: 'Akwa', line: 'Rue Joss' } }), access_token: tk } });
+    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: tee.id, quantity: 1 }], { delivery_method: 'delivery', zone_id: zoneAkwa, address: { region: 'littoral', city: 'Douala', area: 'Akwa', line: 'Rue Joss' } }), access_token: tk } });
     const view = await rpc(guest, 'market_order_view', { p_order: o.order_id, p_token: tk });
     expect(view.number).toMatch(/^ORD-/);
     expect(n(view.total)).toBe(6000);
@@ -153,7 +153,7 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
   it('confirm → dispatch → deliver (COD) creates a normal sale, moves stock and records the cash', async () => {
     const p = await listedProduct(owner, biz, { name: 'Blue jeans', selling_price: 8000 }, 3);
     const tk = token();
-    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 2 }], { delivery_method: 'delivery', zone_id: zoneAkwa, address: { city: 'Douala', line: 'Akwa' } }), access_token: tk } });
+    const o = await rpc(guest, 'market_place_order', { p: { ...order([{ product_id: p.id, quantity: 2 }], { delivery_method: 'delivery', zone_id: zoneAkwa, address: { region: 'littoral', city: 'Douala', line: 'Akwa' } }), access_token: tk } });
     await expectError(rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'deliver', p: {} }), 'invalid_order_status');
     await rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'confirm' });
     await rpc(owner.client, 'market_order_action', { p_order: o.order_id, p_action: 'dispatch', p: { message: 'Rider on the way' } });
@@ -361,7 +361,7 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
 
   it('signed-in customers: saved addresses, order history, favourites; guest orders can be claimed', async () => {
     const buyer = await createUser('mk-buyer');
-    const o = await rpc(buyer.client, 'market_place_order', { p: { ...order([{ product_id: tee.id, quantity: 1 }], { delivery_method: 'delivery', zone_id: zoneAkwa, address: { city: 'Douala', line: 'Bonapriso' }, save_address: true, customer: { name: 'Buyer One', phone: '699123123' } }), access_token: undefined } });
+    const o = await rpc(buyer.client, 'market_place_order', { p: { ...order([{ product_id: tee.id, quantity: 1 }], { delivery_method: 'delivery', zone_id: zoneAkwa, address: { region: 'littoral', city: 'Douala', line: 'Bonapriso' }, save_address: true, customer: { name: 'Buyer One', phone: '699123123' } }), access_token: undefined } });
     const mine = await rpc(buyer.client, 'market_my_orders');
     expect(mine.map((x: any) => x.id)).toContain(o.order_id);
     const { data: addrs } = await buyer.client.from('customer_addresses').select('*');

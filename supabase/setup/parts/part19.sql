@@ -1,4 +1,4 @@
--- BizPilot setup PART 19 of 20. Run parts in order.
+-- BizPilot setup PART 19 of 21. Run parts in order.
 begin;
 alter table public.business_settings add column if not exists alert_settings jsonb not null default '{}'::jsonb;
 alter table public.business_settings drop constraint if exists business_settings_alert_settings_check;

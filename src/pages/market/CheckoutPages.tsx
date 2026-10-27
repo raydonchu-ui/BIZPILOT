@@ -11,6 +11,8 @@ import { formatXaf } from '../../lib/format';
 import { newId } from '../../lib/ids';
 import { newAccessToken, rememberGuestOrder, storeUrl, useCart, useMarketConfig, waLink } from '../../lib/market';
 import { MarketImage, QtyStepper } from '../../components/market';
+import { LocationPicker } from '../../components/LocationPicker';
+import { zoneServes } from '../../lib/locations';
 import { Alert, Button, Card, EmptyState, Field, Input, LinkButton, PageLoader, Select, Textarea } from '../../components/ui';
 import { useStore } from './StorePages';
 
@@ -105,7 +107,7 @@ export function CheckoutPage() {
   const tokenRef = useRef(newAccessToken());
   const [f, setF] = useState({
     name: context?.profile?.full_name ?? '', phone: context?.profile?.phone ?? '', email: context?.email ?? '',
-    method: 'delivery' as 'delivery' | 'pickup', zone_id: '', city: '', area: '', line: '', landmark: '', notes: '',
+    method: 'delivery' as 'delivery' | 'pickup', zone_id: '', region: '', city: '', area: '', line: '', landmark: '', notes: '',
     payment: 'cod' as 'cod' | 'momo_direct', promo: '',
   });
   const [promoApplied, setPromoApplied] = useState('');
@@ -124,6 +126,11 @@ export function CheckoutPage() {
       payment: s.cod_enabled ? x.payment : 'momo_direct',
     }));
   }, [s]);
+  // Only the delivery areas that serve the chosen region and town are offered; a choice that no longer fits is cleared.
+  const zonesHere = useMemo(() => (s?.zones ?? []).filter((z: any) => f.region && zoneServes(z, f.region, f.city)), [s, f.region, f.city]);
+  useEffect(() => {
+    if (f.zone_id && !zonesHere.some((z: any) => z.id === f.zone_id)) setF((x) => ({ ...x, zone_id: '' }));
+  }, [zonesHere, f.zone_id]);
   const items = useMemo(() => cart.items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })), [cart.items]);
   const q = useQuote(items, { delivery_method: f.method, zone_id: f.method === 'delivery' ? f.zone_id || null : null, promo_code: promoApplied || null });
   if (!cart.items.length) return <Navigate to="/cart" replace />;
@@ -149,7 +156,7 @@ export function CheckoutPage() {
         delivery_method: f.method, zone_id: f.method === 'delivery' ? f.zone_id : null, promo_code: promoApplied || null,
         payment_method: f.payment, notes: f.notes,
         customer: { name: f.name, phone: f.phone, email: f.email },
-        address: f.method === 'delivery' ? { city: f.city, area: f.area, line: f.line, landmark: f.landmark } : null,
+        address: f.method === 'delivery' ? { region: f.region, city: f.city, area: f.area, line: f.line, landmark: f.landmark } : null,
       } });
       rememberGuestOrder({ id: res.order_id, token: tokenRef.current, number: res.number, store_name: s.name, created_at: new Date().toISOString() });
       clear();
@@ -191,13 +198,16 @@ export function CheckoutPage() {
             </div>
             {f.method === 'delivery' && s.zones.length > 0 && (
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Field label={t('market.deliveryZone')} required className="sm:col-span-2">
-                  <Select required value={f.zone_id} onChange={set('zone_id')}>
+                <LocationPicker region={f.region} city={f.city} onChange={(v) => setF((x) => ({ ...x, region: v.region, city: v.city }))} />
+                <Field label={t('market.deliveryZone')} required className="sm:col-span-2" hint={f.region ? undefined : t('market.loc.zoneAfterLocation')}>
+                  <Select required value={f.zone_id} onChange={set('zone_id')} disabled={!f.region || !f.city.trim()}>
                     <option value="">{t('market.selectZone')}</option>
-                    {s.zones.map((z: any) => <option key={z.id} value={z.id}>{z.name} — {Number(z.fee) ? formatXaf(z.fee, lang) : t('market.free')}{z.eta ? ` · ${z.eta}` : ''}</option>)}
+                    {zonesHere.map((z: any) => <option key={z.id} value={z.id}>{z.name} — {Number(z.fee) ? formatXaf(z.fee, lang) : t('market.free')}{z.eta ? ` · ${z.eta}` : ''}</option>)}
                   </Select>
                 </Field>
-                <Field label={t('market.city')} required><Input required value={f.city} onChange={set('city')} autoComplete="address-level2" /></Field>
+                {f.region && f.city.trim() && zonesHere.length === 0 && (
+                  <div className="sm:col-span-2"><Alert tone="amber">{t('market.loc.notDelivered', { place: f.city.trim() })}</Alert></div>
+                )}
                 <Field label={t('market.area')} optional><Input value={f.area} onChange={set('area')} placeholder={t('market.areaPlaceholder')} /></Field>
                 <Field label={t('market.streetLine')} required className="sm:col-span-2"><Input required value={f.line} onChange={set('line')} autoComplete="street-address" /></Field>
                 <Field label={t('market.landmark')} optional className="sm:col-span-2"><Input value={f.landmark} onChange={set('landmark')} placeholder={t('market.landmarkPlaceholder')} /></Field>
