@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
-  BadgePercent, BarChart3, Bell, Bot, Boxes, ChevronDown, ClipboardCheck, CreditCard, ExternalLink, FolderTree, HelpCircle, Home, LayoutDashboard, Lock,
+  BadgePercent, BarChart3, Bell, Bot, Boxes, ChevronDown, ClipboardCheck, CreditCard, ExternalLink, FolderTree, HelpCircle, Home, LayoutDashboard, Lock, Sparkles,
   LogOut, Menu, MessageSquare, Moon, MoreHorizontal, Package, PackageCheck, Plus, Receipt, Search, Settings, ShieldCheck, ShoppingBag,
   ShoppingCart, Sun, Truck, Upload, UserCog, Users, Wallet, WifiOff, X, Megaphone, Store,
 } from 'lucide-react';
@@ -60,6 +60,7 @@ export const NAV: NavItem[] = [
   { to: '/app/expenses', key: 'expenses', icon: Receipt, perm: 'expenses.manage', feature: 'expenses', group: 'money' },
   { to: '/app/reports', key: 'reports', icon: BarChart3, perm: 'reports.view', group: 'insights' },
   { to: '/app/advisor', key: 'advisor', icon: Bot, perm: 'reports.view', badge: 'new', group: 'insights' },
+  { to: '/app/manager', key: 'manager', icon: Sparkles, perm: 'reports.view', feature: 'ai_business_manager', badge: 'premium', group: 'insights' },
   { to: '/app/staff', key: 'staff', icon: UserCog, perm: 'staff.manage', group: 'business' },
   { to: '/app/settings', key: 'settings', icon: Settings, perm: 'settings.manage', group: 'business' },
 ];
@@ -182,7 +183,7 @@ function SidebarContent() {
                     <n.icon className="h-5 w-5 shrink-0" />
                     <span className="flex-1 truncate">{t(`nav.${n.key}`)}</span>
                     {n.key === 'orders' && toConfirm > 0 ? <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-gray-900" aria-label={t('orders.toConfirmCount', { n: toConfirm })}>{toConfirm}</span>
-                      : locked ? <Lock className="h-3.5 w-3.5 opacity-60" /> : n.badge && <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold text-white">{t('nav.newBadge')}</span>}
+                      : locked ? <Lock className="h-3.5 w-3.5 opacity-60" /> : n.badge && <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold text-white">{t(n.badge === 'premium' ? 'nav.premiumBadge' : 'nav.newBadge')}</span>}
                   </Link>
                 );
               })}

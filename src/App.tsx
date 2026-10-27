@@ -42,6 +42,7 @@ const ExpensesPage = lazy(() => import('./pages/app/money/ExpensesPage'));
 const CashPage = lazy(() => import('./pages/app/money/CashPage'));
 const ReportsPage = lazy(() => import('./pages/app/reports/ReportsPage'));
 const AdvisorPage = lazy(() => import('./pages/app/reports/AdvisorPage'));
+const ManagerPage = lazy(() => import('./pages/app/manager/ManagerPage'));
 const StaffPage = lazy(() => import('./pages/app/settings/StaffPage'));
 const SettingsPage = lazy(() => import('./pages/app/settings/SettingsPage'));
 const BillingPage = lazy(() => import('./pages/app/settings/BillingPage'));
@@ -175,6 +176,7 @@ export function App() {
           <Route path="cash" element={<CashPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="advisor" element={<AdvisorPage />} />
+          <Route path="manager" element={<ManagerPage />} />
           <Route path="staff" element={<StaffPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="billing" element={<BillingPage />} />

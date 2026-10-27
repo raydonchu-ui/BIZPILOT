@@ -1,4 +1,4 @@
--- BizPilot setup PART 3 of 23. Run parts in order.
+-- BizPilot setup PART 3 of 24. Run parts in order.
 begin;
 alter table public.categories enable row level security;
 alter table public.import_batches enable row level security;

@@ -1,5 +1,16 @@
 // Verified Premium, verification, and the premium tools. Keys are namespaced under `premium` so they never collide.
 export const en = {
+  manager: {
+    title: 'AI Business Manager', subtitle: 'Ask about your own recorded sales, stock, orders and profit. It answers from your records and drafts text for you. It never changes your business without your confirmation.',
+    noAccess: 'You do not have access to the business reports.', newChat: 'New chat', history: 'Conversations', noHistory: 'No conversations yet.',
+    clearHistory: 'Clear history', clearHistoryBody: 'Your conversations with the AI Business Manager are deleted. Recorded actions stay in the audit trail.',
+    historyCleared: 'History cleared.', askTitle: 'What would you like to know?', askBody: 'Try a question, or type your own in English or French.',
+    askLabel: 'Your question', placeholder: 'E.g. How much did I make this week?', send: 'Send', usage: '{used} of {limit} AI answers used this month',
+    draftLabel: 'Draft text: review it before you use it', saveRestockDraft: 'Save a restock draft', draftSaved: 'Draft saved. No order or payment was made.',
+    draftPreviewBody: 'This saves a draft list. It does not place a supplier order, pay anyone or change stock.', suggested: 'suggested {qty}',
+    confirmDraft: 'Save draft', disclaimer: 'Answers use your recorded data only. Profit is an estimate when a cost is missing.',
+    notEnabled: 'The AI Business Manager needs Verified Premium.',
+  },
   premium: {
     upgrade: {
       title: 'Upgrade to Verified Premium', body: 'Verified Premium costs {amount} for one month. It adds the verified blue tick, premium automations and the AI Business Manager.',
@@ -40,6 +51,17 @@ export const en = {
 };
 
 export const fr: typeof en = {
+  manager: {
+    title: 'Gestionnaire IA', subtitle: 'Posez vos questions sur vos ventes, stocks, commandes et bénéfices enregistrés. Il répond à partir de vos données et rédige des brouillons. Il ne modifie rien sans votre confirmation.',
+    noAccess: 'Vous n’avez pas accès aux rapports de l’entreprise.', newChat: 'Nouvelle discussion', history: 'Discussions', noHistory: 'Aucune discussion pour l’instant.',
+    clearHistory: 'Effacer l’historique', clearHistoryBody: 'Vos discussions avec le Gestionnaire IA sont supprimées. Les actions enregistrées restent dans le journal d’audit.',
+    historyCleared: 'Historique effacé.', askTitle: 'Que voulez-vous savoir ?', askBody: 'Essayez une question, ou écrivez la vôtre en français ou en anglais.',
+    askLabel: 'Votre question', placeholder: 'Par ex. Combien ai-je gagné cette semaine ?', send: 'Envoyer', usage: '{used} réponses IA sur {limit} utilisées ce mois-ci',
+    draftLabel: 'Brouillon : relisez-le avant de l’utiliser', saveRestockDraft: 'Enregistrer un brouillon de réapprovisionnement', draftSaved: 'Brouillon enregistré. Aucune commande ni aucun paiement n’a été fait.',
+    draftPreviewBody: 'Ceci enregistre une liste brouillon. Cela ne passe aucune commande fournisseur, ne paie personne et ne modifie pas le stock.', suggested: 'suggéré {qty}',
+    confirmDraft: 'Enregistrer le brouillon', disclaimer: 'Les réponses utilisent uniquement vos données enregistrées. Le bénéfice est une estimation quand un coût manque.',
+    notEnabled: 'Le Gestionnaire IA nécessite Premium vérifié.',
+  },
   premium: {
     upgrade: {
       title: 'Passer à Premium vérifié', body: 'Premium vérifié coûte {amount} pour un mois. Il ajoute le badge bleu vérifié, les automatisations premium et le Gestionnaire IA.',

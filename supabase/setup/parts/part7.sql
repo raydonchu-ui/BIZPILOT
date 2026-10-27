@@ -1,4 +1,4 @@
--- BizPilot setup PART 7 of 23. Run parts in order.
+-- BizPilot setup PART 7 of 24. Run parts in order.
 begin;
 create or replace function public.admin_respond_support(p_request uuid, p_status text, p_response text default null)
 returns void language plpgsql security definer set search_path = public as $$

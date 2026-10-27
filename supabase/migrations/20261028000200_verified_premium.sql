@@ -16,7 +16,8 @@ values ('verified_premium', 'Verified Premium', 'Premium vérifié',
   'Everything in Business, plus the verified blue tick, premium automations and the AI Business Manager.',
   'Tout Business, plus le badge bleu vérifié, les automatisations premium et le Gestionnaire IA.',
   5000, null,
-  '{stocktaking,purchases,suppliers,expenses,customers_credit,staff,import,cash_reconciliation,basic_analytics,advanced_analytics,restock,reports_export,batch_tracking,ai_advisor,verified_badge,premium_automations,ai_business_manager}',
+  -- Everything in Business (whatever Business has now), plus the premium features.
+  coalesce((select features from public.plans where code = 'business'), '{}') || array['verified_badge', 'premium_automations', 'ai_business_manager'],
   '{"max_products": 10000, "max_sales_per_month": null, "max_staff": 15, "history_days": null, "ai_queries_per_month": 500}',
   true, 4)
 on conflict (code) do nothing;

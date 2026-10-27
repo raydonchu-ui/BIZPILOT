@@ -1,4 +1,4 @@
--- BizPilot setup PART 20 of 23. Run parts in order.
+-- BizPilot setup PART 20 of 24. Run parts in order.
 begin;
 alter table public.push_subscriptions enable row level security;
 create policy conversations_read on public.conversations for select to authenticated
