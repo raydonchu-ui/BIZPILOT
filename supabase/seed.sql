@@ -1,0 +1,2 @@
+-- No seed data. The tests create the records they need.
+-- supabase/config.toml points db.seed at this file, so `supabase db reset` needs it to exist.

@@ -1,0 +1,102 @@
+name: Test
+
+# Runs every test against a local Supabase stack started on the GitHub runner.
+# No secrets are needed: the local stack uses its own keys and never touches the live project.
+on:
+  push:
+    branches: [improvements, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck and unit tests
+        run: |
+          npm run typecheck
+          npm run test:unit
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        run: supabase start
+
+      - name: Reset database from migrations
+        run: supabase db reset
+
+      - name: Export local Supabase settings for the tests and the app
+        run: |
+          set -a
+          source <(supabase status -o env)
+          set +a
+          for v in API_URL ANON_KEY SERVICE_ROLE_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "supabase status did not provide $v"
+              supabase status -o env
+              exit 1
+            fi
+          done
+          {
+            echo "TEST_SUPABASE_URL=$API_URL"
+            echo "TEST_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "TEST_SUPABASE_SERVICE_KEY=$SERVICE_ROLE_KEY"
+            echo "VITE_SUPABASE_URL=$API_URL"
+            echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Database tests
+        run: npm run test:db
+
+      - name: Build the app against the local stack
+        run: npm run build
+
+      - name: Serve the built app
+        run: |
+          npx vite preview --port 5173 --strictPort > preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5173/ > /dev/null && exit 0
+            sleep 2
+          done
+          cat preview.log
+          exit 1
+
+      - name: Install the Chromium build used by Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Point Playwright at the installed Chromium
+        run: |
+          CHROME=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path "*chromium-*" | head -n 1)
+          echo "Using $CHROME"
+          echo "PW_CHROMIUM=$CHROME" >> "$GITHUB_ENV"
+
+      - name: Browser tests
+        run: npx playwright test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup
