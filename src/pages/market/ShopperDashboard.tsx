@@ -38,6 +38,7 @@ export function ShopperDashboard() {
   ];
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
+      <h1 className="sr-only">{t('market.accountTitle')}</h1>
       <Link to="/account?tab=profile" className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-card ring-1 ring-gray-100 dark:bg-gray-900 dark:ring-gray-800">
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-extrabold text-brand-800 dark:bg-brand-900 dark:text-brand-200" aria-hidden="true">{initials}</span>
         <span className="min-w-0 flex-1">
