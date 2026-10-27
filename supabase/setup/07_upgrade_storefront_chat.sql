@@ -13,6 +13,10 @@ begin
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'products' and column_name = 'online_published') then
     raise exception 'The online store (products.online_published) is missing. Run 05_upgrade_marketplace.sql first.';
   end if;
+  if (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'products'
+        and column_name in ('condition', 'single_item')) <> 2 then
+    raise exception 'Run 06_upgrade_direct_trade.sql first: it adds products.condition and products.single_item.';
+  end if;
 end $$;
 
 -- ===== 20261027000100_storefront.sql =====
