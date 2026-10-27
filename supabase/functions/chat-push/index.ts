@@ -137,7 +137,8 @@ Deno.serve(async (req: Request) => {
   await Promise.all(subs.map(async (s) => {
     const row = byUser.get(s.user_id);
     if (!row) return;
-    const payload = enc.encode(JSON.stringify({ title: row.from_name, body: row.preview, url: row.link, tag: row.conversation_id }));
+    // Lock-screen privacy: the payload names no one and carries no message text. The app shows the message when opened.
+    const payload = enc.encode(JSON.stringify({ title: 'BizPilot', body: 'You have a new message', url: row.link, tag: row.conversation_id }));
     try {
       const res = await fetch(s.endpoint, {
         method: 'POST',

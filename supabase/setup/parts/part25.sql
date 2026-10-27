@@ -1,4 +1,4 @@
--- BizPilot setup PART 25 of 26. Run parts in order.
+-- BizPilot setup PART 25 of 27. Run parts in order.
 begin;
 create index if not exists referrals_creator on public.referrals (creator_id);
 create table if not exists public.creator_ledger (

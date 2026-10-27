@@ -1,4 +1,4 @@
--- BizPilot setup PART 24 of 26. Run parts in order.
+-- BizPilot setup PART 24 of 27. Run parts in order.
 begin;
 create or replace function public.ai_send_message(p_business uuid, p_conversation uuid, p_text text, p_lang text default 'en',
   p_from date default null, p_to date default null)

@@ -1,4 +1,4 @@
--- BizPilot setup PART 17 of 26. Run parts in order.
+-- BizPilot setup PART 17 of 27. Run parts in order.
 begin;
 alter table public.market_ledger enable row level security;
 alter table public.online_payments enable row level security;

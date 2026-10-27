@@ -1,4 +1,4 @@
--- BizPilot setup PART 8 of 26. Run parts in order.
+-- BizPilot setup PART 8 of 27. Run parts in order.
 begin;
 alter table public.notification_reads enable row level security;
 alter table public.support_requests enable row level security;

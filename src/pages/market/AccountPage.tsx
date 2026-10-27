@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Heart, LayoutDashboard, LogOut, Package, Store } from 'lucide-react';
 import { ShopperDashboard } from './ShopperDashboard';
+import { NotificationPrefs } from '../../components/NotificationPrefs';
 import { useI18n } from '../../i18n';
 import { rpc, unwrap } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -153,6 +154,7 @@ function Profile() {
       )}
     </Card>
     <PushSettings />
+    <NotificationPrefs />
     </div>
   );
 }

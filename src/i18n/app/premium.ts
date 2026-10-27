@@ -1,5 +1,12 @@
 // Verified Premium, verification, and the premium tools. Keys are namespaced under `premium` so they never collide.
 export const en = {
+  notifPrefs: {
+    title: 'Notifications', subtitle: 'Choose which notices reach your inbox. Turning a kind off stops it being stored.',
+    messages: 'Messages', messagesHint: 'When someone writes to you.', orders: 'Orders', ordersHint: 'Dispatch, delivery and receipt steps.',
+    creator: 'Creator programme', creatorHint: 'Commission and payout updates.', support: 'Support', supportHint: 'Replies to your requests.',
+    billing: 'Billing', billingHint: 'Subscription payments and renewals.',
+    lockScreen: 'Push notifications never show names or message text on the lock screen.',
+  },
   finance: {
     title: 'Financial control centre', subtitle: 'Subscription money, refunds, creator commission and payouts for a period. Figures come from the records behind them.',
     from: 'From', to: 'To', today: 'Today', last30: 'Last 30 days', badRange: 'The end date must be after the start date.', loadError: 'The figures could not be loaded.',
@@ -137,6 +144,13 @@ export const en = {
 };
 
 export const fr: typeof en = {
+  notifPrefs: {
+    title: 'Notifications', subtitle: 'Choisissez les avis qui arrivent dans votre boîte. Désactiver un type empêche de le conserver.',
+    messages: 'Messages', messagesHint: 'Quand quelqu’un vous écrit.', orders: 'Commandes', ordersHint: 'Expédition, livraison et réception.',
+    creator: 'Programme créateurs', creatorHint: 'Mises à jour des commissions et versements.', support: 'Assistance', supportHint: 'Réponses à vos demandes.',
+    billing: 'Facturation', billingHint: 'Paiements d’abonnement et renouvellements.',
+    lockScreen: 'Les notifications push n’affichent jamais de noms ni de texte de message sur l’écran de verrouillage.',
+  },
   finance: {
     title: 'Centre de contrôle financier', subtitle: 'Argent des abonnements, remboursements, commissions créateurs et versements sur une période. Les chiffres viennent des enregistrements qui les fondent.',
     from: 'Du', to: 'Au', today: 'Aujourd’hui', last30: '30 derniers jours', badRange: 'La date de fin doit être après la date de début.', loadError: 'Les chiffres n’ont pas pu être chargés.',
