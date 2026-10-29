@@ -259,6 +259,7 @@ export function SignupPage() {
         <div className="flex flex-col items-center gap-4 text-center">
           <MailCheck className="h-12 w-12 text-brand-600" />
           <p className="text-ink-soft dark:text-gray-300">{t('auth.checkEmailBody', { email: sentTo })}</p>
+          <p className="text-sm text-ink-muted">{t('auth.spamHint')}</p>
           <Link to="/login" className="font-semibold text-brand-700 hover:underline">{t('auth.backToLogin')}</Link>
         </div>
       </AuthShell>
@@ -327,7 +328,12 @@ export function ForgotPasswordPage() {
   return (
     <AuthShell title={t('auth.forgotTitle')} subtitle={t('auth.forgotSubtitle')}
       footer={<Link to="/login" className="font-semibold text-brand-700 hover:underline">{t('auth.backToLogin')}</Link>}>
-      {sent ? <Alert tone="green">{t('auth.linkSent', { email })}</Alert> : (
+      {sent ? (
+        <div className="space-y-3">
+          <Alert tone="green">{t('auth.linkSent', { email })}</Alert>
+          <p className="text-sm text-ink-muted">{t('auth.spamHint')}</p>
+        </div>
+      ) : (
         <form onSubmit={submit} className="space-y-4">
           <Field label={t('auth.email')} htmlFor="em"><Input id="em" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
           {error && <Alert tone="red">{error}</Alert>}
