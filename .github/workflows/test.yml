@@ -63,7 +63,9 @@ jobs:
         run: npm run test:db
 
       - name: Build the app against the local stack
-        run: npm run build
+        # --mode ci skips .env.production, which sets the live Google client ID.
+        # The Google tests expect a build without one, as the diagnostics page explains.
+        run: npx tsc -b && npx vite build --mode ci
 
       - name: Serve the built app
         run: |
