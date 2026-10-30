@@ -141,11 +141,12 @@ function LockScreen({ status, onStatus }: { status: LockStatus; onStatus: (s: Lo
   const [wait, setWait] = useState(status.retry_after ?? 0);
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
-  // Coming back from "Forgot PIN?" → signed in again: go straight to choosing a new PIN. The marker is read once,
-  // but the server's can_reset is checked on every render, because the first status may not include it yet.
+  // Coming back from "Forgot PIN?" → signed in again: go straight to choosing a new PIN. The marker is only set by
+  // that flow, and reset_store_pin still requires a fresh sign-in on the server, so the screen does not depend on
+  // the status payload (which may come back without can_reset).
   const [wantsReset, setWantsReset] = useState(resetIntended);
   const [resetting, setResetting] = useState(false);
-  const showReset = resetting || (wantsReset && Boolean(status.can_reset));
+  const showReset = resetting || wantsReset;
   useEffect(() => { // the marker is used once
     const url = new URL(window.location.href);
     if (!url.searchParams.has('pin')) return;
