@@ -8,6 +8,7 @@ import { useI18n } from '../i18n';
 import { errorMessage } from '../lib/errors';
 import { formatMoney } from '../lib/format';
 import { detectMedium, Medium, PayStart, verifyPayment } from '../lib/market';
+import { rememberPendingPayment } from '../lib/pendingPayment';
 import { Alert, Button, Field, Input } from './ui';
 
 type Phase = { k: 'form' } | { k: 'waiting'; paymentId: string; since: number; test?: boolean } | { k: 'paid' } | { k: 'failed'; reason: string }
@@ -70,8 +71,9 @@ export function MobileMoneyPay({ amount, defaultPhone, request, onPaid, compact,
       if (r.mode === 'direct') setPhase({ k: 'waiting', paymentId: r.payment_id, since: Date.now(), test: r.test_mode });
       // Fapshi refused to push the request to the phone (direct pay not activated on the Fapshi
       // account): say so plainly and continue on Fapshi's secure page, where the number is entered.
-      else if (r.direct_failed) setPhase({ k: 'page', link: r.link });
-      else window.location.assign(r.link);
+      // The payment is remembered, so it is checked when the customer comes back to BizPilot.
+      else if (r.direct_failed) { rememberPendingPayment(r.payment_id); setPhase({ k: 'page', link: r.link }); }
+      else { rememberPendingPayment(r.payment_id); window.location.assign(r.link); }
     } catch (err) {
       setError(errorMessage(err, t, has));
     } finally {

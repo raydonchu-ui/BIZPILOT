@@ -158,6 +158,8 @@ async function fapshi(cfg: FapshiConfig, f: Fetch, method: 'GET' | 'POST', path:
       method,
       headers: { apiuser: cfg.apiUser, apikey: cfg.apiKey, ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
+      // A slow or hung Fapshi must not hold the customer's screen until the platform gives up.
+      signal: AbortSignal.timeout(25_000),
     });
   } catch (e) {
     // Wrong FAPSHI_BASE_URL, DNS or network failure: report it instead of crashing.

@@ -9,7 +9,8 @@ import { supabase } from '../../../lib/supabase';
 import { rpc, unwrap } from '../../../lib/api';
 import { useAction } from '../../../lib/useAction';
 import { uploadFile } from '../../../lib/hooks';
-import { requestSubscriptionPayment, useMarketConfig } from '../../../lib/market';
+import { requestSubscriptionPayment, useMarketConfig, verifyPayment } from '../../../lib/market';
+import { clearPendingPayment, pendingPayment } from '../../../lib/pendingPayment';
 import { MobileMoneyPay } from '../../../components/MobileMoneyPay';
 import { useToast } from '../../../lib/toast';
 import { formatDate, formatDateTime, formatMoney } from '../../../lib/format';
@@ -32,7 +33,18 @@ export default function BillingPage() {
   const { run, busy } = useAction();
   const [choice, setChoice] = useState<{ plan: Plan; period: 'monthly' | 'annual' } | null>(null);
   const [params] = useSearchParams();
+  const toastMain = useToast();
   useEffect(() => { if (params.get('payment') === 'successful') refreshContext(); }, [params, refreshContext]);
+  // A payment the customer left on Fapshi's page: ask the server about it now. The webhook is not relied on.
+  useEffect(() => {
+    const paymentId = pendingPayment();
+    if (!paymentId) return;
+    verifyPayment(paymentId).then((r) => {
+      if (r.status === 'successful') { clearPendingPayment(); refreshContext(); toastMain(t('billing.paidActivated'), 'success'); }
+      else if (r.status === 'failed' || r.status === 'expired') clearPendingPayment();
+      // Still waiting for the customer: it is checked again on the next visit to this page.
+    }).catch(() => { /* not reachable right now: the next visit checks again */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const instr = usePaymentInstructions();
   const plans = usePlans();
   const history = useQuery({
