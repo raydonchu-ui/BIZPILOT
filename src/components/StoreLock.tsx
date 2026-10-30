@@ -80,7 +80,7 @@ function Shell({ title, body, children, icon }: { title: string; body?: ReactNod
   );
 }
 
-function PinSetup({ onDone, mode = 'create' }: { onDone: (s: LockStatus) => void; mode?: 'create' | 'reset' }) {
+export function PinSetup({ onDone, mode = 'create' }: { onDone: (s: LockStatus) => void; mode?: 'create' | 'reset' }) {
   const { t, has } = useI18n();
   const [pin, setPin] = useState('');
   const [confirm, setConfirm] = useState('');

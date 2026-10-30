@@ -72,7 +72,7 @@ const MarketCategoriesPage = lazy(() => import('./pages/market/ShopsPage').then(
 
 // Signed-in area. Store Lock is checked first (the server refuses business data while locked);
 // requirePin asks for a PIN to be created before the dashboard is shown for the first time.
-function RequireAuth({ children, requirePin = true }: { children: ReactNode; requirePin?: boolean }) {
+function RequireAuth({ children, requirePin = false }: { children: ReactNode; requirePin?: boolean }) {
   const { session, ready } = useAuth();
   const loc = useLocation();
   if (!ready) return <PageLoader />;

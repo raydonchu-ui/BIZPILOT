@@ -26,8 +26,11 @@ test.beforeAll(async () => {
   email = u.email;
 });
 
-test('the PIN is created on first access; weak or mismatched PINs are refused', async ({ page }) => {
+test('the PIN is optional: the dashboard opens without one; a PIN can be set from the profile; weak or mismatched PINs are refused', async ({ page }) => {
   await signIn(page);
+  await expect(page.getByRole('navigation', { name: 'App' })).toBeVisible(); // no PIN is required on first access
+  await page.goto('/app/profile');
+  await page.getByRole('button', { name: 'Set a PIN (optional)' }).click();
   await expect(page.getByRole('heading', { name: 'Create your Store Lock PIN' })).toBeVisible();
   await pinBox(page).fill('1234');
   await expect(page.getByText(/less obvious PIN/)).toBeVisible();

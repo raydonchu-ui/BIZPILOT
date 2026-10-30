@@ -5,7 +5,7 @@ import { supabase } from '../../../lib/supabase';
 import { rpc, unwrap } from '../../../lib/api';
 import { errorMessage } from '../../../lib/errors';
 import { LockStatus, pinProblem, UnlockResult } from '../../../lib/storeLock';
-import { useStoreLockActions } from '../../../components/StoreLock';
+import { PinSetup, useStoreLockActions } from '../../../components/StoreLock';
 import { Lock } from 'lucide-react';
 import { useAction } from '../../../lib/useAction';
 import { applyTheme, getTheme, Theme } from '../../../lib/theme';
@@ -70,6 +70,19 @@ function StoreLockSettings() {
   const [next, setNext] = useState('');
   const [msg, setMsg] = useState<{ tone: 'green' | 'red'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [creatingPin, setCreatingPin] = useState(false);
+  const current = storeLock.status;
+  if (!current || current.unavailable) return null;
+  // The PIN is optional: until one is set, offer it here instead of asking for it on first access.
+  if (!current.has_pin) {
+    if (creatingPin) return <PinSetup mode="create" onDone={(s) => { storeLock.set(s); setCreatingPin(false); }} />;
+    return (
+      <Card>
+        <CardHeader title={t('storeLock.settingsTitle')} subtitle={t('storeLock.pinOptional')}
+          action={<Button size="sm" variant="outline" icon={<Lock className="h-4 w-4" />} onClick={() => setCreatingPin(true)}>{t('storeLock.setPin')}</Button>} />
+      </Card>
+    );
+  }
   if (!enabled) return null;
   const status = storeLock.status!;
   const setTimeoutMinutes = async (m: number) => {
