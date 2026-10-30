@@ -39,7 +39,7 @@ test('the PIN is optional: the dashboard opens without one; a PIN can be set fro
   await expect(page.getByText('The two PINs do not match.')).toBeVisible();
   await pinBox(page).fill('2580');
   await pinBox(page).fill('2580');
-  await expect(page.getByRole('navigation', { name: 'App' })).toBeVisible();
+  await expect(page.getByLabel('Current PIN')).toBeVisible(); // the PIN is saved once the change fields appear
   const [row] = await sql(`select p.pin_hash from app.store_pins p join auth.users u on u.id = p.user_id where u.email = $1`, [email]);
   expect(row.pin_hash).toMatch(/^\$2[aby]\$/);
   // The PIN is not kept in browser storage.
