@@ -128,7 +128,21 @@ test('change PIN (needs the current one), then forgotten PIN via a fresh sign-in
   await expect(page).toHaveURL(/\/login/);
   await page.getByLabel(/^Email address/).fill(email);
   await page.getByLabel(/^Password/).fill(PASSWORD);
+  const lockCall = page.waitForResponse((r) => r.url().includes('/rest/v1/rpc/store_lock_status'), { timeout: 20000 }).catch(() => null);
   await page.getByRole('button', { name: 'Log in' }).click();
+  // DIAGNOSTIC (temporary): what the server said after this sign-in, and the sign-in method in the token.
+  const lockResp = await lockCall;
+  const tokenInfo = await page.evaluate(() => {
+    for (const k of Object.keys(localStorage)) {
+      if (!k.includes('auth-token')) continue;
+      const s = JSON.parse(localStorage.getItem(k) ?? 'null');
+      const tok = s?.access_token ?? s?.currentSession?.access_token;
+      if (tok) return JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    }
+    return null;
+  });
+  console.log('DIAG lock status:', lockResp ? await lockResp.text() : 'no call seen', '| url:', page.url());
+  console.log('DIAG token amr:', JSON.stringify(tokenInfo?.amr ?? null), '| now:', Math.floor(Date.now() / 1000));
   await expect(page.getByRole('heading', { name: 'Choose a new PIN' })).toBeVisible(); // straight to a new PIN after signing in
   await pinBox(page).fill('3698');
   await pinBox(page).fill('3698');
