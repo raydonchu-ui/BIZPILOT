@@ -102,6 +102,8 @@ export function CheckoutPage() {
   const { cart, clear } = useCart();
   const nav = useNavigate();
   const cfg = useMarketConfig();
+  // Set once the order is saved: the cart is emptied next, and that must not send the buyer back to /cart.
+  const placed = useRef(false);
   const st = useStore(cart.store_slug ?? undefined);
   const clientRef = useRef(newId());
   const tokenRef = useRef(newAccessToken());
@@ -133,7 +135,7 @@ export function CheckoutPage() {
   }, [zonesHere, f.zone_id]);
   const items = useMemo(() => cart.items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })), [cart.items]);
   const q = useQuote(items, { delivery_method: f.method, zone_id: f.method === 'delivery' ? f.zone_id || null : null, promo_code: promoApplied || null });
-  if (!cart.items.length) return <Navigate to="/cart" replace />;
+  if (!cart.items.length && !placed.current) return <Navigate to="/cart" replace />;
   if (st.isLoading || cfg.isLoading) return <PageLoader />;
   if (!s || s.unavailable) {
     return <div className="mx-auto max-w-xl px-4 py-16"><Alert tone="red" title={t('market.storeUnavailable', { name: cart.store_name ?? '' })}>{t('market.storeUnavailableBody')}</Alert>
@@ -159,6 +161,7 @@ export function CheckoutPage() {
         address: f.method === 'delivery' ? { region: f.region, city: f.city, area: f.area, line: f.line, landmark: f.landmark } : null,
       } });
       rememberGuestOrder({ id: res.order_id, token: tokenRef.current, number: res.number, store_name: s.name, created_at: new Date().toISOString() });
+      placed.current = true;
       clear();
       nav(`/order/${res.order_id}?placed=1`, { replace: true });
     } catch (err) {

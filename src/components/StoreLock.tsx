@@ -124,8 +124,11 @@ function LockScreen({ status, onStatus }: { status: LockStatus; onStatus: (s: Lo
   const [wait, setWait] = useState(status.retry_after ?? 0);
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
-  // Coming back from "Forgot PIN?" → signed in again: go straight to choosing a new PIN.
-  const [resetting, setResetting] = useState(() => Boolean(status.can_reset) && new URLSearchParams(window.location.search).get('pin') === 'reset');
+  // Coming back from "Forgot PIN?" → signed in again: go straight to choosing a new PIN. The marker is read once,
+  // but the server's can_reset is checked on every render, because the first status may not include it yet.
+  const [wantsReset, setWantsReset] = useState(() => new URLSearchParams(window.location.search).get('pin') === 'reset');
+  const [resetting, setResetting] = useState(false);
+  const showReset = resetting || (wantsReset && Boolean(status.can_reset));
   useEffect(() => { // the marker is used once
     const url = new URL(window.location.href);
     if (!url.searchParams.has('pin')) return;
@@ -152,7 +155,7 @@ function LockScreen({ status, onStatus }: { status: LockStatus; onStatus: (s: Lo
       setError(storeLock.offline || !navigator.onLine ? t('storeLock.offline') : errorMessage(e, t, has));
     } finally { setBusy(false); }
   };
-  if (resetting) return <PinSetup mode="reset" onDone={(s) => { setResetting(false); onStatus(s); setError(t('storeLock.resetDone')); }} />;
+  if (showReset) return <PinSetup mode="reset" onDone={(s) => { setResetting(false); setWantsReset(false); onStatus(s); setError(t('storeLock.resetDone')); }} />;
   const reasonText = status.reason === 'idle' ? t('storeLock.lockedIdle') : status.reason === 'new_session' ? t('storeLock.lockedNew')
     : status.reason === 'pin_reset' ? t('storeLock.lockedReset') : status.reason === 'pin_changed' ? t('storeLock.lockedChanged') : t('storeLock.lockedBody');
   const startForgot = () => (status.can_reset ? setResetting(true) : setForgot(true));
