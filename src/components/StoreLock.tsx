@@ -115,6 +115,23 @@ function PinSetup({ onDone, mode = 'create' }: { onDone: (s: LockStatus) => void
   );
 }
 
+// "Forgot PIN?" → "Sign in again" records the intent in this browser session, so the new-PIN screen is offered after
+// signing in, whichever page the sign-in lands on (the address can be changed on the way).
+const PIN_RESET_INTENT = 'bizpilot.pinReset';
+function resetIntended(): boolean {
+  try {
+    const at = Number(sessionStorage.getItem(PIN_RESET_INTENT) ?? 0);
+    if (at && Date.now() - at < 10 * 60_000) return true;
+  } catch { /* storage unavailable: fall back to the address */ }
+  return new URLSearchParams(window.location.search).get('pin') === 'reset';
+}
+function markResetIntended() {
+  try { sessionStorage.setItem(PIN_RESET_INTENT, String(Date.now())); } catch { /* ignore */ }
+}
+function clearResetIntended() {
+  try { sessionStorage.removeItem(PIN_RESET_INTENT); } catch { /* ignore */ }
+}
+
 function LockScreen({ status, onStatus }: { status: LockStatus; onStatus: (s: LockStatus) => void }) {
   const { t, has } = useI18n();
   const { signOut, context, storeLock } = useAuth();
@@ -126,7 +143,7 @@ function LockScreen({ status, onStatus }: { status: LockStatus; onStatus: (s: Lo
   const [forgot, setForgot] = useState(false);
   // Coming back from "Forgot PIN?" → signed in again: go straight to choosing a new PIN. The marker is read once,
   // but the server's can_reset is checked on every render, because the first status may not include it yet.
-  const [wantsReset, setWantsReset] = useState(() => new URLSearchParams(window.location.search).get('pin') === 'reset');
+  const [wantsReset, setWantsReset] = useState(resetIntended);
   const [resetting, setResetting] = useState(false);
   const showReset = resetting || (wantsReset && Boolean(status.can_reset));
   useEffect(() => { // the marker is used once
@@ -155,7 +172,7 @@ function LockScreen({ status, onStatus }: { status: LockStatus; onStatus: (s: Lo
       setError(storeLock.offline || !navigator.onLine ? t('storeLock.offline') : errorMessage(e, t, has));
     } finally { setBusy(false); }
   };
-  if (showReset) return <PinSetup mode="reset" onDone={(s) => { setResetting(false); setWantsReset(false); onStatus(s); setError(t('storeLock.resetDone')); }} />;
+  if (showReset) return <PinSetup mode="reset" onDone={(s) => { clearResetIntended(); setResetting(false); setWantsReset(false); onStatus(s); setError(t('storeLock.resetDone')); }} />;
   const reasonText = status.reason === 'idle' ? t('storeLock.lockedIdle') : status.reason === 'new_session' ? t('storeLock.lockedNew')
     : status.reason === 'pin_reset' ? t('storeLock.lockedReset') : status.reason === 'pin_changed' ? t('storeLock.lockedChanged') : t('storeLock.lockedBody');
   const startForgot = () => (status.can_reset ? setResetting(true) : setForgot(true));
@@ -165,7 +182,7 @@ function LockScreen({ status, onStatus }: { status: LockStatus; onStatus: (s: Lo
         <div className="space-y-4 text-left">
           <p className="font-semibold">{t('storeLock.forgotTitle')}</p>
           <p className="text-sm text-ink-muted">{t('storeLock.forgotBody')}</p>
-          <Button block onClick={async () => { await signOut(); nav(`/login?next=${encodeURIComponent('/app?pin=reset')}`, { replace: true }); }}>{t('storeLock.forgotContinue')}</Button>
+          <Button block onClick={async () => { markResetIntended(); await signOut(); nav(`/login?next=${encodeURIComponent('/app?pin=reset')}`, { replace: true }); }}>{t('storeLock.forgotContinue')}</Button>
           <Button block variant="ghost" onClick={() => setForgot(false)}>{t('common.cancel')}</Button>
         </div>
       ) : (
