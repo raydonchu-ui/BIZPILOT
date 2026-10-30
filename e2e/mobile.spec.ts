@@ -51,5 +51,6 @@ test('mobile: bottom nav, quick actions and offline-safe sale entry', async ({ p
   await expect(page.getByRole('row', { name: /S-00001/ })).toContainText('400 FCFA');
   await expect(page.getByRole('row', { name: /S-00001/ })).toContainText('Hors ligne');
   await page.goto('/app/products');
-  await expect(page.getByText('29').first()).toBeVisible();
+  // Stock went from 30 to 29: the quantity cell starts with the number. A plain '29' also matched the sidebar's trial date.
+  await expect(page.getByText(/^29\b/).first()).toBeVisible();
 });
