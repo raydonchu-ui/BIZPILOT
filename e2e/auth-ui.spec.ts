@@ -108,3 +108,12 @@ test('an invalid Google client ID falls back to the redirect flow and says why',
   await expect(page.getByTestId('diagnostics')).toContainText('INVALID (looks_like_secret)');
   expect(gisRequested).toBe(false);
 });
+
+test('creators have their own sign-up link: no seller or buyer choice, and it leads to the creator space', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('bizpilot.lang', 'en'));
+  await page.goto('/login');
+  await page.getByRole('link', { name: 'Become a creator' }).click();
+  await expect(page).toHaveURL(/\/signup\?for=creator/);
+  await expect(page.getByRole('heading', { name: 'Create your creator account' })).toBeVisible();
+  await expect(page.getByRole('radiogroup')).toHaveCount(0);
+});

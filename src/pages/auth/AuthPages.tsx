@@ -194,7 +194,7 @@ export function LoginPage() {
   };
   return (
     <AuthShell title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}
-      footer={<>{t('auth.noAccount')} <Link to={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'} className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.createAccount')}</Link></>}>
+      footer={<>{t('auth.noAccount')} <Link to={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'} className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.createAccount')}</Link><br /><Link to="/signup?for=creator" className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.becomeCreator')}</Link></>}>
       {params.get('verified') && <div className="mb-4"><Alert tone="green">{t('auth.verified')}</Alert></div>}
       <GoogleSignIn />
       <form onSubmit={submit} className="space-y-4">
@@ -229,8 +229,11 @@ export function SignupPage() {
   const [params, setParams] = useSearchParams();
   const rawNext = safeNext(params.get('next'));
   // Buyer: browse, save favourites, follow orders. Seller: set up a business (and can still buy).
-  const role: 'buyer' | 'seller' = params.get('role') === 'buyer' ? 'buyer' : 'seller';
-  const next = rawNext ?? (role === 'buyer' ? '/account' : '/onboarding');
+  // Creators: a buyer account (no seller setup) that lands on the creator space. The creator role comes from the
+  // creator application, not from the account type.
+  const creatorMode = params.get('for') === 'creator';
+  const role: 'buyer' | 'seller' = creatorMode || params.get('role') === 'buyer' ? 'buyer' : 'seller';
+  const next = rawNext ?? (creatorMode ? '/creator' : role === 'buyer' ? '/account' : '/onboarding');
   if (session) return <Navigate to={next} replace />;
   const choose = (r: 'buyer' | 'seller') => { const p = new URLSearchParams(params); p.set('role', r); setParams(p, { replace: true }); };
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
@@ -272,10 +275,10 @@ export function SignupPage() {
   const [gBefore, gRest] = t('auth.googleTerms').split('{terms}');
   const [gMiddle, gAfter] = (gRest ?? '').split('{privacy}');
   return (
-    <AuthShell title={role === 'buyer' ? t('auth.signupBuyerTitle') : t('auth.signupTitle')} subtitle={role === 'buyer' ? t('auth.signupBuyerSubtitle') : t('auth.signupSubtitle')}
-      footer={<>{t('auth.haveAccount')} <Link to="/login" className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.login')}</Link></>}>
+    <AuthShell title={creatorMode ? t('auth.signupCreatorTitle') : role === 'buyer' ? t('auth.signupBuyerTitle') : t('auth.signupTitle')} subtitle={creatorMode ? t('auth.signupCreatorSubtitle') : role === 'buyer' ? t('auth.signupBuyerSubtitle') : t('auth.signupSubtitle')}
+      footer={<>{t('auth.haveAccount')} <Link to="/login" className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.login')}</Link>{!creatorMode && <><br /><Link to="/signup?for=creator" className="font-semibold text-brand-700 hover:underline dark:text-brand-400">{t('auth.becomeCreator')}</Link></>}</>}>
       {/* Two ways in: buyer (browse, favourites, orders) or seller (business tools). One account can do both later. */}
-      <div className="mb-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('auth.roleTitle')}>
+      {!creatorMode && <div className="mb-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('auth.roleTitle')}>
         {(['seller', 'buyer'] as const).map((r) => (
           <button key={r} type="button" role="radio" aria-checked={role === r} onClick={() => choose(r)}
             className={clsx('flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition',
@@ -284,8 +287,8 @@ export function SignupPage() {
             <span className="text-xs text-ink-muted">{t(`auth.role.${r}Sub`)}</span>
           </button>
         ))}
-      </div>
-      <p className="-mt-2 mb-4 text-xs text-ink-muted">{t('auth.roleNote')}</p>
+      </div>}
+      {!creatorMode && <p className="-mt-2 mb-4 text-xs text-ink-muted">{t('auth.roleNote')}</p>}
       <GoogleSignIn context="signup" note={<>{gBefore}{termsLink}{gMiddle}{privacyLink}{gAfter}</>} />
       <form onSubmit={submit} className="space-y-4">
         <Field label={t('auth.fullName')} htmlFor="fn" required><Input id="fn" required autoComplete="name" value={f.full_name} onChange={set('full_name')} /></Field>
