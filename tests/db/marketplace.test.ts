@@ -346,6 +346,9 @@ describe('marketplace: stores, listings, checkout, stock and payments', () => {
     await rpc(adm.client, 'admin_market_store_update', { p_business: biz, p: { status: 'suspended', reason: 'Investigation' } });
     expect((await rpc(guest, 'market_store', { p_slug: slug })).unavailable).toBe(true);
     await expectError(rpc(owner.client, 'store_set_published', { p_business: biz, p_publish: true }), 'store_suspended');
+    // The blue tick is part of Verified Premium: the business must be on that plan first.
+    await sql(`update business_subscriptions set plan_code = 'verified_premium', status = 'active', billing_period = 'monthly',
+               current_period_start = now(), current_period_end = now() + interval '30 days' where business_id = $1`, [biz]);
     await rpc(adm.client, 'admin_market_store_update', { p_business: biz, p: { status: 'published', verification: 'verified' } });
     expect((await rpc(guest, 'market_store', { p_slug: slug })).verified).toBe(true);
   });

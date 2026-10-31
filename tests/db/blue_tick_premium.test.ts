@@ -39,8 +39,8 @@ describe('blue tick given by an administrator (Verified Premium only)', () => {
     expect(s).toMatchObject({ verification: 'verified', long: true, tick: true });
   });
 
-  it('the blue tick stops when the plan stops, even though the administrator gave it', async () => {
-    await setPlan(biz, 'cancelled');
+  it('the blue tick stops when the plan is suspended, even though the administrator gave it', async () => {
+    await setPlan(biz, 'suspended');
     const [s] = await sql<any>('select app.blue_tick(business_id) as tick from stores where business_id = $1', [biz]);
     expect(s.tick).toBe(false);
   });
