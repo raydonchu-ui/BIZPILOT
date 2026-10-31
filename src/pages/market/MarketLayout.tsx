@@ -10,7 +10,6 @@ import { LanguageSwitch } from '../../components/LanguageSwitch';
 import { MarketTabBar } from '../../components/market';
 import { MessageBell } from '../../components/messaging';
 import { Alert, Input, PageLoader } from '../../components/ui';
-import { rpc } from '../../lib/api';
 
 export function MarketLayout() {
   const { t } = useI18n();
@@ -28,23 +27,6 @@ export function MarketLayout() {
   const tabBar = !/^\/(s\/|cart|checkout|order\/|pay\/|messages\/)/.test(loc.pathname);
   const back = () => { if (window.history.length > 1) nav(-1); else nav('/market'); };
   useEffect(() => { setQ(params.get('q') ?? ''); }, [params]);
-  // A creator's link (?ref=CODE) is kept on this device and counted as a visit. Once signed in, the account is attached
-  // to that creator once; the server refuses self-referrals and a second attachment.
-  useEffect(() => {
-    const code = params.get('ref');
-    if (!code || !/^[A-Za-z0-9]{6,10}$/.test(code)) return;
-    try { localStorage.setItem('bizpilot.ref', code.toUpperCase()); } catch { /* storage unavailable: still counted below */ }
-    rpc('creator_track_click', { p_code: code }).catch(() => undefined);
-  }, [params]);
-  useEffect(() => {
-    if (!session) return;
-    let code: string | null = null;
-    try { code = localStorage.getItem('bizpilot.ref'); } catch { code = null; }
-    if (!code) return;
-    rpc('creator_attach_referral', { p_code: code })
-      .catch(() => undefined)
-      .finally(() => { try { localStorage.removeItem('bizpilot.ref'); } catch { /* ignore */ } });
-  }, [session]);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     nav(`/market/search?q=${encodeURIComponent(q.trim())}`);

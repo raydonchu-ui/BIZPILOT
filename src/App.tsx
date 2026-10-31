@@ -18,6 +18,7 @@ import { CartProvider } from './lib/market';
 import { MarketLayout } from './pages/market/MarketLayout';
 import { MessagesPage, NotificationsPage as InboxPage, ThreadPage } from './pages/market/MessagesPages';
 import { InboxListener } from './components/messaging';
+import { CreatorReferral } from './components/CreatorReferral';
 
 const Dashboard = lazy(() => import('./pages/app/Dashboard'));
 const SetupChecklist = lazy(() => import('./pages/app/SetupChecklist'));
@@ -109,6 +110,7 @@ export function App() {
     <Suspense fallback={<PageLoader />}>
       <PwaPrompt />
       <InboxListener />
+      <CreatorReferral />
       <Routes>
         {/* BizPilot Market: public shopping (no Store Lock: shoppers' own data only). */}
         <Route element={<MarketLayout />}>

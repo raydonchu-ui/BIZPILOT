@@ -86,8 +86,8 @@ describe('security audit', () => {
 
   it('applying to be a creator is rate limited (three attempts a day)', async () => {
     const c = await createUser('sec-creator');
-    for (let i = 0; i < 3; i++) await rpc(c.client, 'creator_apply', { p: { display_name: 'Rate Test' } });
-    await expectError(rpc(c.client, 'creator_apply', { p: { display_name: 'Rate Test' } }), 'rate_limited');
+    for (let i = 0; i < 3; i++) await rpc(c.client, 'creator_apply', { p: { display_name: 'Rate Test', payout_provider: 'mtn_momo', payout_phone: '670000002' } });
+    await expectError(rpc(c.client, 'creator_apply', { p: { display_name: 'Rate Test', payout_provider: 'mtn_momo', payout_phone: '670000002' } }), 'rate_limited');
   });
 
   it('the platform administrator is set only by the deployer, never through the API', async () => {

@@ -12,7 +12,7 @@ describe('account roles', () => {
     admin = await createUser('role-admin');
     await sql('select app.bootstrap_platform_admin($1)', [admin.email]);
     biz = await createBusiness(seller, 'Roles Shop', { category: 'fashion' });
-    await rpc(creator.client, 'creator_apply', { p: { display_name: 'Role Creator' } });
+    await rpc(creator.client, 'creator_apply', { p: { display_name: 'Role Creator', payout_provider: 'mtn_momo', payout_phone: '670000002' } });
     await sql(`update creator_profiles set status = 'approved', commission_rate = 5, applies_to = 'both' where user_id = $1`, [creator.id]);
   });
   afterAll(closeDb);

@@ -24,17 +24,27 @@ describe('creator and promoter program', () => {
     await closeDb();
   });
 
-  it('a creator applies; the program is off until an administrator turns it on; an approved rate must be within 2% to 10%', async () => {
-    expect(await rpc(creator.client, 'creator_apply', { p: { display_name: 'Awa Promo' } })).toBe('pending');
+  it('a creator applies; the program is off until an administrator turns it on; an approved rate must be within 3% to 10%', async () => {
+    expect(await rpc(creator.client, 'creator_apply', { p: { display_name: 'Awa Promo', payout_provider: 'mtn_momo', payout_phone: '670000002' } })).toBe('pending');
     const [{ referral_code }] = await sql<any>('select referral_code from creator_profiles where user_id = $1', [creator.id]);
     code = referral_code;
     expect(code).toMatch(/^[A-Z0-9]{8}$/);
     await expectError(rpc(admin.client, 'admin_review_creator', { p_user: creator.id, p_decision: 'approve', p_rate: 1 }), 'invalid_rate');
+    await expectError(rpc(admin.client, 'admin_review_creator', { p_user: creator.id, p_decision: 'approve', p_rate: 2 }), 'invalid_rate');
     await expectError(rpc(admin.client, 'admin_review_creator', { p_user: creator.id, p_decision: 'approve', p_rate: 12 }), 'invalid_rate');
     await expectError(rpc(creator.client, 'admin_review_creator', { p_user: creator.id, p_decision: 'approve', p_rate: 5 }), 'permission_denied');
     await rpc(admin.client, 'admin_review_creator', { p_user: creator.id, p_decision: 'approve', p_rate: 5, p_applies: 'both' });
     const cfg = await rpc<any>(admin.client, 'admin_set_creator_program', { p: { enabled: false } });
     expect(cfg.enabled).toBe(false);
+  });
+
+  it('applying needs a Mobile Money provider and number, which are saved with the application', async () => {
+    const c = await createUser('cr-payout');
+    await expectError(rpc(c.client, 'creator_apply', { p: { display_name: 'No Payout' } }), 'payout_details_required');
+    await expectError(rpc(c.client, 'creator_apply', { p: { display_name: 'No Payout', payout_provider: 'paypal', payout_phone: '670000003' } }), 'payout_details_required');
+    expect(await rpc(c.client, 'creator_apply', { p: { display_name: 'With Payout', payout_provider: 'orange_money', payout_phone: '+237 6 70 00 00 04' } })).toBe('pending');
+    const [cp] = await sql<any>('select payout_provider, payout_phone from creator_profiles where user_id = $1', [c.id]);
+    expect(cp).toEqual({ payout_provider: 'orange_money', payout_phone: '670000004' });
   });
 
   it('a creator cannot use their own code, and the owner of a business cannot attach a code of someone sharing their business', async () => {
@@ -146,7 +156,7 @@ describe('creator and promoter program', () => {
 
   it('a creator’s application can be rejected with a reason and suspended; a suspended creator earns nothing new', async () => {
     const pending = await createUser('cr-pending');
-    await rpc(pending.client, 'creator_apply', { p: { display_name: 'Pending Person' } });
+    await rpc(pending.client, 'creator_apply', { p: { display_name: 'Pending Person', payout_provider: 'mtn_momo', payout_phone: '670000002' } });
     await expectError(rpc(admin.client, 'admin_review_creator', { p_user: pending.id, p_decision: 'reject' }), 'reason_required');
     await rpc(admin.client, 'admin_review_creator', { p_user: pending.id, p_decision: 'reject', p_reason: 'Channels could not be checked' });
     await expectError(rpc(pending.client, 'creator_request_payout', { p_amount: 6000 }), 'creator_not_active');

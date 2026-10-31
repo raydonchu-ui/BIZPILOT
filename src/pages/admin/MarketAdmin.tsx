@@ -115,6 +115,7 @@ function StoreModal({ store, onClose }: { store: any; onClose: () => void }) {
         <p>{t('madmin.storeInfo', { business: store.business_name, email: store.owner_email ?? '—', date: formatDate(store.created_at, lang) })}</p>
         {store.verification_note && <Alert tone="blue">{t('madmin.sellerNote')}: {store.verification_note}</Alert>}
         <Field label={t('madmin.reason')} hint={t('madmin.reasonHint')}><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+        {store.verification !== 'verified' && <p className="text-xs text-ink-muted">{t('madmin.verifyPlanHint')}</p>}
         <div className="flex flex-wrap gap-2">
           {store.verification !== 'verified' && <Button loading={busy} icon={<BadgeCheck className="h-4 w-4" />} onClick={() => act({ verification: 'verified' })}>{t('madmin.verify')}</Button>}
           {store.verification === 'pending' && <Button variant="outline" loading={busy} disabled={!reason.trim()} onClick={() => act({ verification: 'rejected' })}>{t('madmin.rejectVerification')}</Button>}

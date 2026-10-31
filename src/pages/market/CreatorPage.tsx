@@ -31,7 +31,8 @@ export default function CreatorPage() {
   const submitApply = async (e: FormEvent) => {
     e.preventDefault();
     const r = await run(() => rpc('creator_apply', { p: { display_name: apply.display_name, bio: apply.bio,
-      channels: apply.channels.filter((c) => c.url.trim()) } }), t('creator.applied'));
+      channels: apply.channels.filter((c) => c.url.trim()), payout_provider: payout.provider, payout_phone: payout.phone,
+      payout_name: payout.name } }), t('creator.applied'));
     if (r !== undefined) refresh();
   };
   const savePayout = async (e: FormEvent) => {
@@ -59,6 +60,16 @@ export default function CreatorPage() {
           <form onSubmit={submitApply} className="space-y-4">
             <Field label={t('creator.displayName')} required><Input maxLength={60} value={apply.display_name} onChange={(e) => setApply({ ...apply, display_name: e.target.value })} /></Field>
             <Field label={t('creator.bio')} optional><Input maxLength={300} value={apply.bio} onChange={(e) => setApply({ ...apply, bio: e.target.value })} /></Field>
+            <div className="space-y-3 rounded-xl bg-gray-50 p-4 dark:bg-gray-900">
+              <div><p className="text-sm font-semibold">{t('creator.payoutDetails')}</p><p className="text-xs text-ink-muted">{t('creator.payoutDetailsSub')}</p></div>
+              <Field label={t('creator.provider')}>
+                <Select value={payout.provider} onChange={(e) => setPayout({ ...payout, provider: e.target.value })}>
+                  <option value="mtn_momo">MTN Mobile Money</option><option value="orange_money">Orange Money</option>
+                </Select>
+              </Field>
+              <Field label={t('creator.phone')} required><Input type="tel" inputMode="tel" placeholder="6XX XX XX XX" value={payout.phone} onChange={(e) => setPayout({ ...payout, phone: e.target.value })} /></Field>
+              <Field label={t('creator.accountName')} optional><Input maxLength={80} value={payout.name} onChange={(e) => setPayout({ ...payout, name: e.target.value })} /></Field>
+            </div>
             <div className="space-y-2">
               <p className="text-sm font-semibold">{t('creator.channels')}</p>
               {apply.channels.map((c, i) => (
@@ -73,7 +84,7 @@ export default function CreatorPage() {
               {apply.channels.length < 5 && <Button type="button" variant="outline" size="sm" onClick={() => setApply({ ...apply, channels: [...apply.channels, { kind: 'other', url: '' }] })}>{t('creator.addChannel')}</Button>}
             </div>
             <Alert tone="blue">{t('creator.reviewNote')}</Alert>
-            <Button type="submit" loading={busy} disabled={apply.display_name.trim().length < 2}>{t('creator.apply')}</Button>
+            <Button type="submit" loading={busy} disabled={apply.display_name.trim().length < 2 || payout.phone.replace(/\D/g, '').length < 9}>{t('creator.apply')}</Button>
           </form>
         </Card>
       </div>
