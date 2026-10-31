@@ -9,7 +9,7 @@ import { supabase } from '../../../lib/supabase';
 import { rpc, unwrap } from '../../../lib/api';
 import { useAction } from '../../../lib/useAction';
 import { uploadFile } from '../../../lib/hooks';
-import { requestSubscriptionPayment, useMarketConfig, verifyPayment } from '../../../lib/market';
+import { requestSubscriptionPayment, verifyPayment } from '../../../lib/market';
 import { clearPendingPayment, pendingPayment } from '../../../lib/pendingPayment';
 import { MobileMoneyPay } from '../../../components/MobileMoneyPay';
 import { useToast } from '../../../lib/toast';
@@ -80,9 +80,10 @@ export default function BillingPage() {
               {s.cancel_at_period_end ? t('billing.resumeRenewal') : t('billing.cancelRenewal')}</Button></div>
           ) : null}
         </Card>
-        <Card>
+        {/* Manual transfer is a fallback, shown only when the platform has set its mobile money numbers. */}
+        {configured.length > 0 && <Card>
           <CardHeader title={t('billing.howToPay')} />
-          {configured.length === 0 ? <Alert tone="amber">{t('billing.notConfigured')}</Alert> : (
+          {(
             <ul className="space-y-3 text-sm">
               {configured.map((m) => (
                 <li key={m} className="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
@@ -98,7 +99,7 @@ export default function BillingPage() {
             <li>{t('billing.step1')}</li><li>{t('billing.step2')}</li><li>{t('billing.step3')}</li>
           </ol>
           <p className="mt-3 text-xs text-ink-muted">{t('billing.verificationNote')}</p>
-        </Card>
+        </Card>}
       </div>
       {premium && s.plan_code !== 'verified_premium' && (
         <Card className="mt-4 border-sky-200 dark:border-sky-900">
@@ -143,7 +144,9 @@ function SubmitPaymentModal({ plan, period, methods, onClose }: { plan: Plan; pe
   const { refreshContext, context } = useAuth();
   const { run, busy } = useAction();
   const amount = period === 'annual' ? (plan.price_annual ?? plan.price_monthly * 12) : plan.price_monthly;
-  const online = Boolean(useMarketConfig().data?.online_payments_enabled);
+  // Subscriptions are paid through Fapshi (the server checks each payment). The marketplace switch that turns
+  // customers' online order payments off does not apply to them.
+  const online = true;
   const [manual, setManual] = useState(false);
   const toast = useToast();
   const onPaid = useCallback(() => {
