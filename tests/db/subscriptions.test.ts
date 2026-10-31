@@ -13,7 +13,7 @@ describe('subscriptions, entitlements, billing verification and admin portal', (
     owner = await createUser('subowner');
     adminUser = await createUser('platformadmin');
     await sql('select app.bootstrap_platform_admin($1)', [adminUser.email]);
-    biz = await createBusiness(owner, 'Sub Test');
+    biz = await createBusiness(owner, 'Sub Test', {}, 'free');
   });
   afterAll(closeDb);
 

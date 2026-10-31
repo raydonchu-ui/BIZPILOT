@@ -19,12 +19,12 @@ describe('authentication, tenancy and permissions', () => {
   });
   afterAll(closeDb);
 
-  it('creates the workspace with owner role, settings, accounts, the Free plan and categories', async () => {
+  it('creates the workspace with owner role, settings, accounts, trial and categories', async () => {
     const ctx = await rpc<any>(alice.client, 'get_my_context');
     const biz = ctx.businesses.find((b: any) => b.id === shopA);
     expect(biz.role).toBe('owner');
     expect(biz.currency).toBe('XAF');
-    expect(biz.subscription.state).toBe('free');
+    expect(biz.subscription.state).toBe('trial');
     expect(biz.permissions).toContain('staff.manage');
     const { data: accounts } = await alice.client.from('cash_accounts').select('kind').eq('business_id', shopA);
     expect(accounts!.map((a) => a.kind).sort()).toEqual(['bank', 'cash', 'mtn_momo', 'orange_money', 'other']);

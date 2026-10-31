@@ -73,10 +73,15 @@ export async function expectError(p: Promise<unknown>, code: string | RegExp) {
   throw new Error(`Expected error ${code} but call succeeded`);
 }
 
-export async function createBusiness(user: TestUser, name = 'Test Shop', extra: Record<string, unknown> = {}) {
+// Most tests exercise paid features, so a new test business gets a 30-day Business trial, as new businesses did before.
+// Pass 'free' to test what a new account gets without a trial.
+export async function createBusiness(user: TestUser, name = 'Test Shop', extra: Record<string, unknown> = {}, plan: 'business' | 'free' = 'business') {
   const id = await rpc<string>(user.client, 'create_business', {
     p: { name, owner_name: 'Owner', country_code: 'CM', language: 'en', category: 'grocery', ...extra },
   });
+  if (plan === 'business') {
+    await sql(`update business_subscriptions set plan_code = 'business', status = 'trialing', trial_ends_at = now() + interval '30 days' where business_id = $1`, [id]);
+  }
   return id;
 }
 
