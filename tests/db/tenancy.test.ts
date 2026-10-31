@@ -63,7 +63,7 @@ describe('authentication, tenancy and permissions', () => {
     const r = await a.rpc('create_sale', { p_business: shopA, p: {} });
     expect(r.error).toBeTruthy();
     const plans = await a.from('plans').select('code,price_monthly').order('sort');
-    expect(plans.data!.map((p) => p.code)).toEqual(['free', 'starter', 'business', 'verified_premium']);
+    expect(plans.data!.map((p) => p.code)).toEqual(['free', 'verified_premium']);
   });
 
   it('protects computed stock fields from direct client edits', async () => {
