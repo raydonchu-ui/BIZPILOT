@@ -36,16 +36,17 @@ describe('Verified Premium, verification and the blue tick', () => {
     expect(p.features).toEqual(expect.arrayContaining(['verified_badge', 'premium_automations', 'ai_business_manager', 'ai_advisor']));
   });
 
-  it('with the default rules, a new store is not eligible: it needs 300 genuine followers', async () => {
+  it('a business that is not on Verified Premium is not eligible, whatever its followers: the 5,000 XAF plan is the requirement', async () => {
     await expectError(rpc(owner.client, 'verification_apply', { p_business: biz, p: { legal_name: 'Premium Shop SARL', id_type: 'business_registration',
       id_document_path: docFor(biz, 'reg') } }), 'verification_not_eligible');
     const st = await rpc<any>(owner.client, 'verification_status', { p_business: biz });
-    expect(st.eligibility).toMatchObject({ eligible: false, followers: 0, min_followers: 300 });
-    expect(st.eligibility.reasons).toContain('followers_below_minimum');
+    expect(st.eligibility).toMatchObject({ eligible: false });
+    expect(st.eligibility.reasons).toContain('requires_verified_premium');
     expect(st.blue_tick).toBe(false);
   });
 
   it('only store managers can apply, and the documents must be in the business own verification folder', async () => {
+    await sql(`update business_subscriptions set plan_code = 'verified_premium', status = 'active', billing_period = 'monthly', current_period_start = now(), current_period_end = now() + interval '30 days' where business_id = $1`, [biz]);
     await sql(`update app_config set value = '{"min_followers": 2, "min_account_age_days": 0, "validity_days": 365, "purge_after_days": 90}' where key = 'verification'`);
     await sql(`insert into market_store_follows (user_id, business_id) values ($1, $3), ($2, $3) on conflict do nothing`, [followerA.id, followerB.id, biz]);
     await expectError(rpc(other.client, 'verification_apply', { p_business: biz, p: { legal_name: 'Intruder Ltd', id_type: 'national_id', id_document_path: docFor(biz, 'x') } }), 'permission_denied');
@@ -76,6 +77,7 @@ describe('Verified Premium, verification and the blue tick', () => {
   });
 
   it('paying for Verified Premium does not approve verification, and the 5,000 XAF amount is what is charged', async () => {
+    await sql(`update business_subscriptions set plan_code = 'business', status = 'trialing', trial_ends_at = now() + interval '30 days' where business_id = $1`, [biz]);
     const pid = await rpc<string>(owner.client, 'submit_billing_payment', { p_business: biz, p: {
       plan_code: 'verified_premium', billing_period: 'monthly', method: 'mtn_momo', transaction_ref: `MP-VP.${uid().slice(0, 8)}.A1` } });
     const [bp] = await sql<any>('select amount, expected_amount, status from billing_payments where id = $1', [pid]);
