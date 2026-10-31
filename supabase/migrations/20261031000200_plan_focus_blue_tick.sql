@@ -1,13 +1,13 @@
 -- Phase 12: one paid plan for now, and the blue tick for subscribers.
 --   * New accounts start on the Free plan (15 products). The automatic Business trial is switched off (0 days).
 --     Businesses already on a trial keep it until it ends.
---   * Starter and Business are hidden from the public pricing. They stay active, so current subscribers keep their plan.
+--   * Business is hidden from the public pricing. Starter stays public. Both stay active, so current subscribers keep their plan.
 --   * Verified Premium (5,000 XAF a month) shows every advantage on its card. It is the only plan that includes the blue tick.
 --   * The blue tick is for any business on Verified Premium: new or old, with a published store that is not suspended
 --     and has no open report. The follower and account-age rules are removed. An administrator still approves each one.
 
 -- 1. Pricing and trial.
-update public.plans set is_public = false where code in ('starter', 'business');
+update public.plans set is_public = false where code = 'business';
 update public.app_config set value = jsonb_set(value, '{days}', '0'::jsonb) where key = 'trial';
 
 -- 2. Blue tick eligibility: the 5,000 XAF plan is the requirement.
