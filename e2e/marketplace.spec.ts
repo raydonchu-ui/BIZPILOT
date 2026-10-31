@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { passStoreLock } from './storeLockHelper';
 import { closeDb, sql } from '../tests/db/helpers';
+import { startBusinessTrial } from './trialHelper';
 
 // BizPilot Market through the real UI: a seller opens a store and lists a product, a guest buys it
 // (cash on delivery and online payment through the Fapshi edge function + simulated Fapshi), the
@@ -59,6 +60,7 @@ test('a seller opens an online store, lists a product and publishes', async ({ p
   await page.getByLabel('Type of business').selectOption('fashion');
   await page.getByRole('button', { name: 'Create my business' }).click();
   await passStoreLock(page);
+  await startBusinessTrial(seller.email); // the sales and reports steps use paid features; a new account starts on Free
 
   // Grouped navigation shows the online store section.
   const nav = page.getByRole('navigation', { name: 'App' });

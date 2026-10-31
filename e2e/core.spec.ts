@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { passStoreLock } from './storeLockHelper';
+import { startBusinessTrial } from './trialHelper';
 
 // Full business workflow through the real UI, backend and database:
 // register -> business -> supplier -> product (carton unit) -> purchase & receive ->
@@ -33,6 +34,7 @@ test('register, create business and see the setup checklist', async ({ page }) =
   await page.getByLabel('City').fill('Douala');
   await page.getByRole('button', { name: 'Create my business' }).click();
   await passStoreLock(page); // first access to the dashboard: create the Store Lock PIN
+  await startBusinessTrial(email); // the later steps use paid features; a new account starts on Free
   await expect(page.getByRole('heading', { name: 'Getting started' })).toBeVisible();
   await expect(page.getByText(/of \d+ steps completed/)).toBeVisible();
 });
