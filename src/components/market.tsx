@@ -1,8 +1,9 @@
+import { VerifiedBadge } from './VerifiedBadge';
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { BadgeCheck, ChevronDown, Copy, Flag, Heart, Home, LayoutGrid, MapPin, MessageCircle, Minus, Package, Plus, Search, Share2, Star, Store, UserRound } from 'lucide-react';
+import { ChevronDown, Copy, Flag, Heart, Home, LayoutGrid, MapPin, MessageCircle, Minus, Package, Plus, Search, Share2, Star, Store, UserRound } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { Facebook } from './BrandIcons';
 import { useAuth } from '../lib/auth';
@@ -125,7 +126,7 @@ export function ProductTile({ p, hideStore }: { p: ProductCard; hideStore?: bool
           {!hideStore && (
             <p className="mt-auto flex items-center gap-1 truncate pt-1 text-xs text-ink-muted">
               <Store className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{p.store.name}</span>
-              {p.store.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-label={t('market.verified')} />}
+              {p.store.verified && <VerifiedBadge className="h-3.5 w-3.5 shrink-0" aria-label={t('market.verified')} />}
               {p.store.city && <span className="truncate">· {p.store.city}</span>}
             </p>
           )}
@@ -152,7 +153,7 @@ export function StoreTile({ s }: { s: StoreCard }) {
     <Link to={`/s/${s.slug}`} className="flex items-center gap-3 rounded-2xl border border-gray-200/80 bg-white p-3 shadow-card transition hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
       <MarketImage path={s.logo_path} alt={s.name} className="h-14 w-14 shrink-0" />
       <div className="min-w-0">
-        <p className="flex items-center gap-1 truncate font-bold text-ink dark:text-white">{s.name}{s.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-brand-600" aria-label={t('market.verified')} />}</p>
+        <p className="flex items-center gap-1 truncate font-bold text-ink dark:text-white">{s.name}{s.verified && <VerifiedBadge className="h-4 w-4 shrink-0" aria-label={t('market.verified')} />}</p>
         <p className="truncate text-xs text-ink-muted">{t(`businessCategories.${s.business_type}`)}{s.city ? ` · ${s.city}` : ''}</p>
         <p className="mt-0.5 flex items-center gap-2 text-xs text-ink-muted">{s.rating_count > 0 && <Stars value={s.rating_avg} count={s.rating_count} />}<span>{t('market.productsCount', { n: s.products })}</span></p>
       </div>

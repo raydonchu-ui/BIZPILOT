@@ -3,7 +3,8 @@
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BadgeCheck, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
+import { VerifiedBadge } from '../../../components/VerifiedBadge';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { rpc } from '../../../lib/api';
@@ -53,7 +54,7 @@ export function VerificationPanel() {
       <div className="space-y-4">
         <Card>
           <div className="flex items-start gap-3">
-            <BadgeCheck className={v.blue_tick ? 'h-8 w-8 text-sky-500' : 'h-8 w-8 text-gray-300'} aria-hidden />
+            <VerifiedBadge className="h-8 w-8" muted={!v.blue_tick} />
             <div className="flex-1">
               <CardHeader title={t('premium.verify.title')} />
               <p className="text-sm text-ink-muted">{t('premium.verify.subtitle')}</p>

@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { VerifiedBadge } from '../../../components/VerifiedBadge';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { BadgeCheck, CheckCircle2, Circle, ExternalLink, Plus, Store, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, ExternalLink, Plus, Store, Trash2 } from 'lucide-react';
 import { useI18n } from '../../../i18n';
 import { useBiz } from '../../../lib/business';
 import { rpc, unwrap } from '../../../lib/api';
@@ -74,7 +75,7 @@ export default function MyStorePage() {
     <div>
       <PageHeader title={s.name} subtitle={<span className="flex flex-wrap items-center gap-2">
           <StoreStatus status={s.status} />
-          {s.verification === 'verified' && <Badge tone="green"><BadgeCheck className="h-3.5 w-3.5" />{t('market.verified')}</Badge>}
+          {s.verification === 'verified' && <Badge tone="blue"><VerifiedBadge className="h-3.5 w-3.5" />{t('market.verified')}</Badge>}
           <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-700 hover:underline">{url.replace(/^https?:\/\//, '')}<ExternalLink className="h-3.5 w-3.5" /></a>
         </span>}
         actions={<>

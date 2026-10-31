@@ -1,9 +1,10 @@
+import { VerifiedBadge } from '../../components/VerifiedBadge';
 import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
-  BadgeCheck, Banknote, Clock, CreditCard, Heart, Link2, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Store, Truck, Undo2,
+  Banknote, Clock, CreditCard, Heart, Link2, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Store, Truck, Undo2,
 } from 'lucide-react';
 import { Facebook, Instagram } from '../../components/BrandIcons';
 import { useI18n } from '../../i18n';
@@ -197,7 +198,7 @@ export function StorePage() {
           <div className="min-w-0 flex-1">
             <h1 className="flex min-w-0 items-center gap-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
               <span className="min-w-0 break-words">{s.name}</span>
-              {s.verified && <BadgeCheck className="h-5 w-5 shrink-0 text-brand-600" aria-label={t('market.verified')} />}
+              {s.verified && <VerifiedBadge className="h-5 w-5 shrink-0" aria-label={t('market.verified')} />}
             </h1>
             <p className="mt-0.5 text-sm text-ink-muted">{t(`businessCategories.${s.business_type}`)}</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
@@ -492,7 +493,7 @@ function ProductView({ p, store }: { p: any; store: any }) {
             <Link to={`/s/${p.store.slug}`} className="flex items-center gap-3">
               <MarketImage path={p.store.logo_path} alt={p.store.name} className="h-12 w-12" />
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1 font-bold">{p.store.name}{p.store.verified && <BadgeCheck className="h-4 w-4 text-brand-600" />}</p>
+                <p className="flex items-center gap-1 font-bold">{p.store.name}{p.store.verified && <VerifiedBadge className="h-4 w-4" />}</p>
                 <p className="text-xs text-ink-muted">{p.store.city} · {t('market.visitStore')}</p>
               </div>
             </Link>
@@ -555,7 +556,7 @@ function ProductView({ p, store }: { p: any; store: any }) {
                 <tr className="bg-brand-50/50 dark:bg-brand-950/30"><td className="px-3 py-2 font-semibold">{p.name}</td><td className="px-3 py-2">{p.store.name}{p.store.city ? ` · ${p.store.city}` : ''}</td><td className="px-3 py-2 text-right font-bold">{formatXaf(p.price, lang)}</td><td className="px-3 py-2">{p.sold ? t('market.sold') : Number(p.available) > 0 ? t('market.inStock') : t('market.outOfStock')}</td></tr>
                 {p.other_sellers.map((x: any) => (
                   <tr key={x.id}><td className="px-3 py-2"><Link to={`/s/${x.store.slug}/p/${x.id}`} className="font-semibold text-brand-700 hover:underline">{x.name}</Link></td>
-                    <td className="px-3 py-2">{x.store.name}{x.store.verified && <BadgeCheck className="ml-1 inline h-3.5 w-3.5 text-brand-600" />}{x.store.city ? ` · ${x.store.city}` : ''}{x.rating_count > 0 ? ` · ★ ${x.rating_avg}` : ''}</td>
+                    <td className="px-3 py-2">{x.store.name}{x.store.verified && <VerifiedBadge className="ml-1 inline h-3.5 w-3.5" />}{x.store.city ? ` · ${x.store.city}` : ''}{x.rating_count > 0 ? ` · ★ ${x.rating_avg}` : ''}</td>
                     <td className="px-3 py-2 text-right font-bold">{formatXaf(x.price, lang)}</td>
                     <td className="px-3 py-2">{x.sold ? t('market.sold') : Number(x.available) > 0 ? t('market.inStock') : t('market.outOfStock')}</td></tr>
                 ))}
