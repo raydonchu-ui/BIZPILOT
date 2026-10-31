@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /app
+Disallow: /admin
+Disallow: /account
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order/
+Disallow: /messages
+Disallow: /notifications
+Disallow: /creator
+Disallow: /auth/
+
+Sitemap: https://www.bizpilotmarket.com/sitemap.xml
