@@ -13,13 +13,20 @@ update public.app_config set value = jsonb_set(value, '{days}', '0'::jsonb) wher
 -- 2. Blue tick eligibility: the 5,000 XAF plan is the requirement.
 create or replace function app.verification_eligibility(bid uuid) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare st public.stores; b public.businesses; reasons text[] := '{}';
+declare st public.stores; b public.businesses; reasons text[] := '{}'; followers int; age_days int;
 begin
   select * into st from public.stores where business_id = bid;
   if not found then
     return jsonb_build_object('eligible', false, 'reasons', jsonb_build_array('store_not_found'));
   end if;
   select * into b from public.businesses where id = bid;
+  followers := (select count(distinct f.user_id)::int from public.market_store_follows f
+                  join auth.users u on u.id = f.user_id
+                 where f.business_id = bid and u.email_confirmed_at is not null
+                   and f.user_id not in (select m.user_id from public.business_members m where m.business_id = bid));
+  age_days := coalesce((select floor(extract(epoch from now() - min(u.created_at)) / 86400)::int
+                          from public.business_members m join auth.users u on u.id = m.user_id
+                         where m.business_id = bid and m.role = 'owner'), 0);
   if not app.has_feature(bid, 'verified_badge') then reasons := array_append(reasons, 'requires_verified_premium'); end if;
   if st.status <> 'published' then reasons := array_append(reasons, 'store_not_published'); end if;
   if st.status = 'suspended' or b.status <> 'active' then reasons := array_append(reasons, 'account_suspended'); end if;
@@ -28,7 +35,7 @@ begin
   if (select status from public.business_subscriptions where business_id = bid) = 'suspended' then
     reasons := array_append(reasons, 'subscription_suspended');
   end if;
-  -- The follower and account-age figures are no longer requirements; they are returned as zero for the screens.
-  return jsonb_build_object('eligible', cardinality(reasons) = 0, 'followers', 0, 'min_followers', 0,
-    'account_age_days', 0, 'min_account_age_days', 0, 'reasons', to_jsonb(reasons));
+  -- Followers and account age are recorded with the application but are no longer requirements.
+  return jsonb_build_object('eligible', cardinality(reasons) = 0, 'followers', followers, 'min_followers', 0,
+    'account_age_days', age_days, 'min_account_age_days', 0, 'reasons', to_jsonb(reasons));
 end $$;
