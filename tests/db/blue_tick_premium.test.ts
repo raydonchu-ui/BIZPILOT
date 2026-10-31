@@ -20,7 +20,18 @@ describe('blue tick given by an administrator (Verified Premium only)', () => {
   });
   afterAll(closeDb);
 
+  it('applying needs only the 5,000 XAF plan: a Free business is refused, and no follower count is required', async () => {
+    const [{ e: free }] = await sql<any>('select app.verification_eligibility($1) as e', [biz]);
+    expect(free.reasons).toContain('requires_verified_premium');
+    expect(free.eligible).toBe(false);
+    await setPlan(biz);
+    const [{ e: premium }] = await sql<any>('select app.verification_eligibility($1) as e', [biz]);
+    expect(premium.reasons).not.toContain('requires_verified_premium');
+    expect(premium.min_followers).toBe(0);
+  });
+
   it('an administrator cannot give the blue tick to a business that is not on Verified Premium', async () => {
+    await sql("update business_subscriptions set plan_code = 'free', status = 'active', trial_ends_at = null where business_id = $1", [biz]);
     await expectError(rpc(admin.client, 'admin_market_store_update', { p_business: biz, p: { verification: 'verified', reason: 'Known shop' } }), 'requires_verified_premium');
     const [s] = await sql<any>('select verification from stores where business_id = $1', [biz]);
     expect(s.verification).toBe('unverified');

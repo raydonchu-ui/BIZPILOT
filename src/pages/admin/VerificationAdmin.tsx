@@ -68,7 +68,6 @@ export function VerificationAdmin() {
                 {a.expires_at && <div><dt className="text-ink-muted">{t('premium.admin.expires')}</dt><dd>{formatDate(a.expires_at, lang)}</dd></div>}
               </dl>
               <ul className="mt-3 space-y-1 text-sm">
-                <li>{t('premium.admin.followers')}: {a.eligibility.followers} / {a.eligibility.min_followers}</li>
                 <li className={a.eligibility.eligible ? 'text-brand-700' : 'text-red-700'}>
                   {a.eligibility.eligible ? t('premium.admin.eligible') : `${t('premium.admin.notEligible')}: ${(a.eligibility.reasons ?? []).map((r: string) => t(`premium.verify.reasons.${r}`)).join(' ')}`}
                 </li>

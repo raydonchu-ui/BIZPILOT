@@ -17,15 +17,15 @@ describe('subscriptions, entitlements, billing verification and admin portal', (
   });
   afterAll(closeDb);
 
-  it('new businesses start on a Business-plan trial with all features', async () => {
+  it('new businesses start on the Free plan, with no trial', async () => {
     const b = await ctxFor(owner, biz);
-    expect(b.subscription.state).toBe('trial');
-    expect(b.plan.code).toBe('business');
-    expect(b.plan.features).toContain('ai_advisor');
-    await addSupplier(owner, biz);
+    expect(b.subscription.state).toBe('free');
+    expect(b.plan.code).toBe('free');
+    expect(b.plan.features).not.toContain('ai_advisor');
   });
 
   it('after trial expiry, paid features are blocked server-side but records are preserved', async () => {
+    await sql(`update business_subscriptions set plan_code = 'business', status = 'trialing', trial_ends_at = now() + interval '30 days' where business_id = $1`, [biz]);
     const sup = await addSupplier(owner, biz, { name: 'Kept Supplier' });
     const p = await addProduct(owner, biz, { name: 'Kept Product' });
     await openStock(owner, biz, p.id, 10, 100);

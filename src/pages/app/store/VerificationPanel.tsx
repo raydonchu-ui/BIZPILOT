@@ -115,8 +115,6 @@ export function VerificationPanel() {
         <CardHeader title={t('premium.verify.eligibilityTitle')} />
         {e ? (
           <ul className="space-y-2 text-sm">
-            <li className={e.followers >= e.min_followers ? 'text-brand-700' : 'text-ink'}>{t('premium.verify.followers', { count: e.followers, min: e.min_followers })}</li>
-            <li className={e.account_age_days >= e.min_account_age_days ? 'text-brand-700' : 'text-ink'}>{t('premium.verify.accountAge', { days: e.account_age_days, min: e.min_account_age_days })}</li>
             {(e.reasons ?? []).map((r: string) => <li key={r} className="text-red-700">{t(`premium.verify.reasons.${r}`)}</li>)}
           </ul>
         ) : <p className="text-sm text-ink-muted">{t('premium.verify.reapply')}</p>}
