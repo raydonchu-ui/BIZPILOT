@@ -363,7 +363,11 @@ test('an administrator verifies the store and can hide a listing', async ({ brow
   await expect(page.getByText('Marketplace rules')).toBeVisible();
   await page.getByRole('link', { name: 'Stores' }).first().click();
   await page.getByRole('row', { name: new RegExp(`Awa Mode ${id}`) }).getByRole('button', { name: 'Manage' }).click();
-  await page.getByRole('button', { name: 'Verify store' }).click();
+  // The blue tick is part of Verified Premium: the store's business must be on that plan first.
+  await sql(`update business_subscriptions set plan_code = 'verified_premium', status = 'active', billing_period = 'monthly',
+             current_period_start = now(), current_period_end = now() + interval '30 days'
+             where business_id = (select business_id from stores where name = $1)`, [`Awa Mode ${id}`]);
+  await page.getByRole('button', { name: 'Give blue tick' }).click();
   await expect(page.getByText('Saved').first()).toBeVisible();
   await page.goto('/admin/listings');
   await page.getByRole('row', { name: new RegExp(product) }).getByRole('button', { name: 'Hide' }).click();
